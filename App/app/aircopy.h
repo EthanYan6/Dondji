@@ -92,7 +92,7 @@ typedef enum {
 extern AIRCOPY_State_t gAircopyState;
 extern uint16_t        gAirCopyBlockNumber;
 extern uint16_t        gErrorsDuringAirCopy;
-extern uint8_t         gAirCopyIsSendMode;
+extern bool            gAirCopyIsSendMode;
 
 extern uint16_t        g_FSK_Buffer[36];
 

@@ -127,7 +127,8 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     bool          gSetting_set_met = 0;
     bool          gSetting_set_gui = 0;
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
-        uint8_t       gSetting_set_audio = 0;
+        uint8_t       gSetting_set_audio_fm = 0;
+        uint8_t       gSetting_set_audio_am = 0;
     #endif
     #ifdef ENABLE_FEAT_F4HWN_NARROWER
         bool          gSetting_set_nfm = 0;
@@ -250,7 +251,6 @@ bool              gFlagResetVfos;
 bool              gRequestSaveVFO;
 uint16_t          gRequestSaveChannel;
 bool              gRequestSaveSettings;
-bool              gRequestSaveSquelch;
 #ifdef ENABLE_FMRADIO
     bool          gRequestSaveFM;
 #endif
@@ -331,6 +331,7 @@ uint8_t           gIsLocked = 0xFF;
     bool          gMute = false;
     uint8_t       gBacklightTimeOriginal;
     uint8_t       gBacklightBrightnessOld;
+    uint8_t       gSquelchLevelOriginal = 10;
     uint8_t       gPttOnePushCounter = 0;
     uint32_t      gBlinkCounter = 0;
 

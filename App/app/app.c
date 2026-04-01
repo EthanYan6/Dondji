@@ -2145,7 +2145,6 @@ Skip:
         else
             flagSaveSettings = 1;
         gRequestSaveSettings = false;
-        gRequestSaveSquelch  = false;
         gUpdateStatus        = true;
     }
 

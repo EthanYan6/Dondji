@@ -121,7 +121,8 @@ void SETTINGS_InitEEPROM(void)
     // 0E70..0E77
     PY25Q16_ReadBuffer(0x00A000, Data, 8);
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
-        gSetting_set_audio = (Data[0] < 5) ? Data[0] : 0;
+        gSetting_set_audio_fm = ((Data[0] & 0x0F) < 5) ? (Data[0] & 0x0F) : 0;
+        gSetting_set_audio_am = (((Data[0] >> 4) & 0x0F) < 3) ? ((Data[0] >> 4) & 0x0F) : 0;
     #endif
     gEeprom.SQUELCH_LEVEL        = (Data[1] < 10) ? Data[1] : 1;
     gEeprom.TX_TIMEOUT_TIMER     = (Data[2] > 4 && Data[2] < 180) ? Data[2] : 11;
@@ -764,12 +765,14 @@ void SETTINGS_SaveSettings(void)
     // 0x0E70
     State = SecBuf;
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
-        State[0] = gSetting_set_audio;
+        State[0] = (gSetting_set_audio_fm & 0x0F) | ((gSetting_set_audio_am & 0x0F) << 4);
     #endif
-    if (gRequestSaveSquelch)
-    {
+    #ifdef ENABLE_FEAT_F4HWN
+        if (gSquelchLevelOriginal < 10)
+            State[1] = gSquelchLevelOriginal;
+        else
+    #endif
         State[1] = gEeprom.SQUELCH_LEVEL;
-    }
     State[2] = gEeprom.TX_TIMEOUT_TIMER;
     #ifdef ENABLE_NOAA
         State[3] = gEeprom.NOAA_AUTO_SCAN;

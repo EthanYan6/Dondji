@@ -189,7 +189,8 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     extern bool               gSetting_set_met;
     extern bool               gSetting_set_gui;
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
-        extern uint8_t            gSetting_set_audio;
+        extern uint8_t            gSetting_set_audio_fm;
+        extern uint8_t            gSetting_set_audio_am;
     #endif
     #ifdef ENABLE_FEAT_F4HWN_NARROWER
         extern bool               gSetting_set_nfm;
@@ -375,7 +376,6 @@ extern bool                  gFlagResetVfos;
 extern bool                  gRequestSaveVFO;
 extern uint16_t              gRequestSaveChannel;
 extern bool                  gRequestSaveSettings;
-extern bool                  gRequestSaveSquelch;
 #ifdef ENABLE_FMRADIO
     extern bool              gRequestSaveFM;
 #endif
@@ -454,6 +454,7 @@ extern volatile uint8_t      boot_counter_10ms;
     extern bool                  gMute;
     extern uint8_t               gBacklightTimeOriginal;
     extern uint8_t               gBacklightBrightnessOld;
+    extern uint8_t               gSquelchLevelOriginal;
     extern uint8_t               gPttOnePushCounter;
     extern uint32_t              gBlinkCounter;
 
