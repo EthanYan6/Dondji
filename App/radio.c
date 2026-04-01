@@ -54,7 +54,22 @@ const char gModulationStr[MODULATION_UKNOWN][4] = {
 };
 
 #ifdef ENABLE_FEAT_F4HWN_AUDIO
-    static void AUDIO_ApplyProfile(uint8_t profile)
+
+    // About BK4819_WriteRegister(0x2b, val) experimentation...
+    //
+    // 0x000: 300 Hz high-pass filter enabled, 3 kHz low-pass filter enabled, de-emphasis enabled.
+    // Audio impression: the most "classic radio" tuning, more filtered and smoother.
+    //
+    // 0x300: 300 Hz high-pass filter enabled, 3 kHz low-pass filter disabled, de-emphasis disabled.
+    // Audio impression: clearer, brighter, and more open, while still cutting low frequencies.
+    //
+    // 0x400: 300 Hz high-pass filter disabled, 3 kHz low-pass filter enabled, de-emphasis enabled.
+    // Audio impression: fuller low end, but still softened by de-emphasis and upper-frequency limiting.
+    //
+    // 0x500: 300 Hz high-pass filter disabled, 3 kHz low-pass filter enabled, de-emphasis disabled.
+    // Audio impression: fuller bass, more direct sound, while still keeping the 3 kHz top-end limit.
+
+    static void AUDIO_ApplyFMProfile(uint8_t profile)
     {
         switch (profile)
         {
@@ -84,6 +99,41 @@ const char gModulationStr[MODULATION_UKNOWN][4] = {
                 BK4819_WriteRegister(0x55, 0x3D00);
                 break;
         }
+    }
+
+    static void AUDIO_ApplyAMProfile(uint8_t profile)
+    {
+        switch (profile)
+        {
+            default:
+            case 0: // SHARP (ALPHA test profile) - Narrow IF filter (REG54 bits[14:8]=0, bits[7:0]=9), low IF gain (REG55 bits[11:8]=1, ref=169)
+                    // Selective and crisp, best adjacent channel rejection, may sound harsh on strong signals
+                BK4819_WriteRegister(0x2b, 0x0300);
+                BK4819_WriteRegister(0x2f, 0x9990);
+                BK4819_WriteRegister(0x54, 0x9009);
+                BK4819_WriteRegister(0x55, 0x31A9);
+                break;
+            case 1: // STOCK - Narrow IF filter (REG54 bits[14:8]=0, bits[7:0]=9), moderate IF gain (REG55 bits[11:8]=4, ref=180)
+                    // Selective filter with balanced gain, punchy and detailed, good compromise between rejection and sensitivity
+                BK4819_WriteRegister(0x2b, 0x0500);
+                BK4819_WriteRegister(0x2f, 0x9990);
+                BK4819_WriteRegister(0x54, 0x9009);
+                BK4819_WriteRegister(0x55, 0x31A9);
+                break;
+            case 2: // OPEN (BRAVO test profile) - Medium-wide IF filter (REG54 bits[14:8]=8, bits[7:0]=70), high IF gain (REG55 bits[11:8]=8, ref=192)
+                    // Wide and pleasant, better sensitivity on weak signals, may struggle with adjacent channel interference
+                BK4819_WriteRegister(0x2b, 0x0300);
+                BK4819_WriteRegister(0x2f, 0x9990);
+                BK4819_WriteRegister(0x54, 0x8846);
+                BK4819_WriteRegister(0x55, 0x38C0);
+                break;
+        }
+    }
+
+    static void AUDIO_ApplyUSBProfile(void)
+    {
+        BK4819_WriteRegister(0x54, 0x9009);
+        BK4819_WriteRegister(0x55, 0x31A9);
     }
 #endif
 
@@ -1098,48 +1148,70 @@ void RADIO_SetModulation(ModulationMode_t modulation)
 
     BK4819_SetAF(mod);
 
-    // HACK, FIXME:
+    // 
     // What follows is a direct copy of the AM enable/disable code from
     // the original UV-K1 firmware. It is not clear why these specific register
     // values are used for AM all of a sudden instead of the AF setting like on
     // the BK4819, nor what exactly they do.
     // So for now we just keep it as is to maintain compatibility.
     //
-    if (modulation != MODULATION_AM)
+
+    switch (modulation)
     {
-        uint16_t uVar1 = BK4819_ReadRegister(0x31);
-        BK4819_WriteRegister(0x31,uVar1 & 0xfffffffe);
-        BK4819_WriteRegister(0x42,0x6b5a);
-        BK4819_WriteRegister(0x2a,0x7400);
-        BK4819_WriteRegister(0x2b,0);
-        BK4819_WriteRegister(0x2f,0x9890);
-        //BK4819_WriteRegister(0x54, 0x9009);
-        //BK4819_WriteRegister(0x55, 0x31a9);
-        #ifdef ENABLE_FEAT_F4HWN_AUDIO
-            AUDIO_ApplyProfile(gSetting_set_audio);
-        #else
-            BK4819_WriteRegister(0x54, 0x9009);
-            BK4819_WriteRegister(0x55, 0x31a9);
-        #endif
-    }
-    else
-    {
-        uint16_t uVar1 = BK4819_ReadRegister(0x31);
-        BK4819_WriteRegister(0x31,uVar1 | 1);
-        BK4819_WriteRegister(0x42,0x6f5c);
-        BK4819_WriteRegister(0x2a,0x7434);
-        BK4819_WriteRegister(0x2b,0x400);
-        BK4819_WriteRegister(0x2f,0x9990);
-        //BK4819_WriteRegister(0x54, 0x9775);
-        //BK4819_WriteRegister(0x55, 0x32c6);
+        case MODULATION_AM:
+        {
+            uint16_t uVar1 = BK4819_ReadRegister(0x31);
+            BK4819_WriteRegister(0x31, uVar1 | 1); // AM Demodulation Enable
+            BK4819_WriteRegister(0x42, 0x6f5c);
+            BK4819_WriteRegister(0x2a, 0x7434);
 
-        //BK4819_WriteRegister(0x54, 0x8846);
-        //BK4819_WriteRegister(0x55, 0x38C0);
+            #ifdef ENABLE_FEAT_F4HWN_AUDIO
+                AUDIO_ApplyAMProfile(gSetting_set_audio_am);
+            #else
+                BK4819_WriteRegister(0x54, 0x9009);
+                BK4819_WriteRegister(0x55, 0x31a9);
+            #endif
 
-        BK4819_WriteRegister(0x54, 0x9009);
-        BK4819_WriteRegister(0x55, 0x31a9);
+            BK4819_SetFilterBandwidth(BK4819_FILTER_BW_AM, true);
+            break;
+        }
 
-        BK4819_SetFilterBandwidth(BK4819_FILTER_BW_AM, true);
+        case MODULATION_USB:
+        {
+            uint16_t uVar1 = BK4819_ReadRegister(0x31);
+            BK4819_WriteRegister(0x31, uVar1 & 0xfffe); // AM Demodulation Disable
+            BK4819_WriteRegister(0x42, 0x6b5a);
+            BK4819_WriteRegister(0x2a, 0x7400);
+            BK4819_WriteRegister(0x2b, 0x0000);
+            BK4819_WriteRegister(0x2f, 0x9890);
+
+            #ifdef ENABLE_FEAT_F4HWN_AUDIO
+                AUDIO_ApplyUSBProfile();
+            #else
+                BK4819_WriteRegister(0x54, 0x9009);
+                BK4819_WriteRegister(0x55, 0x31a9);
+            #endif
+            break;
+        }
+
+        case MODULATION_FM:
+        default:
+        {
+            uint16_t uVar1 = BK4819_ReadRegister(0x31);
+            BK4819_WriteRegister(0x31, uVar1 & 0xfffe); // AM Demodulation Disable
+            BK4819_WriteRegister(0x42, 0x6b5a);
+            BK4819_WriteRegister(0x2a, 0x7400);
+            BK4819_WriteRegister(0x2b, 0x0000);
+            BK4819_WriteRegister(0x2f, 0x9890);
+
+            #ifdef ENABLE_FEAT_F4HWN_AUDIO
+                AUDIO_ApplyFMProfile(gSetting_set_audio_fm);
+            #else
+                BK4819_WriteRegister(0x54, 0x9009);
+                BK4819_WriteRegister(0x55, 0x31a9);
+            #endif
+            break;
+        }
     }
     
     BK4819_SetRegValue(afDacGainRegSpec, 0xF);
@@ -1147,7 +1219,6 @@ void RADIO_SetModulation(ModulationMode_t modulation)
     BK4819_SetRegValue(afcDisableRegSpec, modulation != MODULATION_FM);
 
     RADIO_SetupAGC(modulation == MODULATION_AM, false);
-    //RADIO_SetupAGC(false, false);
 }
 
 void RADIO_SetupAGC(bool listeningAM, bool disable)

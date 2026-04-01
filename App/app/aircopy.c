@@ -39,7 +39,7 @@ static const uint16_t Obfuscation[8] = { 0x6C16, 0xE614, 0x912E, 0x400D, 0x3521,
 AIRCOPY_State_t gAircopyState;
 uint16_t gAirCopyBlockNumber;
 uint16_t gErrorsDuringAirCopy;
-uint8_t gAirCopyIsSendMode;
+bool     gAirCopyIsSendMode;
 
 uint16_t g_FSK_Buffer[36];
 

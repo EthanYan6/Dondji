@@ -198,7 +198,8 @@ extern const char        gSubMenu_D_RSP[4][11];
         extern const char gSubMenu_SET_KEY[][9];
     #endif
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
-        extern const char    gSubMenu_SET_AUD[5][6];
+        extern const char    gSubMenu_SET_AUD_FM[5][6];
+        extern const char    gSubMenu_SET_AUD_AM[3][6];
     #endif
 #endif
 

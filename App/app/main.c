@@ -301,6 +301,9 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
                     RADIO_NextValidList(isKeyUp ? 1 : -1);
                 } else {
                     // Adjust squelch: UP increments, DOWN decrements
+                    if (gSquelchLevelOriginal == 10)
+                        gSquelchLevelOriginal =  gEeprom.SQUELCH_LEVEL;
+
                     if (isKeyUp) {
                         gEeprom.SQUELCH_LEVEL = (gEeprom.SQUELCH_LEVEL < 9) ? gEeprom.SQUELCH_LEVEL + 1 : 9;
                     } else {

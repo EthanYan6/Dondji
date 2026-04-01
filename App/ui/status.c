@@ -99,15 +99,8 @@ void UI_DisplayStatus()
 
                 if(gEeprom.SCAN_LIST_DEFAULT == MR_CHANNELS_LIST + 1)
                 {
-                    if(gEeprom.SCAN_LIST_ENABLED==1) {
-                        sprintf(str, "%s+", "ALL");
-                        end = 18;
-                    }
-                    else
-                    {
-                        sprintf(str, "%s", "ALL");
-                        end = 14;
-                    }
+                    sprintf(str, gEeprom.SCAN_LIST_ENABLED ? "%s+" : "%s", "ALL");
+                    end = gEeprom.SCAN_LIST_ENABLED ? 18 : 14;
                 }
                 else
                 {
