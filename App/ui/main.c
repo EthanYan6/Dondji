@@ -567,7 +567,7 @@ static void DualVfoDrawTopDetailRowPx(unsigned int topVfoIdx, uint8_t y)
 {
     const VFO_Info_t *v = &gEeprom.VfoInfo[topVfoIdx];
     char              buf[48];
-    uint8_t           sq = (uint8_t)((v->SquelchOpenRSSIThresh * 9u + 255u) / 256u);
+    uint8_t           sq = gEeprom.SQUELCH_LEVEL;
     if (sq > 9u)
         sq = 9u;
     snprintf(buf, sizeof(buf), "SQ%u", sq);

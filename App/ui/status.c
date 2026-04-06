@@ -131,7 +131,7 @@ void UI_DisplayStatus()
 
         // 6. 静噪值 (0-9)
         {
-            uint8_t sq = (pVfo->SquelchOpenRSSIThresh * 9u + 255u) / 256u;
+            uint8_t sq = gEeprom.SQUELCH_LEVEL;
             if (sq > 9) sq = 9;
             sprintf(str, "%u", sq);
             GUI_DisplaySmallest(str, x, 2, true, true);
