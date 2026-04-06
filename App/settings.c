@@ -385,7 +385,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     gSetting_live_DTMF_decoder = !!(Data[7] & (1u << 1));
     gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
     #ifdef ENABLE_AUDIO_BAR
-        gSetting_mic_bar       = !!(Data[7] & (1u << 4));
+        gSetting_mic_bar       = false;
     #endif
     #ifndef ENABLE_FEAT_F4HWN
         #ifdef ENABLE_AM_FIX
@@ -486,8 +486,8 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         gSetting_set_inv = 0;
 #endif
         gSetting_set_lck = (tmp >> 1) & 0x01;
-        gSetting_set_met = (tmp >> 2) & 0x01;
-        gSetting_set_gui = (tmp >> 3) & 0x01;
+        gSetting_set_met = 0;
+        gSetting_set_gui = 0;
 
 #ifdef ENABLE_FEAT_F4HWN_CTR
         int ctr_value = Data[5] & 0x0F;
