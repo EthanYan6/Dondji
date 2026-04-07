@@ -35,10 +35,6 @@ void UI_DisplayFM(void)
     char *pPrintStr = String;
     UI_DisplayClear();
 
-#ifdef ENABLE_FEAT_F4HWN
-    UI_DisplayUnlockKeyboard(5);
-#endif
-
     UI_PrintString("FM", 2, 0, 0, 8);
 
     sprintf(String, "%d%s-%dM", 
@@ -94,11 +90,26 @@ void UI_DisplayFM(void)
         }
 
         UI_DisplayFrequency(String, 36, 1, gInputBoxIndex == 0);  // frequency
+        
+#ifdef ENABLE_FEAT_F4HWN
+        // 键盘锁定时显示解锁提示框，使用与 main only 相同的偏移
+        if (gEeprom.KEY_LOCK && gKeypadLocked > 0) {
+            UI_DisplayUnlockKeyboard(-10);
+        }
+#endif
+        
         ST7565_BlitFullScreen();
         return;
     }
 
     UI_PrintString(String, 0, 127, 1, 10);
+
+#ifdef ENABLE_FEAT_F4HWN
+    // 键盘锁定时显示解锁提示框，使用与 main only 相同的偏移
+    if (gEeprom.KEY_LOCK && gKeypadLocked > 0) {
+        UI_DisplayUnlockKeyboard(-10);
+    }
+#endif
 
     ST7565_BlitFullScreen();
 }

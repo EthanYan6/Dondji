@@ -1579,7 +1579,8 @@ void UI_DisplayMain(void)
         return;
     }
 #else
-    UI_DisplayUnlockKeyboard(isMainOnly() ? 5 : 3);
+    // 键盘锁定时也需要继续绘制主页内容，然后在上面叠加解锁提示框
+    const bool keyboardLocked = (gEeprom.KEY_LOCK && gKeypadLocked > 0);
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN
@@ -1590,10 +1591,9 @@ void UI_DisplayMain(void)
     }
 #endif
 
-    // 主页面 (MAIN ONLY) 定制布局：横线、计时、大矩形+左侧条、信道/频率、底部两按钮
+    // 主页面 (MAIN ONLY) 定制布局：横线、计时、大矩形 + 左侧条、信道/频率、底部两按钮
 #ifdef ENABLE_FEAT_F4HWN
-    if (isMainOnly() && !gAirCopyBootMode && gScreenToDisplay == DISPLAY_MAIN &&
-        !(gEeprom.KEY_LOCK && gKeypadLocked > 0)) {
+    if (isMainOnly() && !gAirCopyBootMode && gScreenToDisplay == DISPLAY_MAIN) {
         const uint8_t vfo = gEeprom.TX_VFO;
         const VFO_Info_t *pVfo = &gEeprom.VfoInfo[vfo];
 
@@ -1759,6 +1759,12 @@ void UI_DisplayMain(void)
         UI_PrintStringSmallNormalNegative("Menu", btnLX0, btnLX1, btnLY);
         UI_PrintStringSmallNormalNegative(gModulationStr[pVfo->Modulation], btnRX0, btnRX1, btnLY);
 
+        // 键盘锁定时，在主页内容之上显示解锁提示框
+        // main only 和双守使用相同的偏移，确保显示位置完全一致
+        if (keyboardLocked) {
+            UI_DisplayUnlockKeyboard(-10);  // 统一使用 -10
+        }
+        
         ST7565_BlitFullScreen();
         return;
     }
@@ -1768,6 +1774,13 @@ void UI_DisplayMain(void)
     if (!isMainOnly() && !DualVfoShouldUseLegacyMain() && gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode)
     {
         UI_DisplayMain_DualVfoTwoPanel();
+        
+        // 键盘锁定时，在主页内容之上显示解锁提示框
+        // 与 main only 使用相同的偏移，确保显示位置完全一致
+        if (keyboardLocked) {
+            UI_DisplayUnlockKeyboard(-10);  // 与 main only 统一使用 -10
+        }
+        
         goto display_main_after_vfo_loop;
     }
 #endif

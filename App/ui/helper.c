@@ -23,6 +23,7 @@
 #include "ui/inputbox.h"
 #include "misc.h"
 #include "settings.h"
+#include "bitmaps.h"
 
 
 void UI_GenerateChannelString(char *pString, const uint16_t Channel)
@@ -595,20 +596,55 @@ static void sort(int16_t *a, int16_t *b)
       }
     }
 
-    void UI_DisplayUnlockKeyboard(uint8_t shift) {
+    void UI_DisplayUnlockKeyboard(int16_t yOffset) {
         if (gEeprom.KEY_LOCK && gKeypadLocked > 0)
         {   // tell user how to unlock the keyboard
+            // 在屏幕中间绘制长方形框
+            // 尺寸：宽度 +30(两边各 +15), 高度 18px
+            // X: 9~118 (宽 109), Y 根据 yOffset 调整
+            const int16_t rectX1 = 9;    // 左边 X 坐标
+            const int16_t rectY1 = 26 + yOffset;   // 上边 Y 坐标（可调整）
+            const int16_t rectX2 = 118;  // 右边 X 坐标
+            const int16_t rectY2 = rectY1 + 18;   // 下边 Y 坐标（框高 18px）
             
-            //memcpy(gFrameBuffer[shift] + 2, gFontKeyLock, sizeof(gFontKeyLock));
-            UI_PrintStringSmallBold("UNLOCK KEYBOARD", 12, 0, shift);
-            //memcpy(gFrameBuffer[shift] + 120, gFontKeyLock, sizeof(gFontKeyLock));
-
-            /*
-            for (uint8_t i = 12; i < 116; i++)
-            {
-                gFrameBuffer[shift][i] ^= 0xFF;
+            // 清除弹窗区域（向外 1 像素边框）
+            // 只清除指定 Y 范围内的像素，每行只清除需要的 X 范围
+            const int16_t clearX1 = rectX1 - 1;
+            const int16_t clearX2 = rectX2 + 1;
+            const int16_t clearY1 = rectY1 - 1;  // 框外上 1 像素
+            const int16_t clearY2 = rectY2 + 1;  // 框外下 1 像素
+            
+            for (int16_t y = clearY1; y <= clearY2 && y < 64; y++) {
+                if (y < 0) continue;
+                const uint8_t row = y / 8;  // 计算行号
+                const uint8_t bit = (uint8_t)(1 << (y % 8));  // 计算位掩码
+                for (int16_t x = clearX1; x <= clearX2 && x < 128; x++) {
+                    if (x < 0) continue;
+                    gFrameBuffer[row][x] &= ~bit;  // 只清除指定 Y 坐标的像素
+                }
             }
-            */
+            
+            // 绘制上边和左边（细线）
+            UI_DrawLineBuffer(gFrameBuffer, rectX1, rectY1, rectX2 - 1, rectY1, true);  // 上边
+            UI_DrawLineBuffer(gFrameBuffer, rectX1, rectY1, rectX1, rectY2 - 1, true);  // 左边
+            
+            // 绘制右边和下边（加粗：画两条线）
+            UI_DrawLineBuffer(gFrameBuffer, rectX2, rectY1, rectX2, rectY2, true);      // 右边外线
+            UI_DrawLineBuffer(gFrameBuffer, rectX2 - 1, rectY1, rectX2 - 1, rectY2, true); // 右边内线
+            UI_DrawLineBuffer(gFrameBuffer, rectX1, rectY2, rectX2, rectY2, true);      // 下边外线
+            UI_DrawLineBuffer(gFrameBuffer, rectX1, rectY2 - 1, rectX2, rectY2 - 1, true); // 下边内线
+            
+            // 在长方形框中间第一行绘制锁的形状
+            // 锁和文字的 Y 坐标固定不变
+            const uint8_t lockX = 56;  // 锁图标 X 坐标（居中）
+            const uint8_t lockY = 21;  // 锁图标 Y 坐标（固定位置）
+            const uint8_t lockRow = lockY / 8;
+            memcpy(gFrameBuffer[lockRow] + lockX, gFontKeyLock, sizeof(gFontKeyLock));
+            
+            // 在长方形框中间第二行显示"UNLOCK KEYBOARD"文字
+            const uint8_t textY = 28;  // 文字 Y 坐标（固定位置）
+            const uint8_t textRow = textY / 8;
+            UI_PrintStringSmallBold("UNLOCK KEYBOARD", 36, 92, textRow);
         }
     }
 
