@@ -19,6 +19,7 @@
 
 #include "app/chFrScanner.h"
 #include "app/dtmf.h"
+#include "app/menu.h"
 #ifdef ENABLE_FMRADIO
     #include "app/fm.h"
 #endif
@@ -94,6 +95,11 @@ void GUI_SelectNextDisplay(GUI_DisplayType_t Display)
         gAskForConfirmation  = 0;
         gAskToSave           = false;
         gAskToDelete         = false;
+        if (Display != DISPLAY_MENU)
+        {
+            gMenuMainPageActive = false;
+            gMenuUseMainOnlyStatus = false;
+        }
 
         HideFKeyIcon();
     }

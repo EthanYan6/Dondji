@@ -25,6 +25,7 @@
 #endif
 #include "app/generic.h"
 #include "app/main.h"
+#include "app/menu.h"
 #include "app/scanner.h"
 
 #ifdef ENABLE_SPECTRUM
@@ -819,6 +820,7 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
             #endif
 
             gFlagRefreshSetting = true;
+            MENU_OpenFromMainScreen();
             gRequestDisplayScreen = DISPLAY_MENU;
             #ifdef ENABLE_VOICE
                 gAnotherVoiceID   = VOICE_ID_MENU;

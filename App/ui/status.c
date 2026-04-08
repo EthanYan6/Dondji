@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "app/chFrScanner.h"
+#include "app/menu.h"
 #ifdef ENABLE_FMRADIO
     #include "app/fm.h"
 #endif
@@ -31,6 +32,7 @@
 #include "settings.h"
 #include "ui/battery.h"
 #include "ui/helper.h"
+#include "ui/menu.h"
 #include "ui/ui.h"
 #include "ui/status.h"
 #include "radio.h"
@@ -62,6 +64,80 @@ bool UI_IsDualVfoMainScreen(void)
 }
 #endif
 
+void UI_DisplayMainOnlyStatusBar(void)
+{
+#ifdef ENABLE_FEAT_F4HWN
+    char str[8] = "";
+    uint8_t *line = gStatusLine;
+    unsigned int x = 0;
+    const uint8_t vfo = gEeprom.TX_VFO;
+    const VFO_Info_t *pVfo = &gEeprom.VfoInfo[vfo];
+
+    memset(gStatusLine, 0, sizeof(gStatusLine));
+
+    memcpy(line + x, BITMAP_Antenna, sizeof(BITMAP_Antenna));
+    x += 6;
+
+    x -= 2;
+    uint8_t bars = 0;
+    if (FUNCTION_IsRx()) {
+        bars = (gVFO_RSSI_bar_level[vfo] * 5 + 5) / 6;
+        if (bars > 5) bars = 5;
+    }
+    for (uint8_t i = 0; i < 5; i++) {
+        uint8_t h = i + 1;
+        uint8_t mask = ((1u << h) - 1u) << (7 - h);
+        if (i < bars)
+            line[x + (unsigned int)i * 2u] |= mask;
+    }
+    x += 10;
+
+    if (pVfo->freq_config_RX.Frequency == pVfo->freq_config_TX.Frequency) {
+        GUI_DisplaySmallest("|->|", x, 1, true, true);
+        x += 17;
+    }
+    x += 1;
+
+    {
+        const char *pwr[] = {"L1","L2","L3","L4","L5","M","H"};
+        uint8_t idx = pVfo->OUTPUT_POWER;
+        if (idx == OUTPUT_POWER_USER)
+            idx = gSetting_set_pwr + 1;
+        if (idx >= 1 && idx <= 7) {
+            GUI_DisplaySmallest(pwr[idx - 1], x, 2, true, true);
+            x += 9;
+        }
+    }
+    x += 1;
+
+    {
+        const char *bw = (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "W" : "N";
+        GUI_DisplaySmallest(bw, x, 2, true, true);
+        x += 6;
+        x += 1;
+        sprintf(str, "%s", (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "25K" : "12K");
+        GUI_DisplaySmallest(str, x, 2, true, true);
+        x += 14;
+    }
+    x += 1;
+
+    {
+        uint8_t sq = gEeprom.SQUELCH_LEVEL;
+        if (sq > 9) sq = 9;
+        sprintf(str, "%u", sq);
+        GUI_DisplaySmallest(str, x, 2, true, true);
+    }
+    x += 7;
+
+    sprintf(str, "%d.%02uK", pVfo->StepFrequency / 100, pVfo->StepFrequency % 100);
+    GUI_DisplaySmallest(str, x, 2, true, true);
+
+    x = LCD_WIDTH - sizeof(BITMAP_BatteryLevel1) - 2;
+    UI_DrawBattery(line + x, gBatteryDisplayLevel, gLowBatteryBlink);
+    ST7565_BlitStatusLine();
+#endif
+}
+
 void UI_DisplayStatus()
 {
     char str[8] = "";
@@ -70,87 +146,16 @@ void UI_DisplayStatus()
     memset(gStatusLine, 0, sizeof(gStatusLine));
 
 #ifdef ENABLE_FEAT_F4HWN
+    if (gScreenToDisplay == DISPLAY_MENU && gMenuUseMainOnlyStatus)
+    {
+        UI_DisplayMainOnlyStatusBar();
+        return;
+    }
+
     // 主页面 (MAIN ONLY): 定制顶部菜单栏
     if (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
         gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
-        uint8_t *line = gStatusLine;
-        unsigned int x = 0;
-        const uint8_t vfo = gEeprom.TX_VFO;
-        const VFO_Info_t *pVfo = &gEeprom.VfoInfo[vfo];
-
-        // 1. 天线图标
-        memcpy(line + x, BITMAP_Antenna, sizeof(BITMAP_Antenna));
-        x += 6;
-
-        // 2. 5格信号条：向左 2 像素、向上 1 像素，条间 1 像素间隔
-        x -= 2;  // 整体左移 2 像素
-        uint8_t bars = 0;
-        if (FUNCTION_IsRx()) {
-            bars = (gVFO_RSSI_bar_level[vfo] * 5 + 5) / 6;
-            if (bars > 5) bars = 5;
-        }
-        for (uint8_t i = 0; i < 5; i++) {
-            uint8_t h = i + 1;  // 高度 1,2,3,4,5
-            uint8_t mask = ((1u << h) - 1u) << (7 - h);  // 上移 1 像素：留顶 1 像素空
-            if (i < bars)
-                line[x + (unsigned int)i * 2u] |= mask;  // 每条 1 列，间隔 1 列
-        }
-        x += 10;  // 5 条 × 2（条+间隔）
-
-        // 3. |->| 直频图标 (仅当 RX 频率 == TX 频率时显示)，4 字约 16 像素
-        if (pVfo->freq_config_RX.Frequency == pVfo->freq_config_TX.Frequency) {
-            GUI_DisplaySmallest("|->|", x, 1, true, true);
-            x += 17;
-        }
-        x += 1;  // 与下一项间隔 1 像素
-
-        // 4. 功率 (L1/L2/.../M/H)，2 字宽约 8 像素，保留 9 与其它项一致
-        {
-            const char *pwr[] = {"L1","L2","L3","L4","L5","M","H"};
-            uint8_t idx = pVfo->OUTPUT_POWER;
-            if (idx == OUTPUT_POWER_USER)
-                idx = gSetting_set_pwr + 1;  // 1..7
-            if (idx >= 1 && idx <= 7) {
-                GUI_DisplaySmallest(pwr[idx - 1], x, 2, true, true);
-                x += 9;
-            }
-        }
-        x += 1;
-
-        // 5. 宽带/窄带 + 带宽
-        {
-            const char *bw = (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "W" : "N";
-            GUI_DisplaySmallest(bw, x, 2, true, true);
-            x += 6;
-            x += 1;
-            sprintf(str, "%s", (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "25K" : "12K");
-            GUI_DisplaySmallest(str, x, 2, true, true);
-            x += 14;
-        }
-        x += 1;
-
-        // 6. 静噪值 (0-9)
-        {
-            uint8_t sq = gEeprom.SQUELCH_LEVEL;
-            if (sq > 9) sq = 9;
-            sprintf(str, "%u", sq);
-            GUI_DisplaySmallest(str, x, 2, true, true);
-            x += 6;
-        }
-        x += 1;
-
-        // 7. 步进
-        {
-            sprintf(str, "%d.%02uK", pVfo->StepFrequency / 100, pVfo->StepFrequency % 100);
-            GUI_DisplaySmallest(str, x, 2, true, true);
-            x += 22;
-        }
-
-        // 8. 电池 (右侧)
-        x = LCD_WIDTH - sizeof(BITMAP_BatteryLevel1) - 2;
-        UI_DrawBattery(line + x, gBatteryDisplayLevel, gLowBatteryBlink);
-
-        ST7565_BlitStatusLine();
+        UI_DisplayMainOnlyStatusBar();
         return;
     }
 

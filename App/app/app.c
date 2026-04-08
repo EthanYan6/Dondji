@@ -1756,6 +1756,8 @@ void APP_TimeSlice500ms(void)
             }
 
             if (disp != DISPLAY_INVALID) {
+                if (disp == DISPLAY_MAIN && gScreenToDisplay == DISPLAY_MENU)
+                    MENU_RecordSelectionBeforeLeaveMenuToMain();
                 GUI_SelectNextDisplay(disp);
             }
         }

@@ -44,6 +44,103 @@
 
 
 uint8_t gUnlockAllTxConfCnt;
+bool gMenuMainPageActive;
+bool gMenuUseMainOnlyStatus;
+uint8_t gMenuMainPageIconIndex;
+static uint8_t gMenuFilteredCount;
+static uint8_t gMenuFilteredMap[200];
+static bool gMenuMainPageLastValid;
+static uint8_t gMenuMainPageLastIconIndex;
+static bool gMenuSecondPageLastValid[8];
+static uint8_t gMenuSecondPageLastMenuId[8];
+
+static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, uint8_t icon_index)
+{
+    const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
+                            menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
+    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 42) ||
+                             menu_number_1based == 52 || menu_number_1based == 53;
+    const bool in_about = (menu_id == MENU_VOL);
+    if (icon_index == 0)
+        return in_channel;     // Channel
+    if (icon_index == 1)
+        return in_settings;    // Settings
+    if (icon_index == 3)
+        return in_about;       // About
+    return !(in_channel || in_settings || in_about); // Other
+}
+
+void MENU_UpdateMenuFilterForIcon(uint8_t icon_index)
+{
+    gMenuFilteredCount = 0;
+    for (uint8_t i = 0; i < gMenuListCount && gMenuFilteredCount < ARRAY_SIZE(gMenuFilteredMap); i++)
+    {
+        if (MENU_IsMenuInIconGroup((uint8_t)(i + 1), MenuList[i].menu_id, icon_index))
+            gMenuFilteredMap[gMenuFilteredCount++] = i;
+    }
+}
+
+void MENU_RecordSelectionBeforeLeaveMenuToMain(void)
+{
+    if (gMenuMainPageActive)
+    {   // level-1: save current icon
+        const uint8_t icon_count = MENU_MainPageIconCount();
+        const uint8_t icon_index = (icon_count > 0) ? ((uint8_t)gSubMenuSelection % icon_count) : 0;
+        gMenuMainPageLastValid = true;
+        gMenuMainPageLastIconIndex = icon_index;
+        return;
+    }
+
+    // level-2/3: save current level-2 menu for current icon group
+    if (gMenuMainPageIconIndex < ARRAY_SIZE(gMenuSecondPageLastValid))
+    {
+        gMenuSecondPageLastValid[gMenuMainPageIconIndex] = true;
+        gMenuSecondPageLastMenuId[gMenuMainPageIconIndex] = (uint8_t)UI_MENU_GetCurrentMenuId();
+    }
+}
+
+void MENU_ActivateMainPage(void)
+{
+    gMenuMainPageActive = true;
+    gMenuUseMainOnlyStatus = true;
+    if (gMenuMainPageLastValid)
+        gSubMenuSelection = gMenuMainPageLastIconIndex;
+    else
+        gSubMenuSelection = 0; // default Channel on cold start
+    gMenuMainPageIconIndex = (uint8_t)gSubMenuSelection;
+}
+
+void MENU_OpenFromMainScreen(void)
+{
+    MENU_ActivateMainPage();
+    gSubMenuSelection      = 0;
+    gMenuMainPageIconIndex = 0;
+}
+
+uint8_t MENU_MainPageIconCount(void)
+{
+    return 4;
+}
+
+uint8_t MENU_GetActiveMenuCount(void)
+{
+    if (gMenuUseMainOnlyStatus && !gMenuMainPageActive)
+        return gMenuFilteredCount;
+    return gMenuListCount;
+}
+
+uint8_t MENU_GetActualMenuIndexFromCursor(uint8_t cursor)
+{
+    if (gMenuUseMainOnlyStatus && !gMenuMainPageActive)
+    {
+        if (gMenuFilteredCount == 0)
+            return 0;
+        if (cursor >= gMenuFilteredCount)
+            cursor = (uint8_t)(gMenuFilteredCount - 1);
+        return gMenuFilteredMap[cursor];
+    }
+    return cursor;
+}
 
 #ifdef ENABLE_F_CAL_MENU
     void writeXtalFreqCal(const int32_t value, const bool update_eeprom)
@@ -1024,6 +1121,12 @@ static void MENU_ClampSelection(int8_t Direction)
 
 void MENU_ShowCurrentSetting(void)
 {
+    /* On the level-1 icon page, gSubMenuSelection is the selected icon (0..n-1). The same
+     * variable holds the edited value for level 2/3; refreshing here would replace the icon
+     * index with e.g. SQL/TXP (often 1) and show the wrong icon (Setting). */
+    if (gMenuMainPageActive)
+        return;
+
     switch (UI_MENU_GetCurrentMenuId())
     {
         case MENU_SQL:
@@ -1476,6 +1579,23 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 
+    if (gMenuMainPageActive && !gIsInSubMenu)
+    {
+        const uint8_t icon_count = MENU_MainPageIconCount();
+        const uint8_t value = (uint8_t)(Key - KEY_0);
+
+        if (value >= 1 && value <= icon_count)
+        {
+            gSubMenuSelection = (uint8_t)(value - 1);
+            gRequestDisplayScreen = DISPLAY_MENU;
+        }
+        else
+        {
+            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        }
+        return;
+    }
+
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && edit_index >= 0)
     {   // currently editing the channel name
 
@@ -1511,14 +1631,14 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
                 Value = (gInputBox[0] * 10) + gInputBox[1];
 
-                if (Value > 0 && Value <= gMenuListCount)
+                if (Value > 0 && Value <= MENU_GetActiveMenuCount())
                 {
                     gMenuCursor         = Value - 1;
                     gFlagRefreshSetting = true;
                     return;
                 }
 
-                if (Value <= gMenuListCount)
+                if (Value <= MENU_GetActiveMenuCount())
                     break;
 
                 gInputBox[0]   = gInputBox[1];
@@ -1526,7 +1646,7 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 [[fallthrough]];
             case 1:
                 Value = gInputBox[0];
-                if (Value > 0 && Value <= gMenuListCount)
+                if (Value > 0 && Value <= MENU_GetActiveMenuCount())
                 {
                     gMenuCursor         = Value - 1;
                     gFlagRefreshSetting = true;
@@ -1676,11 +1796,25 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
             return;
         }
 
+        if (gMenuMainPageActive)
+        {
+            MENU_RecordSelectionBeforeLeaveMenuToMain();
+            gMenuMainPageActive    = false;
+            gRequestDisplayScreen = DISPLAY_MAIN;
+            return;
+        }
+
         #ifdef ENABLE_VOICE
             gAnotherVoiceID = VOICE_ID_CANCEL;
         #endif
 
-        gRequestDisplayScreen = DISPLAY_MAIN;
+        MENU_RecordSelectionBeforeLeaveMenuToMain();
+        // Keep level-1 selection in sync with the currently active icon group.
+        gMenuMainPageLastValid = true;
+        gMenuMainPageLastIconIndex = gMenuMainPageIconIndex;
+
+        MENU_ActivateMainPage();
+        gRequestDisplayScreen = DISPLAY_MENU;
 
         if (gEeprom.BACKLIGHT_TIME == 0) // backlight set to always off
         {
@@ -1709,13 +1843,37 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
     gBeepToPlay           = BEEP_1KHZ_60MS_OPTIONAL;
     gRequestDisplayScreen = DISPLAY_MENU;
 
+    if (gMenuMainPageActive && !gIsInSubMenu)
+    {
+        const uint8_t icon_count = MENU_MainPageIconCount();
+        const uint8_t icon_index = (icon_count > 0) ? ((uint8_t)gSubMenuSelection % icon_count) : 0;
+        gMenuMainPageLastValid = true;
+        gMenuMainPageLastIconIndex = icon_index;
+        gMenuMainPageIconIndex = icon_index;
+        MENU_UpdateMenuFilterForIcon(gMenuMainPageIconIndex);
+        gMenuMainPageActive = false;
+        gIsInSubMenu = false;
+        gInputBoxIndex = 0;
+        gAskForConfirmation = 0;
+        gFlagRefreshSetting = true;
+        if (gMenuMainPageIconIndex < ARRAY_SIZE(gMenuSecondPageLastValid) && gMenuSecondPageLastValid[gMenuMainPageIconIndex])
+            gMenuCursor = UI_MENU_GetMenuIdx(gMenuSecondPageLastMenuId[gMenuMainPageIconIndex]);
+        else
+            gMenuCursor = 0;
+        gRequestDisplayScreen = DISPLAY_MENU;
+        return;
+    }
+
     if (!gIsInSubMenu)
     {
         const int m = UI_MENU_GetCurrentMenuId();
 
         #ifdef ENABLE_VOICE
             if (m != MENU_SCR)
-                gAnotherVoiceID = MenuList[gMenuCursor].voice_id;
+            {
+                const uint8_t actual_idx = MENU_GetActualMenuIndexFromCursor(gMenuCursor);
+                gAnotherVoiceID = MenuList[actual_idx].voice_id;
+            }
         #endif
         if (m == MENU_UPCODE 
             || m == MENU_DWCODE 
@@ -1943,7 +2101,16 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 
     if (!gIsInSubMenu)
     {
-        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, -Direction, 0, gMenuListCount - 1);
+        if (gMenuMainPageActive)
+        {
+            const uint8_t icon_count = MENU_MainPageIconCount();
+            gSubMenuSelection = NUMBER_AddWithWraparound(gSubMenuSelection, -Direction, 0, icon_count > 0 ? (icon_count - 1) : 0);
+            gRequestDisplayScreen = DISPLAY_MENU;
+            return;
+        }
+
+        const uint8_t menu_count = MENU_GetActiveMenuCount();
+        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, -Direction, 0, menu_count > 0 ? (menu_count - 1) : 0);
 
         gFlagRefreshSetting = true;
 

@@ -18,6 +18,7 @@
 #define UI_STATUS_H
 
 void UI_DisplayStatus();
+void UI_DisplayMainOnlyStatusBar(void);
 
 #endif
 

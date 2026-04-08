@@ -39,6 +39,7 @@
 #include "helper.h"
 #include "inputbox.h"
 #include "menu.h"
+#include "status.h"
 #include "ui.h"
 
 
@@ -499,18 +500,34 @@ const uint8_t gSubMenu_SIDEFUNCTIONS_size = ARRAY_SIZE(gSubMenu_SIDEFUNCTIONS);
 
 bool    gIsInSubMenu;
 uint8_t gMenuCursor;
+static uint8_t UI_MENU_GetActualIndexFromCursor(uint8_t cursor)
+{
+    return MENU_GetActualMenuIndexFromCursor(cursor);
+}
+
 int UI_MENU_GetCurrentMenuId() {
-    if(gMenuCursor < ARRAY_SIZE(MenuList))
-        return MenuList[gMenuCursor].menu_id;
+    const uint8_t idx = UI_MENU_GetActualIndexFromCursor(gMenuCursor);
+    if(idx < ARRAY_SIZE(MenuList))
+        return MenuList[idx].menu_id;
 
     return MenuList[ARRAY_SIZE(MenuList)-1].menu_id;
 }
 
 uint8_t UI_MENU_GetMenuIdx(uint8_t id)
 {
+    uint8_t visible = 0;
+    const uint8_t menu_count = MENU_GetActiveMenuCount();
     for(uint8_t i = 0; i < ARRAY_SIZE(MenuList); i++)
         if(MenuList[i].menu_id == id)
-            return i;
+        {
+            if (!gMenuUseMainOnlyStatus || gMenuMainPageActive)
+                return i;
+
+            for (visible = 0; visible < menu_count; visible++)
+                if (MENU_GetActualMenuIndexFromCursor(visible) == i)
+                    return visible;
+            return 0;
+        }
     return 0;
 }
 
@@ -521,8 +538,254 @@ char    edit_original[17]; // a copy of the text before editing so that we can e
 char    edit[17];
 int     edit_index;
 
+static bool UI_MENU_GetBufferPixel(uint8_t x, uint8_t y)
+{
+    return (gFrameBuffer[y >> 3][x] >> (y & 7u)) & 1u;
+}
+
+static void UI_MENU_ShiftLeftMenuAreaDown(uint8_t width, uint8_t shift_px)
+{
+    if (shift_px == 0 || width == 0)
+        return;
+
+    for (int16_t y = 55; y >= 0; y--)
+    {
+        for (uint8_t x = 0; x < width; x++)
+        {
+            const bool on = (y >= shift_px) ? UI_MENU_GetBufferPixel(x, (uint8_t)(y - shift_px)) : false;
+            PutPixel(x, (uint8_t)y, on);
+        }
+    }
+}
+
+static void UI_MENU_ShiftRightMenuAreaDown(uint8_t x_start, uint8_t shift_px)
+{
+    if (shift_px == 0 || x_start >= LCD_WIDTH)
+        return;
+
+    for (int16_t y = 55; y >= 0; y--)
+    {
+        for (uint8_t x = x_start; x < LCD_WIDTH; x++)
+        {
+            const bool on = (y >= shift_px) ? UI_MENU_GetBufferPixel(x, (uint8_t)(y - shift_px)) : false;
+            PutPixel(x, (uint8_t)y, on);
+        }
+    }
+}
+
+static bool UI_MENU_NameContainsCh(const char *name)
+{
+    if (name == NULL)
+        return false;
+    for (uint8_t i = 0; name[i] != 0 && name[i + 1] != 0; i++)
+    {
+        const char a = name[i];
+        const char b = name[i + 1];
+        if ((a == 'c' || a == 'C') && (b == 'h' || b == 'H'))
+            return true;
+    }
+    return false;
+}
+
+static void UI_MENU_DrawLauncherGear40(uint8_t x, uint8_t y)
+{
+    static const uint64_t GEAR40[40] = {
+        0x0000000000ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x01C3FFC380ULL,
+        0x03EFFFF7C0ULL,
+        0x07FFFFFFE0ULL,
+        0x07FFFFFFE0ULL,
+        0x07FFFFFFE0ULL,
+        0x03FF00FFC0ULL,
+        0x01FC003F80ULL,
+        0x03F8001FC0ULL,
+        0x03F0000FC0ULL,
+        0x07E00007E0ULL,
+        0x07E00007E0ULL,
+        0x07C00003E0ULL,
+        0x7FC00003FEULL,
+        0x7FC00003FEULL,
+        0x7FC00003FEULL,
+        0x7FC00003FEULL,
+        0x7FC00003FEULL,
+        0x7FC00003FEULL,
+        0x07C00003E0ULL,
+        0x07E00007E0ULL,
+        0x07E00007E0ULL,
+        0x03F0000FC0ULL,
+        0x03F8001FC0ULL,
+        0x01FC003F80ULL,
+        0x03FF00FFC0ULL,
+        0x07FFFFFFE0ULL,
+        0x07FFFFFFE0ULL,
+        0x07FFFFFFE0ULL,
+        0x03EFFFF7C0ULL,
+        0x01C3FFC380ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x00007E0000ULL,
+        0x0000000000ULL
+    };
+
+    // Slightly reduce height to 36, keep width stretched to 48.
+    for (uint8_t yy = 0; yy < 36; yy++)
+    {
+        const uint8_t sy = (uint8_t)((yy * 40u) / 36u);
+        const uint64_t row = GEAR40[sy];
+        for (uint8_t xx = 0; xx < 48; xx++)
+        {
+            const uint8_t sx = (uint8_t)((xx * 40u) / 48u);
+            const uint64_t mask = 1ULL << (39 - sx);
+            PutPixel((uint8_t)(x + xx), (uint8_t)(y + yy), (row & mask) != 0);
+        }
+    }
+}
+
+static void UI_MENU_DrawChevron(bool left, uint8_t center_x, uint8_t center_y, uint8_t half_h, uint8_t thickness)
+{
+    for (uint8_t dy = 0; dy <= half_h; dy++)
+    {
+        const int16_t y_up = (int16_t)center_y - dy;
+        const int16_t y_dn = (int16_t)center_y + dy;
+        const int16_t x_edge = left ? ((int16_t)center_x - dy) : ((int16_t)center_x + dy);
+
+        for (uint8_t t = 0; t < thickness; t++)
+        {
+            const int16_t x = left ? (x_edge + t) : (x_edge - t);
+            PutPixel((uint8_t)x, (uint8_t)y_up, true);
+            PutPixel((uint8_t)x, (uint8_t)y_dn, true);
+        }
+    }
+}
+
+static void UI_MENU_DrawLauncherChannel40(uint8_t x, uint8_t y)
+{
+    // Document icon with folded corner + 3 lines, matching reference style.
+    const uint8_t l = x + 7, t = y + 3, r = x + 41, b = y + 33;
+
+    // Main outline (open top-right for folded corner)
+    UI_DrawLineBuffer(gFrameBuffer, l + 3, t, r - 9, t, true);
+    UI_DrawLineBuffer(gFrameBuffer, l, t + 3, l, b - 3, true);
+    UI_DrawLineBuffer(gFrameBuffer, l + 3, b, r - 3, b, true);
+    UI_DrawLineBuffer(gFrameBuffer, r, t + 12, r, b - 3, true);
+
+    // Rounded corners
+    UI_DrawLineBuffer(gFrameBuffer, l, t + 3, l + 3, t, true);
+    UI_DrawLineBuffer(gFrameBuffer, l, b - 3, l + 3, b, true);
+    UI_DrawLineBuffer(gFrameBuffer, r - 3, b, r, b - 3, true);
+
+    // Folded corner
+    UI_DrawLineBuffer(gFrameBuffer, r - 15, t + 11, r - 1, t - 1, true);
+
+    // Inner horizontal lines
+    UI_DrawLineBuffer(gFrameBuffer, l + 6,  t + 8,  l + 22, t + 8,  true);
+    UI_DrawLineBuffer(gFrameBuffer, l + 6,  t + 14, l + 18, t + 14, true);
+    UI_DrawLineBuffer(gFrameBuffer, l + 6,  t + 21, l + 14, t + 21, true);
+}
+
+static void UI_MENU_DrawLauncherOther40(uint8_t x, uint8_t y)
+{
+    // Folder icon in 48x36 footprint
+    UI_DrawLineBuffer(gFrameBuffer, x + 6,  y + 8,  x + 21, y + 8,  true);
+    UI_DrawLineBuffer(gFrameBuffer, x + 21, y + 8,  x + 26, y + 13, true);
+    UI_DrawLineBuffer(gFrameBuffer, x + 26, y + 13, x + 39, y + 13, true);
+    UI_DrawLineBuffer(gFrameBuffer, x + 39, y + 13, x + 41, y + 15, true);
+    UI_DrawRectangleBuffer(gFrameBuffer, x + 5, y + 15, x + 42, y + 33, true);
+    UI_DrawLineBuffer(gFrameBuffer, x + 6, y + 8, x + 6, y + 15, true);
+    // thicken main strokes
+    UI_DrawLineBuffer(gFrameBuffer, x + 5, y + 16, x + 42, y + 16, true);
+    UI_DrawLineBuffer(gFrameBuffer, x + 5, y + 33, x + 42, y + 33, true);
+}
+
+static void UI_MENU_DrawLauncherAbout40(uint8_t x, uint8_t y)
+{
+    const int16_t cx = (int16_t)x + 24;
+    const int16_t cy = (int16_t)y + 18;
+
+    // Outer circle ring
+    for (int16_t yy = -16; yy <= 16; yy++)
+        for (int16_t xx = -16; xx <= 16; xx++)
+        {
+            const int32_t r2 = xx * xx + yy * yy;
+            if (r2 <= (16 * 16) && r2 >= (13 * 13))
+                PutPixel((uint8_t)(cx + xx), (uint8_t)(cy + yy), true);
+        }
+
+    // Exclamation mark dot (upper), separated from stem.
+    for (int16_t yy = -2; yy <= 2; yy++)
+        for (int16_t xx = -2; xx <= 2; xx++)
+            if ((xx * xx + yy * yy) <= 4)
+                PutPixel((uint8_t)(cx + xx), (uint8_t)(y + 10 + yy), true);
+
+    // Stem (lower) with rounded ends and explicit gap from dot.
+    for (uint8_t yy = 18; yy <= 28; yy++)
+        for (uint8_t xx = 22; xx <= 26; xx++)
+            PutPixel((uint8_t)(x + xx), (uint8_t)(y + yy), true);
+    for (int16_t yy = -2; yy <= 2; yy++)
+        for (int16_t xx = -2; xx <= 2; xx++)
+            if ((xx * xx + yy * yy) <= 4)
+            {
+                PutPixel((uint8_t)(x + 24 + xx), (uint8_t)(y + 18 + yy), true);
+                PutPixel((uint8_t)(x + 24 + xx), (uint8_t)(y + 28 + yy), true);
+            }
+}
+
+static void UI_MENU_DrawLauncherPage(void)
+{
+    static const char * const names[] = {"Channel", "Settings", "Other", "About"};
+    const uint8_t icon_count = MENU_MainPageIconCount();
+    const uint8_t idx = icon_count > 0 ? ((uint8_t)gSubMenuSelection % icon_count) : 0;
+    const uint8_t icon_left = 40;
+    const uint8_t icon_top = 3;
+    char index_str[12];
+
+    UI_DisplayClear();
+    UI_DrawLineBuffer(gFrameBuffer, 0, 0, LCD_WIDTH - 1, 0, true);
+
+    if (idx == 0)
+    {
+        UI_MENU_DrawLauncherChannel40(icon_left, icon_top);
+    }
+    else if (idx == 1)
+    {
+        UI_MENU_DrawLauncherGear40(icon_left, icon_top);
+    }
+    else if (idx == 2)
+    {
+        UI_MENU_DrawLauncherOther40(icon_left, icon_top);
+    }
+    else if (idx == 3)
+    {
+        UI_MENU_DrawLauncherAbout40(icon_left, icon_top);
+    }
+    else
+    {
+        UI_DrawRectangleBuffer(gFrameBuffer, icon_left + 5, icon_top + 5, icon_left + 34, icon_top + 34, true);
+    }
+
+    UI_MENU_DrawChevron(false, 15, 23, 12, 3);
+    UI_MENU_DrawChevron(true, 112, 23, 12, 3);
+
+    if (icon_count > 0 && names[idx][0] != 0)
+    {
+        UI_PrintString(names[idx], 0, LCD_WIDTH - 1, 5, 8);
+        UI_PrintString(names[idx], 1, LCD_WIDTH - 1, 5, 8);
+    }
+    
+    sprintf(index_str, "%u/%u", (unsigned int)(idx + 1), (unsigned int)icon_count);
+    UI_PrintStringSmallNormal(index_str, 104, 0, 6);
+
+    ST7565_BlitFullScreen();
+}
+
 void UI_DisplayMenu(void)
 {
+    const uint8_t menu_count = MENU_GetActiveMenuCount();
     const unsigned int menu_list_width = 6; // max no. of characters on the menu list (left side)
     const unsigned int menu_item_x1    = (8 * menu_list_width) + 2;
     const unsigned int menu_item_x2    = LCD_WIDTH - 1;
@@ -533,24 +796,44 @@ void UI_DisplayMenu(void)
     char               Contact[16];
 #endif
 
+    if (gMenuMainPageActive && !gIsInSubMenu)
+    {
+        UI_MENU_DrawLauncherPage();
+        UI_DisplayMainOnlyStatusBar();
+        return;
+    }
+
     UI_DisplayClear();
+    UI_DrawLineBuffer(gFrameBuffer, 0, 0, LCD_WIDTH - 1, 0, true);
 
 #ifdef ENABLE_FEAT_F4HWN
     UI_DrawLineBuffer(gFrameBuffer, 48, 0, 48, 55, 1); // Be ware, status zone = 8 lines, the rest = 56 ->total 64
     //UI_DrawLineDottedBuffer(gFrameBuffer, 0, 46, 50, 46, 1);
 
-    for (uint8_t i = 0; i < 48; i += 2)
-    {
-        gFrameBuffer[5][i] = 0x40;
-    }
+    if (!gIsInSubMenu)
+        for (uint8_t i = 0; i < 48; i += 2)
+        {
+            gFrameBuffer[5][i] = 0x40;
+        }
 #endif
 
 #ifndef ENABLE_CUSTOM_MENU_LAYOUT
+    if (menu_count <= 1)
+    {
+        const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor(0);
+        UI_PrintString(MenuList[actual_idx].name, 0, 0, 2, 8);
+    }
+    else
+    {
         // original menu layout
     for (i = 0; i < 3; i++)
         if (gMenuCursor > 0 || i > 0)
-            if ((gMenuListCount - 1) != gMenuCursor || i != 2)
-                UI_PrintString(MenuList[gMenuCursor + i - 1].name, 0, 0, i * 2, 8);
+            if ((menu_count - 1) != gMenuCursor || i != 2)
+            {
+                const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)(gMenuCursor + i - 1));
+                UI_PrintString(MenuList[actual_idx].name, 0, 0, i * 2, 8);
+            }
+    }
 
     // invert the current menu list item pixels
     for (i = 0; i < (8 * menu_list_width); i++)
@@ -568,60 +851,105 @@ void UI_DisplayMenu(void)
         memcpy(gFrameBuffer[0] + (8 * menu_list_width) + 1, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
 
     // draw the menu index number/count
-    sprintf(String, "%2u.%u", 1 + gMenuCursor, gMenuListCount);
-
-    UI_PrintStringSmallNormal(String, 2, 0, 6);
+    if (!gIsInSubMenu)
+    {
+        sprintf(String, "%2u.%u", 1 + gMenuCursor, menu_count);
+        UI_PrintStringSmallNormal(String, 2, 0, 6);
+    }
 
 #else
     {   // new menu layout .. experimental & unfinished
         const int menu_index = gMenuCursor;  // current selected menu item
         i = 1;
 
-        if (!gIsInSubMenu) {
+        if (menu_count <= 1)
+        {
+            const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor(0);
+            UI_PrintString(MenuList[actual_idx].name, 0, 0, 2, 8);
+        }
+        else if (!gIsInSubMenu) {
             while (i < 2)
             {   // leading menu items - small text
                 const int k = menu_index + i - 2;
                 if (k < 0)
-                    UI_PrintStringSmallNormal(MenuList[gMenuListCount + k].name, 0, 0, i);  // wrap-a-round
-                else if (k >= 0 && k < (int)gMenuListCount)
-                    UI_PrintStringSmallNormal(MenuList[k].name, 0, 0, i);
+                {
+                    const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)(menu_count + k));
+                    UI_PrintStringSmallNormal(MenuList[actual_idx].name, 0, 0, i);  // wrap-a-round
+                }
+                else if (k >= 0 && k < (int)menu_count)
+                {
+                    const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)k);
+                    UI_PrintStringSmallNormal(MenuList[actual_idx].name, 0, 0, i);
+                }
                 i++;
             }
 
             // current menu item - keep big n fat
-            if (menu_index >= 0 && menu_index < (int)gMenuListCount)
-                UI_PrintString(MenuList[menu_index].name, 0, 0, 2, 8);
+            if (menu_index >= 0 && menu_index < (int)menu_count)
+            {
+                const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)menu_index);
+                UI_PrintString(MenuList[actual_idx].name, 0, 0, 2, 8);
+            }
             i++;
 
             while (i < 4)
             {   // trailing menu item - small text
                 const int k = menu_index + i - 2;
-                if (k >= 0 && k < (int)gMenuListCount)
-                    UI_PrintStringSmallNormal(MenuList[k].name, 0, 0, 1 + i);
-                else if (k >= (int)gMenuListCount)
-                    UI_PrintStringSmallNormal(MenuList[gMenuListCount - k].name, 0, 0, 1 + i);  // wrap-a-round
+                if (k >= 0 && k < (int)menu_count)
+                {
+                    const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)k);
+                    UI_PrintStringSmallNormal(MenuList[actual_idx].name, 0, 0, 1 + i);
+                }
+                else if (k >= (int)menu_count)
+                {
+                    const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)(menu_count - k));  // wrap-a-round
+                    UI_PrintStringSmallNormal(MenuList[actual_idx].name, 0, 0, 1 + i);
+                }
                 i++;
             }
 
             // draw the menu index number/count
 #ifndef ENABLE_FEAT_F4HWN
-            sprintf(String, "%2u.%u", 1 + gMenuCursor, gMenuListCount);
+            sprintf(String, "%2u.%u", 1 + gMenuCursor, menu_count);
             UI_PrintStringSmallNormal(String, 2, 0, 6);
 #endif
         }
-        else if (menu_index >= 0 && menu_index < (int)gMenuListCount)
+        else if (menu_index >= 0 && menu_index < (int)menu_count)
         {   // current menu item
 //          strcat(String, ":");
-            UI_PrintString(MenuList[menu_index].name, 0, 0, 0, 8);
+            const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)menu_index);
+            UI_PrintString(MenuList[actual_idx].name, 0, 0, 0, 8);
 //          UI_PrintStringSmallNormal(String, 0, 0, 0);
         }
 
 #ifdef ENABLE_FEAT_F4HWN
-        sprintf(String, "%02u/%u", 1 + gMenuCursor, gMenuListCount);
-        UI_PrintStringSmallNormal(String, 6, 0, 6);
+        sprintf(String, "%02u/%u", 1 + gMenuCursor, menu_count);
+        if (gIsInSubMenu)
+            GUI_DisplaySmallest(String, 6, 45, false, true);   // move up 3px from y=48
+        else
+            UI_PrintStringSmallNormal(String, 6, 0, 6);
 #endif
     }
 #endif
+
+    if (gIsInSubMenu)
+    {
+        const uint8_t left_width = (uint8_t)(8 * menu_list_width);
+        UI_MENU_ShiftLeftMenuAreaDown(left_width, 3);
+
+        // Clear shift artifacts in the top-left band.
+        for (uint8_t y = 0; y < 3; y++)
+            for (uint8_t x = 0; x < left_width; x++)
+                PutPixel(x, y, false);
+
+        // Clear tiny dotted/short-line artifacts above the moved left title.
+        for (uint8_t y = 1; y <= 4; y++)
+            for (uint8_t x = 0; x < left_width; x++)
+                PutPixel(x, y, false);
+
+        // Keep the separator line continuous on both sides.
+        UI_DrawLineBuffer(gFrameBuffer, 0, 0, LCD_WIDTH - 1, 0, true);
+    }
 
     // **************
 
@@ -1359,6 +1687,33 @@ void UI_DisplayMenu(void)
     {   // display confirmation
         char *pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
         UI_PrintString(pPrintStr, menu_item_x1, menu_item_x2, 5, 8);
+    }
+
+    // Final pass: for menu names containing "Ch/ch", move right content down and
+    // remove the extra top line/artifacts over the content area.
+    {
+        const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor(gMenuCursor);
+        const bool need_shift_right = (actual_idx < ARRAY_SIZE(MenuList)) &&
+                                      (UI_MENU_NameContainsCh(MenuList[actual_idx].name) ||
+                                       MenuList[actual_idx].menu_id == MENU_1_CALL);
+        if (need_shift_right)
+        {
+            const uint8_t menu_id = MenuList[actual_idx].menu_id;
+            const uint8_t shift_px =
+                (menu_id == MENU_MDF)    ? 2 :
+                (menu_id == MENU_1_CALL) ? 5 :
+                                           6; // default Ch* shift
+            UI_MENU_ShiftRightMenuAreaDown((uint8_t)menu_item_x1, shift_px);
+            for (uint8_t y = 0; y <= shift_px; y++)
+                for (uint8_t x = (uint8_t)menu_item_x1; x < LCD_WIDTH; x++)
+                    PutPixel(x, y, false);
+            // Keep the top menu-bar separator line continuous.
+            UI_DrawLineBuffer(gFrameBuffer, 0, 0, LCD_WIDTH - 1, 0, true);
+
+            // Explicitly ensure right-top line for ChList / PriCh1 / PriCh2.
+            if (menu_id == MENU_LIST_CH || menu_id == MENU_S_PRI_CH_1 || menu_id == MENU_S_PRI_CH_2)
+                UI_DrawLineBuffer(gFrameBuffer, (uint8_t)menu_item_x1, 0, LCD_WIDTH - 1, 0, true);
+        }
     }
 
     ST7565_BlitFullScreen();

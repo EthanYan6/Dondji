@@ -17,6 +17,7 @@
 #ifndef APP_MENU_H
 #define APP_MENU_H
 
+#include <stdbool.h>
 #include "driver/keyboard.h"
 
 #ifdef ENABLE_F_CAL_MENU
@@ -24,6 +25,9 @@
 #endif
 
 extern uint8_t gUnlockAllTxConfCnt;
+extern bool gMenuMainPageActive;
+extern bool gMenuUseMainOnlyStatus;
+extern uint8_t gMenuMainPageIconIndex;
 
 int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax);
 void MENU_AcceptSetting(void);
@@ -31,6 +35,14 @@ void MENU_ShowCurrentSetting(void);
 void MENU_StartCssScan(void);
 void MENU_CssScanFound(void);
 void MENU_StopCssScan(void);
+void MENU_ActivateMainPage(void);
+/** Open level-1 icon page from the main radio screen; always selects Channel (icon 0). */
+void MENU_OpenFromMainScreen(void);
+uint8_t MENU_MainPageIconCount(void);
+uint8_t MENU_GetActiveMenuCount(void);
+uint8_t MENU_GetActualMenuIndexFromCursor(uint8_t cursor);
+void MENU_UpdateMenuFilterForIcon(uint8_t icon_index);
+void MENU_RecordSelectionBeforeLeaveMenuToMain(void);
 
 void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 
