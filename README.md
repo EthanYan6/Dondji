@@ -4,6 +4,8 @@
 
 1. 基于F4HWN固件，添加仿R7的页面。请切换分支 `motorola_r7` 进行编译
 2. 模仿`joaquimorg / UV-KX-firmware` 固件修改了双信道的页面
+3. 将设置页面重绘，采用老式手机的样式，图标菜单
+4. 锁键盘后的ui重绘
 
 ### 主界面示意
 
@@ -119,6 +121,11 @@
 
 - **电量显示**
   - 百分比使用实际换算值（支持显示 `100%`）。
+
+# 其他页面展示
+<img width="804" height="574" alt="image" src="https://github.com/user-attachments/assets/288aa180-4acc-4289-8d32-14865eec2793" />
+<img width="760" height="572" alt="image" src="https://github.com/user-attachments/assets/43486af0-79ec-40f5-8b48-de9e99e13dde" />
+
 
 # 特别感谢
 
