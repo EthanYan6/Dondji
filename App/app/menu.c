@@ -1776,6 +1776,38 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 
         if (gIsInSubMenu)
         {
+            // Handle channel name editing: delete character at current position, then move left
+            if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && edit_index >= 0)
+            {
+                // Check if current position has a character to delete
+                bool has_char_at_current = (edit[edit_index] != ' ' && edit[edit_index] != '_' && edit[edit_index] != '\0');
+                
+                if (has_char_at_current)
+                {   // Delete character at current position
+                    edit[edit_index] = ' ';
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+                else if (edit_index > 0)
+                {   // No char at current position, move left
+                    edit_index--;
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+                else
+                {   // At first position and no char - exit editing mode
+                    edit_index = -1;
+                    gIsInSubMenu = false;
+                    gInputBoxIndex = 0;
+                    gFlagRefreshSetting = true;
+                    #ifdef ENABLE_VOICE
+                        gAnotherVoiceID = VOICE_ID_CANCEL;
+                    #endif
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+            }
+            
             if (gInputBoxIndex == 0 || UI_MENU_GetCurrentMenuId() != MENU_OFFSET)
             {
                 gAskForConfirmation = 0;

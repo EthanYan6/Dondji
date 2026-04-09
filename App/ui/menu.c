@@ -1175,7 +1175,7 @@ void UI_DisplayMenu(void)
         {
             if(gSubMenuSelection == MR_CHANNELS_MAX)
             {
-                UI_PrintString("None", menu_item_x1, menu_item_x2, 2, 8);
+                UI_PrintStringSmallNormal("None", menu_item_x1, menu_item_x2, gAskForConfirmation ? 1 : 3);
                 already_printed = true;
                 break;
             }
@@ -1184,17 +1184,17 @@ void UI_DisplayMenu(void)
                 const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 0);
 
                 UI_GenerateChannelStringEx(String, valid, gSubMenuSelection);
-                UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
+                UI_PrintStringSmallNormal(String, menu_item_x1, menu_item_x2, 1);
 
                 if (valid && !gAskForConfirmation)
                 {   // show the frequency so that the user knows the channels frequency
                     const uint32_t frequency = SETTINGS_FetchChannelFrequency(gSubMenuSelection);
                     sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
-                    UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
+                    UI_PrintStringSmallNormal(String, menu_item_x1, menu_item_x2, gAskForConfirmation ? 1 : 3);
                 }
 
                 SETTINGS_FetchChannelName(String, gSubMenuSelection);
-                UI_PrintString(String[0] ? String : "--", menu_item_x1, menu_item_x2, 2, 8);
+                UI_PrintStringSmallNormal(String[0] ? String : "--", menu_item_x1, menu_item_x2, gAskForConfirmation ? 3 : 5);
                 already_printed = true;
                 break;
             }
@@ -1205,7 +1205,7 @@ void UI_DisplayMenu(void)
             const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 0);
 
             UI_GenerateChannelStringEx(String, valid, gSubMenuSelection);
-            UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
+            UI_PrintStringSmallNormal(String, menu_item_x1, menu_item_x2, 1);
 
             if (valid)
             {
@@ -1213,26 +1213,42 @@ void UI_DisplayMenu(void)
 
                 //if (!gIsInSubMenu || edit_index < 0)
                 if (!gIsInSubMenu)
+                {
                     edit_index = -1;
+                    SETTINGS_FetchChannelName(edit, gSubMenuSelection);  // 初始化 edit 数组
+                }
                 if (edit_index < 0)
                 {   // show the channel name
                     SETTINGS_FetchChannelName(String, gSubMenuSelection);
                     char *pPrintStr = String[0] ? String : "--";
-                    UI_PrintString(pPrintStr, menu_item_x1, menu_item_x2, 2, 8);
+                    UI_PrintStringSmallNormal(pPrintStr, menu_item_x1, menu_item_x2, 3);
                 }
                 else
-                {   // show the channel name being edited
+                {   // show the channel name being edited with underline at edit_index position
                     //UI_PrintString(edit, menu_item_x1, 0, 2, 8);
-                    UI_PrintString(edit, menu_item_x1, menu_item_x2, 2, 8);
+                    UI_PrintStringSmallNormal(edit, menu_item_x1, menu_item_x2, 3);
                     if (edit_index < 10)
-                        //UI_PrintString("^", menu_item_x1 + (8 * edit_index), 0, 4, 8);  // show the cursor
-                        UI_PrintString("^", menu_item_x1 - 1 + (8 * edit_index),0, 4, 8); // show the cursor
+                    {   // draw underline only at current edit position
+                        uint8_t char_width = 6;
+                        uint8_t char_spacing = char_width + 1;
+                        size_t edit_length = strlen(edit);
+                        // Calculate the start position after centering (same as UI_PrintStringSmall)
+                        uint8_t text_start = menu_item_x1;
+                        if (menu_item_x2 > menu_item_x1 && edit_length > 0) {
+                            text_start += (((menu_item_x2 - menu_item_x1) - edit_length * char_spacing) + 1) / 2;
+                        }
+                        // Draw underline only at edit_index position
+                        uint8_t underline_x = text_start + (edit_index * char_spacing) + 1;
+                        for (uint8_t c = 0; c < char_width; c++) {
+                            gFrameBuffer[4][underline_x + c] |= 0x01;  // bottom pixel
+                        }
+                    }
                 }
 
-                if (!gAskForConfirmation)
+                if (!gAskForConfirmation && !(gIsInSubMenu && edit_index >= 0))
                 {   // show the frequency so that the user knows the channels frequency
                     sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
-                    UI_PrintString(String, menu_item_x1, menu_item_x2, 4 + (gIsInSubMenu && edit_index >= 0), 8);
+                    UI_PrintStringSmallNormal(String, menu_item_x1, menu_item_x2, 5);
                 }
             }
 
@@ -1686,7 +1702,7 @@ void UI_DisplayMenu(void)
          UI_MENU_GetCurrentMenuId() == MENU_DEL_CH) && gAskForConfirmation)
     {   // display confirmation
         char *pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
-        UI_PrintString(pPrintStr, menu_item_x1, menu_item_x2, 5, 8);
+        UI_PrintStringSmallNormal(pPrintStr, menu_item_x1, menu_item_x2, 5);
     }
 
     // Final pass: for menu names containing "Ch/ch", move right content down and

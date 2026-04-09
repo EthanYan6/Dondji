@@ -648,7 +648,7 @@ const uint8_t gFontSmall[95-1][6] =
         // {0x00, 0x05, 0x02}, // 187 - guillemotright
         // {0x03, 0x08, 0x18}, // 188 - onequarter
         // {0x0b, 0x18, 0x10}, // 189 - onehalf
-        // {0x03, 0x0b, 0x18}, // 190 - threequarters
         // {0x18, 0x15, 0x10}, // 191 - questiondown
     };
 //#endif
+
