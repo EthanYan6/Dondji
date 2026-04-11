@@ -98,6 +98,19 @@ add_custom_command(
     COMMENT "Generating .bin file"
 )
 
+# Flashable alias: same payload as ${EXE_NAME}.bin, name Dondji.fusion.bin (override: -DFIRMWARE_PACKED_NAME=...)
+if(NOT FIRMWARE_PACKED_NAME)
+    set(FIRMWARE_PACKED_NAME "Dondji.fusion.bin")
+endif()
+add_custom_command(
+    TARGET ${EXE_NAME}
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}.bin"
+        "${CMAKE_CURRENT_BINARY_DIR}/${FIRMWARE_PACKED_NAME}"
+    COMMENT "Firmware package name: ${FIRMWARE_PACKED_NAME}"
+)
+
 # Generate .hex file
 add_custom_command(
     TARGET ${EXE_NAME}

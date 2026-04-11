@@ -177,11 +177,18 @@ void UI_DisplayWelcome(void)
             }
         }
 
-        UI_PrintString(WelcomeString0, 0, 127, 0, 10);
+        /* 开机首行固定「叮咚鸡」；第二行仍为电压/EEPROM 逻辑（WelcomeString1） */
+#ifdef ENABLE_CHINESE
+        /* 「叮」须为 U+53EE 的 UTF-8：E5 8F AE（误写 E5 93 AE 会解码失败，首字不显示） */
+        UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, 4u, 15u, 3u);
+#else
+        UI_PrintString("DingDongJi", 0, 127, 0, 10);
+#endif
         UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 
 #ifdef ENABLE_FEAT_F4HWN
-        UI_PrintStringSmallNormal(Version, 0, 128, 4);
+        snprintf(WelcomeString3, sizeof(WelcomeString3), "Dondji %s", VERSION_STRING_2);
+        UI_PrintStringSmallNormal(WelcomeString3, 0, 128, 4);
 
         UI_DrawLineBuffer(gFrameBuffer, 0, 35, 18, 35, 1);
         gFrameBuffer[4][19] ^= 0x7F;
@@ -211,7 +218,7 @@ void UI_DisplayWelcome(void)
             ST7565_BlitStatusLine();
         #endif
 
-        sprintf(WelcomeString3, "%s Edition", Edition);
+        strcpy(WelcomeString3, "power by BD1AHN.");
         UI_PrintStringSmallNormal(WelcomeString3, 0, 127, 6);
 
 #else

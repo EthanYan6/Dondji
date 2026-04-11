@@ -762,6 +762,26 @@ static void DrawChineseChar(uint16_t unicode, uint8_t x, uint8_t y_pixel, uint8_
     }
 }
 
+size_t UI_SmallStringPixelWidth(const char *pString)
+{
+    const uint8_t eng_char_width = 6;
+    const uint8_t chn_char_width = 12;
+    size_t        total_width    = 0;
+    size_t        i              = 0;
+    while (pString[i]) {
+        if (IsChineseChar(&pString[i])) {
+            total_width += chn_char_width + 1;
+            i += 3;
+        } else {
+            total_width += eng_char_width + 1;
+            i++;
+        }
+    }
+    if (total_width > 0)
+        total_width--;
+    return total_width;
+}
+
 void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end, uint8_t latin_down_when_mixed)
 {
     const uint8_t eng_char_width = 6;

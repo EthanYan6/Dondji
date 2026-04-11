@@ -592,8 +592,20 @@ uint8_t UI_MENU_GetMenuIdx(uint8_t id)
     for(uint8_t i = 0; i < ARRAY_SIZE(MenuList); i++)
         if(MenuList[i].menu_id == id)
         {
-            if (!gMenuUseMainOnlyStatus || gMenuMainPageActive)
+            if (MENU_IsMenuIdExcludedFromBrowse(MenuList[i].menu_id))
+            {
+                if (i > 0u)
+                {
+                    for (int j = (int)i - 1; j >= 0; j--)
+                        if (!MENU_IsMenuIdExcludedFromBrowse(MenuList[(uint8_t)j].menu_id))
+                            return MENU_GetVisibleCursorForActualIndex((uint8_t)j);
+                }
+                return 0;
+            }
+            if (gMenuMainPageActive)
                 return i;
+            if (!gMenuUseMainOnlyStatus)
+                return MENU_GetVisibleCursorForActualIndex(i);
 
             for (visible = 0; visible < menu_count; visible++)
                 if (MENU_GetActualMenuIndexFromCursor(visible) == i)
@@ -1025,7 +1037,116 @@ void UI_DisplayMenu(void)
         case MENU_TXP:
             if(gSubMenuSelection == 0)
             {
+#ifdef ENABLE_FEAT_F4HWN
+                {
+                    const unsigned int n = ARRAY_SIZE(gSubMenu_SET_PWR);
+                    const uint8_t      sp =
+                        (gSetting_set_pwr < n) ? gSetting_set_pwr : (uint8_t)(n - 1u);
+                    const char * const tier = SUBV(gSubMenu_TXP[sp + 1], gSubMenu_TXP_CN[sp + 1]);
+                    char               pwrbuf[20];
+                    sprintf(pwrbuf, "%sW", SUBV(gSubMenu_SET_PWR[sp], gSubMenu_SET_PWR_CN[sp]));
+#ifdef ENABLE_CHINESE
+                    /* 左「用」竖排居中；右为完整两档：档名（LOW1…）+ 功率，行间 2px */
+                    strcpy(String, "");
+                    already_printed                        = true;
+                    {
+                        unsigned int sub_val_x1 = menu_value_x1;
+                        unsigned int sub_val_x2 = menu_item_x2;
+                        if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu &&
+                            menu_item_x1 == 0u)
+                            sub_val_x1 = menu_value_x1 + 8u;
+                        if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
+                            sub_val_x1 = sub_val_x1 + 2u;
+                        if (gUiLanguage == UI_LANGUAGE_CN && !gIsInSubMenu && sub_val_x1 >= 50u)
+                            sub_val_x1 = sub_val_x1 + 2u;
+
+                        unsigned int y_line = 2u - 1u;
+                        if (!gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
+                            y_line += 1u;
+                        else if (gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
+                            y_line += 2u;
+                        uint8_t yp_tier = (uint8_t)(y_line * 8u);
+                        const uint8_t h_tier = VOL_line_band_height(tier);
+                        const uint8_t yp_pwr = SF_after_2px(yp_tier, h_tier);
+                        const uint8_t h_pwr  = VOL_line_band_height(pwrbuf);
+                        const uint8_t blk_h  = (uint8_t)((unsigned)h_tier + 2u + (unsigned)h_pwr);
+                        /* 「用/Use」+ 4px + 档名/功率 视为一块，在右栏内整体居中；值两行共用左缘，紧贴间隙 */
+                        {
+                            const unsigned gap_px  = 4u;
+                            const size_t   w_tier  = UI_SmallStringPixelWidth(tier);
+                            const size_t   w_pwr   = UI_SmallStringPixelWidth(pwrbuf);
+                            const unsigned value_w = (unsigned)((w_tier > w_pwr) ? w_tier : w_pwr);
+                            const unsigned avail   = (unsigned)(sub_val_x2 - sub_val_x1);
+                            unsigned       block_w;
+                            unsigned       block_x0 = (unsigned)sub_val_x1;
+
+                            if (gUiLanguage == UI_LANGUAGE_CN)
+                            {
+                                const unsigned label_w = 12u;
+                                block_w = label_w + gap_px + value_w;
+                                if (avail > block_w)
+                                    block_x0 = (unsigned)sub_val_x1 + (avail - block_w) / 2u;
+                                {
+                                    const uint8_t x_label = (uint8_t)block_x0;
+                                    const uint8_t x_val = (uint8_t)(block_x0 + label_w + gap_px);
+                                    UI_PrintStringSmallAtPixel("\xe7\x94\xa8",
+                                                               x_label,
+                                                               (uint8_t)(x_label + 11u),
+                                                               yp_tier,
+                                                               (uint8_t)((unsigned)yp_tier + (unsigned)blk_h - 1u),
+                                                               3u);
+                                    UI_PrintStringSmallAtPixel(tier,
+                                                               x_val,
+                                                               x_val,
+                                                               yp_tier,
+                                                               (uint8_t)((unsigned)yp_tier + (unsigned)h_tier + 1u),
+                                                               0u);
+                                    UI_PrintStringSmallAtPixel(pwrbuf,
+                                                               x_val,
+                                                               x_val,
+                                                               yp_pwr,
+                                                               (uint8_t)((unsigned)yp_pwr + (unsigned)h_pwr + 1u),
+                                                               0u);
+                                }
+                            }
+                            else
+                            {
+                                const unsigned label_w = 18u;
+                                block_w = label_w + gap_px + value_w;
+                                if (avail > block_w)
+                                    block_x0 = (unsigned)sub_val_x1 + (avail - block_w) / 2u;
+                                {
+                                    const uint8_t x_label = (uint8_t)block_x0;
+                                    const uint8_t x_val = (uint8_t)(block_x0 + label_w + gap_px);
+                                    UI_PrintStringSmallAtPixel("Use",
+                                                               x_label,
+                                                               (uint8_t)(x_label + 17u),
+                                                               yp_tier,
+                                                               (uint8_t)((unsigned)yp_tier + (unsigned)blk_h - 1u),
+                                                               0u);
+                                    UI_PrintStringSmallAtPixel(tier,
+                                                               x_val,
+                                                               x_val,
+                                                               yp_tier,
+                                                               (uint8_t)((unsigned)yp_tier + (unsigned)h_tier + 1u),
+                                                               0u);
+                                    UI_PrintStringSmallAtPixel(pwrbuf,
+                                                               x_val,
+                                                               x_val,
+                                                               yp_pwr,
+                                                               (uint8_t)((unsigned)yp_pwr + (unsigned)h_pwr + 1u),
+                                                               0u);
+                                }
+                            }
+                        }
+                    }
+#else
+                    sprintf(String, "%s\n%sW", tier, pwrbuf);
+#endif
+                }
+#else
                 strcpy(String, SUBV(gSubMenu_TXP[gSubMenuSelection], gSubMenu_TXP_CN[gSubMenuSelection]));
+#endif
             }
             else
             {
@@ -1536,10 +1657,8 @@ void UI_DisplayMenu(void)
 
         case MENU_VOL:
 #ifdef ENABLE_FEAT_F4HWN
-            sprintf(String, "%s\n%s",
-                AUTHOR_STRING_2,
-                VERSION_STRING_2
-            );
+            /* SysInf 右侧四行：电压(单独绘) + Dondji / 版本 / BD1AHN */
+            sprintf(String, "Dondji\n%s\nBD1AHN", VERSION_STRING_2);
 #else
             sprintf(String, "%u.%02uV\n%u%%",
                 gBatteryVoltageAverage / 100, gBatteryVoltageAverage % 100,
@@ -1789,10 +1908,6 @@ void UI_DisplayMenu(void)
 #ifndef ENABLE_CHINESE
                 UI_PrintStringSmallNormal(edit, 54, 127, MENU_VALUE_ROW(1));
 
-                #ifdef ENABLE_FEAT_F4HWN
-                    UI_PrintStringSmallNormal(Edition, 54, 127, MENU_VALUE_ROW(6));
-                #endif
-
                 y = MENU_VALUE_ROW(2);
 #endif
             }
@@ -1835,9 +1950,6 @@ void UI_DisplayMenu(void)
                         i++;
                     lines--;
                 }
-#ifdef ENABLE_FEAT_F4HWN
-                UI_PrintStringSmallAtPixel(Edition, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 7u), 0u);
-#endif
             }
             else if (len > 0u && lines == 2u &&
                      (UI_MENU_GetCurrentMenuId() == MENU_F1SHRT ||

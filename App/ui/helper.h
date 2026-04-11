@@ -18,6 +18,7 @@
 #define UI_UI_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 void UI_GenerateChannelString(char *pString, const uint16_t Channel);
@@ -62,6 +63,7 @@ void UI_DrawRectangleBuffer(uint8_t (*buffer)[128], int16_t x1, int16_t y1, int1
 void UI_DisplayClear();
 
 #ifdef ENABLE_CHINESE
+size_t UI_SmallStringPixelWidth(const char *pString);
 void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end, uint8_t latin_down_when_mixed);
 void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
 #endif

@@ -41,6 +41,8 @@ void MENU_OpenFromMainScreen(void);
 uint8_t MENU_MainPageIconCount(void);
 uint8_t MENU_GetActiveMenuCount(void);
 uint8_t MENU_GetActualMenuIndexFromCursor(uint8_t cursor);
+bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id);
+uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index);
 void MENU_UpdateMenuFilterForIcon(uint8_t icon_index);
 void MENU_RecordSelectionBeforeLeaveMenuToMain(void);
 

@@ -68,8 +68,24 @@ static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
     return false;
 }
 
+bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
+{
+    return menu_id == MENU_PONMSG;
+}
+
+uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index)
+{
+    uint8_t vis = 0;
+    for (uint8_t i = 0; i < actual_menu_list_index && i < gMenuListCount; i++)
+        if (!MENU_IsMenuIdExcludedFromBrowse(MenuList[i].menu_id))
+            vis++;
+    return vis;
+}
+
 static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, uint8_t icon_index)
 {
+    if (MENU_IsMenuIdExcludedFromBrowse(menu_id))
+        return false;
     if (MENU_IsHiddenDtmfMenu(menu_id))
         return false;
 
@@ -151,7 +167,15 @@ uint8_t MENU_GetActiveMenuCount(void)
 {
     if (gMenuUseMainOnlyStatus && !gMenuMainPageActive)
         return gMenuFilteredCount;
-    return gMenuListCount;
+    if (gMenuUseMainOnlyStatus && gMenuMainPageActive)
+        return gMenuListCount;
+    {
+        uint8_t n = 0;
+        for (uint8_t i = 0; i < gMenuListCount; i++)
+            if (!MENU_IsMenuIdExcludedFromBrowse(MenuList[i].menu_id))
+                n++;
+        return n;
+    }
 }
 
 uint8_t MENU_GetActualMenuIndexFromCursor(uint8_t cursor)
@@ -164,7 +188,25 @@ uint8_t MENU_GetActualMenuIndexFromCursor(uint8_t cursor)
             cursor = (uint8_t)(gMenuFilteredCount - 1);
         return gMenuFilteredMap[cursor];
     }
-    return cursor;
+    if (gMenuUseMainOnlyStatus && gMenuMainPageActive)
+        return cursor;
+    {
+        uint8_t vis = 0;
+        for (uint8_t i = 0; i < gMenuListCount; i++)
+        {
+            if (MENU_IsMenuIdExcludedFromBrowse(MenuList[i].menu_id))
+                continue;
+            if (vis == cursor)
+                return i;
+            vis++;
+        }
+        if (gMenuListCount == 0)
+            return 0;
+        for (int j = (int)gMenuListCount - 1; j >= 0; j--)
+            if (!MENU_IsMenuIdExcludedFromBrowse(MenuList[(uint8_t)j].menu_id))
+                return (uint8_t)j;
+        return 0;
+    }
 }
 
 #ifdef ENABLE_F_CAL_MENU

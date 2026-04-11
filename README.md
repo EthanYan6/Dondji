@@ -1,4 +1,4 @@
-# BD1AHN-UVK1-UVK5/K6-V3
+# Dondji（叮咚鸡）
 
 > firmware port for the UV-K1 and UV-K5 V3 using the PY32F071 MCU
 
