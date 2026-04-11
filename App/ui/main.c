@@ -1558,6 +1558,7 @@ void UI_MAIN_TimeSlice500ms(void)
 void UI_DisplayMain(void)
 {
     char               String[22];
+    const unsigned int activeTxVFO = gRxVfoIsActive ? gEeprom.RX_VFO : gEeprom.TX_VFO;
 
     center_line = CENTER_LINE_NONE;
 
@@ -1784,8 +1785,6 @@ void UI_DisplayMain(void)
         goto display_main_after_vfo_loop;
     }
 #endif
-
-    unsigned int activeTxVFO = gRxVfoIsActive ? gEeprom.RX_VFO : gEeprom.TX_VFO;
 
     for (unsigned int vfo_num = 0; vfo_num < 2; vfo_num++)
     {

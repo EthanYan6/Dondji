@@ -54,20 +54,42 @@ static uint8_t gMenuMainPageLastIconIndex;
 static bool gMenuSecondPageLastValid[8];
 static uint8_t gMenuSecondPageLastMenuId[8];
 
+/** Icon-mode menu list: hide all DTMF-related items (they fall under Settings and Other by index). */
+static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
+{
+    if (menu_id == MENU_D_ST || menu_id == MENU_D_PRE || menu_id == MENU_D_LIVE_DEC)
+        return true;
+#ifdef ENABLE_DTMF_CALLING
+    if (menu_id == MENU_ANI_ID ||
+        menu_id == MENU_D_RSP || menu_id == MENU_D_HOLD ||
+        menu_id == MENU_D_DCD || menu_id == MENU_D_LIST)
+        return true;
+#endif
+    return false;
+}
+
 static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, uint8_t icon_index)
 {
+    if (MENU_IsHiddenDtmfMenu(menu_id))
+        return false;
+
     const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
                             menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
-    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 42) ||
-                             menu_number_1based == 52 || menu_number_1based == 53;
+    /* "Lang" inserted at start of settings block: was 23..42, now 23..43; tail indices +1 */
+    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 43) ||
+                             menu_number_1based == 53 || menu_number_1based == 54;
     const bool in_about = (menu_id == MENU_VOL);
+    const bool in_other = !(in_channel || in_settings || in_about);
+
     if (icon_index == 0)
         return in_channel;     // Channel
     if (icon_index == 1)
         return in_settings;    // Settings
     if (icon_index == 3)
         return in_about;       // About
-    return !(in_channel || in_settings || in_about); // Other
+    if (!in_other)
+        return false;
+    return true;
 }
 
 void MENU_UpdateMenuFilterForIcon(uint8_t icon_index)
@@ -101,13 +123,16 @@ void MENU_RecordSelectionBeforeLeaveMenuToMain(void)
 
 void MENU_ActivateMainPage(void)
 {
+    const uint8_t icon_count = MENU_MainPageIconCount();
+
     gMenuMainPageActive = true;
     gMenuUseMainOnlyStatus = true;
     if (gMenuMainPageLastValid)
         gSubMenuSelection = gMenuMainPageLastIconIndex;
     else
         gSubMenuSelection = 0; // default Channel on cold start
-    gMenuMainPageIconIndex = (uint8_t)gSubMenuSelection;
+    /* gSubMenuSelection is only a launcher icon index (0..3); never reuse raw menu values here */
+    gMenuMainPageIconIndex = (icon_count > 0) ? ((uint8_t)gSubMenuSelection % icon_count) : 0u;
 }
 
 void MENU_OpenFromMainScreen(void)
@@ -432,6 +457,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         case MENU_BAT_TXT:
             //*pMin = 0;
             *pMax = ARRAY_SIZE(gSubMenu_BAT_TXT) - 1;
+            break;
+
+        case MENU_LANGUAGE:
+            *pMax = 1;
             break;
 
 #ifdef ENABLE_DTMF_CALLING
@@ -863,6 +892,12 @@ void MENU_AcceptSetting(void)
         case MENU_BAT_TXT:
             gSetting_battery_text = gSubMenuSelection;
             break;
+
+        case MENU_LANGUAGE:
+            gUiLanguage = gSubMenuSelection & 1u;
+            SETTINGS_SaveSettings();
+            gUpdateDisplay = true;
+            return;
 
 #ifdef ENABLE_DTMF_CALLING
         case MENU_D_DCD:
@@ -1372,6 +1407,10 @@ void MENU_ShowCurrentSetting(void)
 
         case MENU_BAT_TXT:
             gSubMenuSelection = gSetting_battery_text;
+            return;
+
+        case MENU_LANGUAGE:
+            gSubMenuSelection = gUiLanguage;
             return;
 
 #ifdef ENABLE_DTMF_CALLING
@@ -1892,6 +1931,9 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             gMenuCursor = UI_MENU_GetMenuIdx(gMenuSecondPageLastMenuId[gMenuMainPageIconIndex]);
         else
             gMenuCursor = 0;
+        /* About (icon 3): list is only MENU_VOL (SysInf / firmware) — avoid stale cursor mapping to another group */
+        if (gMenuMainPageIconIndex == 3u)
+            gMenuCursor = 0;
         gRequestDisplayScreen = DISPLAY_MENU;
         return;
     }
@@ -1904,7 +1946,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             if (m != MENU_SCR)
             {
                 const uint8_t actual_idx = MENU_GetActualMenuIndexFromCursor(gMenuCursor);
-                gAnotherVoiceID = MenuList[actual_idx].voice_id;
+                gAnotherVoiceID = VOICE_ID_MENU;
             }
         #endif
         if (m == MENU_UPCODE 
@@ -1985,6 +2027,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             {
                 case 0:
                     gAskForConfirmation = 1;
+                    UI_DisplayMenu();
                     break;
 
                 case 1:

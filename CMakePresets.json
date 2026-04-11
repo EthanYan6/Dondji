@@ -9,6 +9,7 @@
             "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
+                "ENABLE_CHINESE": true,
                 "ENABLE_LTO": false,
                 "ENABLE_FMRADIO": false,
                 "ENABLE_UART": true,
@@ -71,7 +72,7 @@
                 "ENABLE_UART_RW_BK_REGS": false,
                 "ENABLE_SWD": false,
                 "VERSION_STRING_1": "v5.3.1",
-                "VERSION_STRING_2": "v3.0.1"
+                "VERSION_STRING_2": "v4.0.0"
             }
         },
         {

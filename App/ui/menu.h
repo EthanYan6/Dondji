@@ -160,7 +160,8 @@ enum
     MENU_F2SHRT,
     MENU_F2LONG,
     MENU_MLONG,
-    MENU_BATTYP
+    MENU_BATTYP,
+    MENU_LANGUAGE
 };
 
 extern const uint8_t FIRST_HIDDEN_MENU_ITEM;
@@ -214,6 +215,7 @@ extern const char        gSubMenu_RESET[2][4];
 extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];
+extern const char        gSubMenu_LANGUAGE[2][8];
 extern const char        gSubMenu_BATTYP[5][12];
 
 #ifndef ENABLE_FEAT_F4HWN
@@ -235,6 +237,7 @@ extern char              edit[17];
 extern int               edit_index;
 
 void UI_DisplayMenu(void);
+const char *UI_MENU_GetMenuTitle(const t_menu_item *item);
 int UI_MENU_GetCurrentMenuId();
 uint8_t UI_MENU_GetMenuIdx(uint8_t id);
 

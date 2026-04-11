@@ -30,6 +30,8 @@
 
 EEPROM_Config_t gEeprom = { 0 };
 
+uint8_t gUiLanguage = UI_LANGUAGE_EN;
+
 void SETTINGS_InitEEPROM(void)
 {
     uint8_t Data[16] = {0};
@@ -258,6 +260,11 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     #ifdef ENABLE_VOICE
     gEeprom.VOICE_PROMPT = (Data[0] < 3) ? Data[0] : VOICE_PROMPT_ENGLISH;
     #endif
+    {
+        uint8_t lang = 0;
+        PY25Q16_ReadBuffer(0x00A170, &lang, 1);
+        gUiLanguage = (lang < 2) ? lang : UI_LANGUAGE_EN;
+    }
     #ifdef ENABLE_RSSI_BAR
         for (uint8_t i = 0; i < 7; i++) {
             int8_t val = (int8_t)Data[i + 1];
@@ -278,7 +285,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
 
     // 0ED0..0ED7
     PY25Q16_ReadBuffer(0x00A0A8 + 0x40, Data, 8);
-    gEeprom.DTMF_SIDE_TONE               = (Data[0] <   2) ? Data[0] : true;
+    gEeprom.DTMF_SIDE_TONE               = (Data[0] <   2) ? Data[0] : false;
 
 #ifdef ENABLE_DTMF_CALLING
     gEeprom.DTMF_SEPARATE_CODE           = DTMF_ValidateCodes((char *)(Data + 1), 1) ? Data[1] : '*';
@@ -1029,6 +1036,11 @@ void SETTINGS_SaveSettings(void)
 #ifdef ENABLE_FEAT_F4HWN_VOL
     SETTINGS_WriteCurrentVol();
 #endif
+
+    {
+        uint8_t lang = gUiLanguage & 1u;
+        PY25Q16_WriteBuffer(0x00A170, &lang, 1, false);
+    }
 }
 
 void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO, uint8_t Mode)

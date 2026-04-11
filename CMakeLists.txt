@@ -17,6 +17,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# ON by default: UTF-8 Chinese labels (launcher / menu), Lang setting, font path in App/CMakeLists.txt
+option(ENABLE_CHINESE "UTF-8 Chinese menu UI" ON)
+
 enable_language(C ASM)
 
 if(ENABLE_FEAT_F4HWN)

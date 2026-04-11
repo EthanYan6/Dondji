@@ -6,6 +6,8 @@ set -euo pipefail
 #   ./compile-with-docker.sh [Preset] [CMake options...]
 # Examples:
 #   ./compile-with-docker.sh Custom
+#   ./compile-with-docker.sh Fusion -DAUTHOR_STRING_2=BD1AHN
+#   (ENABLE_CHINESE is ON in the default CMake preset — no extra -D for Chinese UI.)
 #   ./compile-with-docker.sh Bandscope -DENABLE_SPECTRUM=ON
 #   ./compile-with-docker.sh Broadcast -DENABLE_FEAT_F4HWN_GAME=ON -DENABLE_NOAA=ON
 #   ./compile-with-docker.sh All

@@ -162,6 +162,11 @@ enum CHANNEL_DisplayMode_t {
 };
 typedef enum CHANNEL_DisplayMode_t CHANNEL_DisplayMode_t;
 
+typedef enum {
+    UI_LANGUAGE_EN = 0,
+    UI_LANGUAGE_CN = 1
+} UI_Language_t;
+
 typedef struct {
     uint16_t               ScreenChannel[2]; // current channels set in the radio (memory or frequency channels)
     uint16_t               FreqChannel[2]; // last frequency channels used
@@ -306,6 +311,8 @@ typedef struct {
 } EEPROM_Config_t;
 
 extern EEPROM_Config_t gEeprom;
+
+extern uint8_t gUiLanguage;
 
 void     SETTINGS_InitEEPROM(void);
 void     SETTINGS_LoadCalibration(void);
