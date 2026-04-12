@@ -1,152 +1,90 @@
-# Dondji（叮咚鸡）
+<div align="center">
 
-> firmware port for the UV-K1 and UV-K5 V3 using the PY32F071 MCU
+# 🚀 Dondji（叮咚鸡）
 
-1. 基于F4HWN固件，添加仿R7的页面。请切换分支 `motorola_r7` 进行编译
-2. 模仿`joaquimorg / UV-KX-firmware` 固件修改了双信道的页面
-3. 将设置页面重绘，采用老式手机的样式，图标菜单
-4. 锁键盘后的ui重绘
-5. 菜单汉化
+> Firmware for UV-K1 / UV-K5 V3 (PY32F071 MCU)
 
-### 主界面示意
+<p>
+  <a href="./README.zh.md">🇨🇳 中文文档</a> |
+  <a href="./README.en.md">🇺🇸 English Docs</a>
+</p>
 
-## 主页面 (MAIN ONLY) 元素说明
-<img width="643" height="407" alt="image" src="https://github.com/user-attachments/assets/2097c20d-58fc-4577-ba84-dbfc83876e03" />
+<p>
+  <a href="https://github.com/EthanYan6/Dondji/stargazers">
+    <img src="https://img.shields.io/github/stars/EthanYan6/Dondji?style=flat-square" />
+  </a>
+  <a href="https://github.com/EthanYan6/Dondji/network">
+    <img src="https://img.shields.io/github/forks/EthanYan6/Dondji?style=flat-square" />
+  </a>
+  <a href="https://img.shields.io/github/downloads/EthanYan6/Dondji/total">
+    <img src="https://img.shields.io/github/downloads/EthanYan6/Dondji/total?style=flat-square" />
+  </a>
+  <a href="https://github.com/EthanYan6/Dondji/releases">
+    <img src="https://img.shields.io/github/v/release/EthanYan6/Dondji?style=flat-square" />
+  </a>
+  <a href="https://github.com/EthanYan6/Dondji/issues">
+    <img src="https://img.shields.io/github/issues/EthanYan6/Dondji?style=flat-square" />
+  </a>
+  <img src="https://komarev.com/ghpvc/?username=EthanYan6&repo=Dondji&style=flat-square" />
+</p>
 
-### 如何进入主页面
+</div>
 
-- **主页面**即开机或从菜单退出后默认显示的收发界面（非菜单、非扫描等）。
-- 若要使用带计时与仿 R7 布局的**单 VFO 主界面**，需在菜单中开启 **MAIN ONLY**：
-  1. 按 **Menu** 键进入菜单；
-  2. 选择**第 53 项「RxMode」**（界面显示为 RX MODE）；
-  3. 在 RxMode 子项中选择 **MAIN ONLY** 并确认；
-  4. 退出菜单后，即显示单 VFO 主界面（双守、跨段关闭）。
-- 开启 MAIN ONLY 后，每次回到主界面都会显示该布局；再次进入 **菜单 → 第 53 项 RxMode** 选择其它选项可关闭并恢复原有双显等逻辑。
+---
 
-### 界面元素
+## ⭐ Star History
 
-在单 VFO 主界面下，屏幕自上而下包含以下元素：
+<p align="center">
+  <a href="https://star-history.com/#EthanYan6/Dondji&Date">
+    <img src="https://api.star-history.com/svg?repos=EthanYan6/Dondji&type=Date" />
+  </a>
+</p>
 
-- **顶线**  
-  屏幕最上方一条横线，位于菜单栏下方。
+---
 
-- **左侧小长条 + 方框**  
-  - 左侧 7 像素宽小长条与右侧大方框共边、同高（y=2～33）。  
-  - **RX 接收时**：小长条为空心边框；**非接收时**（发射、待机等）：小长条为实心黑块。  
-  - 方框由上、右、下三条边围成（左边与小长条重合）。
+## ✨ Features
 
-- **方框内第一行（右上角同一位置二选一）**  
-  - **信道模式 (MR)**：默认显示 **信道号**（4 位）；接收信号时改为显示 **接收灵敏度 dBm**；接收停止后恢复显示信道号。  
-  - **频率模式 (VFO)**：默认不显示；仅在接收信号时显示 **接收灵敏度 dBm**。
+- Based on **F4HWN firmware 5.3.1**
+- 🎨 Motorola R7-style UI (branch: `motorola_r7`)
+- 📡 Dual VFO UI redesign (based on UV-KX firmware ideas)
+- 📱 Classic mobile-style icon menu
+- 🔒 Lock screen UI redesign
+- 🌏 Chinese / English localization
+- 🧭 Menu restructuring & UI refactor
 
-- **方框内第二行**  
-  - **信道模式**：**信道名**（左对齐，小号字）。  
-  - **频率模式 (VFO)**：在信道名位置显示 **VFO**（左对齐）。
+---
 
-- **方框内第三行**  
-  - **频率**：主段大号数字 + 后两位小字，左对齐、同一行显示。**正常接收时显示接收频率，发射时显示发射频率。**
+## 📸 UI Preview
 
-- **方框下方两行**（右对齐，最小字）  
-  - **第一行**：`time: MM:SS` 计时（分:秒，需 `ENABLE_FEAT_F4HWN_RX_TX_TIMER`）。  
-  - **第二行**：亚音信息（R/T CT 或 DCS，类型与数值紧挨无空格）。
+### 🟢 Main Interface (MAIN ONLY)
 
-- **底部两按钮**  
-  - 左钮：**Menu**；右钮：当前**调制模式**（如 FM、AM）。  
-  - 黑底白字（反色），中间 1 像素白线分隔；黑底在文字上方多 1 像素黑线，使文字视觉居中。
+<img width="643" height="407" src="https://github.com/user-attachments/assets/2097c20d-58fc-4577-ba84-dbfc83876e03" />
 
-## 计时如何开启
+---
 
-主页面方框下第一行的 **`time: MM:SS`**（分:秒）收发计时由编译选项 **`ENABLE_FEAT_F4HWN_RX_TX_TIMER`** 控制：
+### 🔵 Dual VFO Compact UI
 
-- **使用默认 CMake 预设**：`CMakePresets.json` 里默认预设已把 `ENABLE_FEAT_F4HWN_RX_TX_TIMER` 设为 `true`，直接按文档编译即可，计时会显示。
-- **手动配置 CMake 时**：若未用预设或想单独开关，在配置时加上：
-  ```bash
-  -DENABLE_FEAT_F4HWN_RX_TX_TIMER=ON
-  ```
-  例如：
-  ```bash
-  cmake -B build -DENABLE_FEAT_F4HWN_RX_TX_TIMER=ON ...
-  ```
-- **关闭计时**：配置时设为 `OFF` 或不在 cacheVariables 里启用即可，主页面该行不再显示计时。
+<img width="639" height="402" src="https://github.com/user-attachments/assets/30ddf9ec-7244-44b9-9f34-3dfe35b7d42f" />
 
-**计时显示与逻辑**
+---
 
-- **显示格式**：分:秒（`MM:SS`）。
-- **发射 (TX)**：按下 PTT 时按菜单 TOT 开始倒计时，显示剩余时间；松开 PTT 时计时重置为 0，下次按 PTT 再重新开始倒计时。到 0 超时断开发射。
-- **接收 (RX)**：与系统原逻辑一致。进入接收时重置为 00:00，在接收状态下正计时。
+### 🟣 System / Other Pages
 
-## 新页面（双 VFO 紧凑页）说明
-<img width="639" height="402" alt="image" src="https://github.com/user-attachments/assets/30ddf9ec-7244-44b9-9f34-3dfe35b7d42f" />
+<img width="804" height="574" src="https://github.com/user-attachments/assets/288aa180-4acc-4289-8d32-14865eec2793" />
 
-> 适用 RxMode 非 `MAIN ONLY`（如 A/B、CROSS 等）时的双信道主界面。
+<img width="760" height="572" src="https://github.com/user-attachments/assets/43486af0-79ec-40f5-8b48-de9e99e13dde" />
 
-### 如何进入新页面
+---
 
-1. 按 **Menu** 进入菜单；
-2. 选择 **第 53 项「RxMode」**；
-3. 选择 **非 MAIN ONLY** 选项（如 `A/B` 或 `CROSS`）并确认；
-4. 退出菜单后进入双 VFO 紧凑主界面。
+## 📦 Download
 
-### 布局概览
+👉 https://github.com/EthanYan6/Dondji/releases
 
-- **上半区（主信道）**
-  - 顶部反色标题行（左侧信道名/模式信息，右侧状态信息）；
-  - 左侧 A/B 标识区（主样式为黑底反字），旁侧显示 RX/TX；
-  - 右侧主频大字显示（接收显示 RX 频率，发射显示 TX 频率）；
-  - 下方细节行显示 SQ、步进与亚音信息。
+---
 
-- **下半区（副信道）**
-  - 顶部反色标题行；
-  - 左侧 A/B 空心框（框体较上半区加宽加高），框内最小字 A/B 居中；
-  - 框右侧显示信道号；接收时不显示信道号，改为显示 `RX`；
-  - 副频为紧凑数字风格，右对齐显示。
+## 🧭 How to Build
 
-- **底栏（S 表与电量）**
-  - 左侧为 S 表：刻度 `1-3-5-7-9`、竖线刻度与实时伸缩条；
-  - S 值按实时信号显示为 `S1~S9`；
-  - 超过 S9 时显示 `+1dB~+5dB`（按超 S9 强度分档映射）；
-  - 无有效信号时不显示 S 数值占位；
-  - 右侧显示电池图标、百分比与 RxMode 简写。
-
-### 交互与动态行为
-
-- **A/B 闪烁规则**
-  - 哪个信道处于接收，哪个信道的 A/B 区域闪烁；
-  - 从“刚进入接收”即开始闪烁；
-  - 闪烁频率已提高，视觉更明显；
-  - 接收停止后恢复常显。
-
-- **S 表实时性**
-  - 接收时伸缩条按实时 RSSI 更新；
-  - 条形与竖线刻度对齐，强信号可拉满。
-
-- **电量显示**
-  - 百分比使用实际换算值（支持显示 `100%`）。
-
-# 其他页面展示
-<img width="804" height="574" alt="image" src="https://github.com/user-attachments/assets/288aa180-4acc-4289-8d32-14865eec2793" />
-<img width="760" height="572" alt="image" src="https://github.com/user-attachments/assets/43486af0-79ec-40f5-8b48-de9e99e13dde" />
-
-
-### 如何选择界面语言（中文 / English）
-
-固件在编译时打开 **`ENABLE_CHINESE`**（默认 CMake 预设中为 `true`）时，菜单中提供 **英文** 与 **中文** 两套界面文案；若未启用该选项，则仅有英文界面。
-
-**在收音机上的操作（图标菜单布局）**
-
-1. 在**主界面**按 **Menu** 进入一级图标页；
-2. 用方向键选中第二项 **「设置」**（英文界面下为 **Settings**），再按 **Menu** 进入设置类菜单列表；
-3. 在列表中找到 **「Lang」**（中文界面下标题为 **「语言」**）；
-4. 按 **Menu** 进入该项子菜单，用上下键在 **English** 与 **中文** 之间切换；
-5. 按 **Menu** 确认当前选择：固件会立即切换界面语言、写入 EEPROM 并保存（无需单独再选「保存」）。
-
-**说明**
-
-- 语言设置会**断电保持**，下次开机仍使用上次所选语言。
-- 若当前已是中文，菜单里该项仍显示为 **Lang**（英文缩写）或配合中文标题 **语言**，以你屏幕上为准；子选项始终为 **English** / **中文** 两种。
-
-# 特别感谢
-
-感谢以下小伙伴在试用过程中提出问题，帮助改进
-
-1. BA4QHC
+```bash
+git checkout motorola_r7
+./compile-with-docker.sh Fusion
+```
