@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-set(CMAKE_PROJECT_NAME f4hwn)
+set(CMAKE_PROJECT_NAME Dondji)
 
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
@@ -96,19 +96,6 @@ add_custom_command(
     POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary ${EXE_NAME}.elf ${EXE_NAME}.bin
     COMMENT "Generating .bin file"
-)
-
-# Flashable alias: same payload as ${EXE_NAME}.bin, name Dondji.fusion.bin (override: -DFIRMWARE_PACKED_NAME=...)
-if(NOT FIRMWARE_PACKED_NAME)
-    set(FIRMWARE_PACKED_NAME "Dondji.fusion.bin")
-endif()
-add_custom_command(
-    TARGET ${EXE_NAME}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        "${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}.bin"
-        "${CMAKE_CURRENT_BINARY_DIR}/${FIRMWARE_PACKED_NAME}"
-    COMMENT "Firmware package name: ${FIRMWARE_PACKED_NAME}"
 )
 
 # Generate .hex file

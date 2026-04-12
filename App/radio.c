@@ -444,8 +444,9 @@ void RADIO_ConfigureChannel(const unsigned int VFO, const unsigned int configure
 #ifdef ENABLE_DTMF_CALLING
             pVfo->DTMF_DECODING_ENABLE = ((data[5] >> 0) & 1u) ? true : false;
 #endif
-            uint8_t pttId = ((data[5] >> 1) & 7u);
-            pVfo->DTMF_PTT_ID_TX_MODE  = pttId < ARRAY_SIZE(gSubMenu_PTT_ID) ? pttId : PTT_ID_OFF;
+            /* PTT ID 菜单已隐藏：信道加载后固定为关（EEPROM 内 PTT 位仍保留，保存信道时再写回） */
+            (void)((data[5] >> 1) & 7u);
+            pVfo->DTMF_PTT_ID_TX_MODE = PTT_ID_OFF;
         }
 
         // ***************

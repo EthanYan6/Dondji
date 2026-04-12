@@ -157,13 +157,8 @@ void Main(void)
         #ifdef ENABLE_FEAT_F4HWN
             gEeprom.KEY_LOCK = 0;
             SETTINGS_SaveSettings();
-            gMenuCursor = MENU_ITEMS; 
-            
-            #ifdef ENABLE_NOAA
-                gMenuCursor += 1; // move to hidden section, fix me if change... !!!
-            #endif
-            gSubMenuSelection = gSetting_F_LOCK;
         #endif
+        /* 菜单入口与光标由 BOOT_ProcessMode(F_LOCK) 中 MENU_OpenFromMainScreen 初始化 */
     }
 
     // count the number of menu items

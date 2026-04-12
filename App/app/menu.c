@@ -70,7 +70,12 @@ static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
 
 bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 {
-    return menu_id == MENU_PONMSG;
+    return menu_id == MENU_PONMSG ||
+           menu_id == MENU_UPCODE ||
+           menu_id == MENU_DWCODE ||
+           menu_id == MENU_PTT_ID ||
+           menu_id == MENU_VOX ||
+           menu_id == MENU_BAT_TXT;
 }
 
 uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index)
@@ -1991,9 +1996,10 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
                 gAnotherVoiceID = VOICE_ID_MENU;
             }
         #endif
-        if (m == MENU_UPCODE 
-            || m == MENU_DWCODE 
-#ifdef ENABLE_DTMF_CALLING 
+        if (m == MENU_UPCODE
+            || m == MENU_DWCODE
+            || m == MENU_PTT_ID
+#ifdef ENABLE_DTMF_CALLING
             || m == MENU_ANI_ID
 #endif
             )

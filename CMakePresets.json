@@ -72,7 +72,7 @@
                 "ENABLE_UART_RW_BK_REGS": false,
                 "ENABLE_SWD": false,
                 "VERSION_STRING_1": "v5.3.1",
-                "VERSION_STRING_2": "v4.0.0"
+                "VERSION_STRING_2": "v4.0.1"
             }
         },
         {
@@ -80,7 +80,7 @@
             "inherits": "default",
             "cacheVariables": {
                 "EDITION_STRING": "Custom",
-                "TARGET": "f4hwn.custom"
+                "TARGET": "Dondji.custom"
             }
         },
         {
@@ -97,7 +97,7 @@
                 "ENABLE_FEAT_F4HWN_GMRS_FRS_MURS": true,
                 "ENABLE_FEAT_F4HWN_RESCUE_OPS": false,
                 "EDITION_STRING": "Bandscope",
-                "TARGET": "f4hwn.bandscope"
+                "TARGET": "Dondji.bandscope"
             }
         },
         {
@@ -114,7 +114,7 @@
                 "ENABLE_FEAT_F4HWN_GMRS_FRS_MURS": true,
                 "ENABLE_FEAT_F4HWN_RESCUE_OPS": false,
                 "EDITION_STRING": "Broadcast",
-                "TARGET": "f4hwn.broadcast"
+                "TARGET": "Dondji.broadcast"
             }
         },
         {
@@ -138,7 +138,7 @@
                 "ENABLE_FEAT_F4HWN_NARROWER": true,
                 "ENABLE_FEAT_F4HWN_RESCUE_OPS": false,
                 "EDITION_STRING": "Basic",
-                "TARGET": "f4hwn.basic"
+                "TARGET": "Dondji.basic"
             }
         },
         {
@@ -156,7 +156,7 @@
                 "ENABLE_NOAA": true,
                 "ENABLE_FEAT_F4HWN_RESCUE_OPS": true,
                 "EDITION_STRING": "RescueOps",
-                "TARGET": "f4hwn.rescueops"
+                "TARGET": "Dondji.rescueops"
             }
         },
         {
@@ -173,7 +173,7 @@
                 "ENABLE_FEAT_F4HWN_GMRS_FRS_MURS": true,
                 "ENABLE_FEAT_F4HWN_RESCUE_OPS": false,
                 "EDITION_STRING": "Game",
-                "TARGET": "f4hwn.game"
+                "TARGET": "Dondji.game"
             }
         },
         {
@@ -194,7 +194,7 @@
                 "ENABLE_FEAT_F4HWN_AUDIO_SCOPE": true,
                 "ENABLE_SWD": true,
                 "EDITION_STRING": "Fusion",
-                "TARGET": "f4hwn.fusion"
+                "TARGET": "Dondji.fusion"
             }
         }
     ],

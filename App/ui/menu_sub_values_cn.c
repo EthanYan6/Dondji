@@ -108,10 +108,10 @@ const char gSubMenu_RX_TX_CN[][16] = {
     "\xe6\x8e\xa5\xe6\x94\xb6/\xe5\x8f\x91\xe5\xb0\x84",
 };
 
-const char gSubMenu_BAT_TXT_CN[][9] = {
+const char gSubMenu_BAT_TXT_CN[][10] = {
     "\xe6\x97\xa0",
     "\xe7\x94\xb5\xe5\x8e\x8b",
-    "\xe7\x99\xbe\xe5\x88\x86\xe6\xaf\x94",
+    "\xe7\x99\xbe\xe5\x88\x86\xe6\xaf\x94", /* 9 UTF-8 bytes — 行宽须 ≥10 含 '\\0' */
 };
 
 const char gSubMenu_SET_NAV_CN[][17] = {

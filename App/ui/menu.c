@@ -732,14 +732,6 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         }
         else
         #endif
-        #if defined(ENABLE_FEAT_F4HWN_VOL)
-        if (UI_MENU_GetCurrentMenuId() == MENU_SET_VOL)
-        {
-            UI_PrintStringSmallAtPixel("\xe8\xae\xbe\xe7\xbd\xae", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("\xe9\x9f\xb3\xe9\x87\x8f", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else
-        #endif
 #ifdef ENABLE_FEAT_F4HWN
         if (UI_MENU_GetCurrentMenuId() == MENU_SET_CTR)
         {
@@ -2003,6 +1995,54 @@ void UI_DisplayMenu(void)
                 }
             }
 #endif
+            else if (len > 0u && lines == 3u &&
+                     UI_MENU_GetCurrentMenuId() == MENU_SET_NAV &&
+                     gUiLanguage == UI_LANGUAGE_CN)
+            {   /* 导航键三行值：行间 2px（与侧键两行 / TX_LOCK 一致） */
+                const uint8_t ld_mix = 3u;
+                uint8_t yp = (uint8_t)(y * 8u);
+                i = 0;
+                unsigned int rem = lines;
+                while (i < len && rem > 0u)
+                {
+                    const char *pline = String + i;
+                    const uint8_t band = VOL_line_band_height(pline);
+                    if (band == CH_CN_H)
+                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 11u), ld_mix);
+                    else
+                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 7u), 0u);
+                    yp = SF_after_2px(yp, band);
+                    while (i < len && String[i] >= 32)
+                        i++;
+                    while (i < len && String[i] < 32)
+                        i++;
+                    rem--;
+                }
+            }
+            else if (len > 0u && lines >= 2u && lines <= 3u &&
+                     UI_MENU_GetCurrentMenuId() == MENU_F_LOCK &&
+                     gUiLanguage == UI_LANGUAGE_CN)
+            {   /* 频段锁 2～3 行值：行间 2px */
+                const uint8_t ld_mix = 3u;
+                uint8_t yp = (uint8_t)(y * 8u);
+                i = 0;
+                unsigned int rem = lines;
+                while (i < len && rem > 0u)
+                {
+                    const char *pline = String + i;
+                    const uint8_t band = VOL_line_band_height(pline);
+                    if (band == CH_CN_H)
+                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 11u), ld_mix);
+                    else
+                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 7u), 0u);
+                    yp = SF_after_2px(yp, band);
+                    while (i < len && String[i] >= 32)
+                        i++;
+                    while (i < len && String[i] < 32)
+                        i++;
+                    rem--;
+                }
+            }
             else
 #endif
             for (i = 0; i < len && lines > 0; lines--)

@@ -19,6 +19,7 @@
 #ifdef ENABLE_AIRCOPY
     #include "app/aircopy.h"
 #endif
+#include "app/menu.h"
 #include "driver/bk4819.h"
 #include "driver/keyboard.h"
 #include "driver/gpio.h"
@@ -77,7 +78,10 @@ void BOOT_ProcessMode(BOOT_Mode_t Mode)
     {
         #ifdef ENABLE_FEAT_F4HWN_RESUME_STATE
             gEeprom.CURRENT_STATE = 0; // Don't resume is active...
-        #endif 
+        #endif
+        /* 与主界面按菜单键进入一致：先进入图标首页并启用分组过滤，避免首次为「全列表」 */
+        MENU_OpenFromMainScreen();
+        gMenuCursor = 0;
         GUI_SelectNextDisplay(DISPLAY_MENU);
     }
     #ifdef ENABLE_AIRCOPY

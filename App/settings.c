@@ -62,6 +62,9 @@ void SETTINGS_InitEEPROM(void)
             configByte[4] &= (uint8_t)~0x02;  // MENU_LOCK = 0
             configByte[4] &= (uint8_t)~0x3C;  // SET_KEY = 0
             //configByte[4] &= (uint8_t)~0x40;  // SET_NAV = 0
+#ifdef ENABLE_VOX
+            configByte[5] = 0; /* 声控菜单隐藏：版本升级后默认关 */
+#endif
 
             PY25Q16_WriteBuffer(0x00A000, configByte, sizeof(configByte), false);
 

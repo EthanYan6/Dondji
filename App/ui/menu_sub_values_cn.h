@@ -22,7 +22,7 @@ extern const char gSubMenu_ROGER_CN[][6];
 extern const char gSubMenu_RESET_CN[][8];
 extern const char *const gSubMenu_F_LOCK_CN[];
 extern const char gSubMenu_RX_TX_CN[][16];
-extern const char gSubMenu_BAT_TXT_CN[][9];
+extern const char gSubMenu_BAT_TXT_CN[][10]; /* 「百分比」UTF-8 共 9 字节 + '\\0'，[9] 会截断导致串连相邻只读数据 */
 extern const char gSubMenu_SET_NAV_CN[][17];
 
 #ifdef ENABLE_VOICE
