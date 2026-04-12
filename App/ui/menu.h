@@ -24,7 +24,7 @@
 #include "settings.h"
 
 typedef struct {
-    const char  name[7];    // menu display area only has room for 6 characters
+    const char  name[8];    // up to 7 chars + '\0' (was [7] = max 6 + NUL; longer strings leaked into next item)
     uint8_t     menu_id;
 } t_menu_item;
 
@@ -97,6 +97,7 @@ enum
 #endif
     MENU_D_LIVE_DEC,
     MENU_PONMSG,
+    MENU_BOOT_HINT,
     MENU_ROGER,
     MENU_VOL,
     MENU_BAT_TXT,
@@ -216,6 +217,7 @@ extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char        gSubMenu_LANGUAGE[2][8];
+extern const char        gSubMenu_BOOT_HINT[2][8];
 extern const char        gSubMenu_BATTYP[5][12];
 
 #ifndef ENABLE_FEAT_F4HWN

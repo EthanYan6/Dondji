@@ -156,6 +156,7 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
 #ifdef ENABLE_AUDIO_BAR
     bool          gSetting_mic_bar;
 #endif
+uint8_t           gSetting_boot_hint;
 bool              gSetting_live_DTMF_decoder;
 uint8_t           gSetting_battery_text;
 

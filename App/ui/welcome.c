@@ -177,12 +177,19 @@ void UI_DisplayWelcome(void)
             }
         }
 
-        /* 开机首行固定「叮咚鸡」；第二行仍为电压/EEPROM 逻辑（WelcomeString1） */
+        /* 开机首行：菜单「开机提示」可选「叮咚鸡」/「魅力北京」；第二行仍为电压/EEPROM（WelcomeString1） */
 #ifdef ENABLE_CHINESE
-        /* 「叮」须为 U+53EE 的 UTF-8：E5 8F AE（误写 E5 93 AE 会解码失败，首字不显示） */
-        UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, 4u, 15u, 3u);
+        if (gSetting_boot_hint == 0) {
+            /* 「叮」须为 U+53EE 的 UTF-8：E5 8F AE */
+            UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, 4u, 15u, 3u);
+        } else {
+            UI_PrintStringSmallAtPixel("\xe9\xad\x85\xe5\x8a\x9b\xe5\x8c\x97\xe4\xba\xac", 0, 127, 4u, 15u, 3u);
+        }
 #else
-        UI_PrintString("DingDongJi", 0, 127, 0, 10);
+        if (gSetting_boot_hint == 0)
+            UI_PrintString("DingDongJi", 0, 127, 0, 10);
+        else
+            UI_PrintString("MeiliBJ", 0, 127, 0, 10);
 #endif
         UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 

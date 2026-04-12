@@ -110,9 +110,9 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
 
     const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
                             menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
-    /* "Lang" inserted at start of settings block: was 23..42, now 23..43; tail indices +1 */
-    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 43) ||
-                             menu_number_1based == 53 || menu_number_1based == 54;
+    /* "Lang" inserted at start of settings block; +「开机提示」 */
+    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 44) ||
+                             menu_number_1based == 54 || menu_number_1based == 55;
     const bool in_about = (menu_id == MENU_VOL);
     const bool in_other = !(in_channel || in_settings || in_about);
 
@@ -379,6 +379,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         case MENU_PONMSG:
             //*pMin = 0;
             *pMax = ARRAY_SIZE(gSubMenu_PONMSG) - 1;
+            break;
+
+        case MENU_BOOT_HINT:
+            *pMax = ARRAY_SIZE(gSubMenu_BOOT_HINT) - 1;
             break;
 
         case MENU_R_DCS:
@@ -1011,6 +1015,10 @@ void MENU_AcceptSetting(void)
             gEeprom.POWER_ON_DISPLAY_MODE = gSubMenuSelection;
             break;
 
+        case MENU_BOOT_HINT:
+            gSetting_boot_hint = (uint8_t)gSubMenuSelection;
+            break;
+
         case MENU_ROGER:
             gEeprom.ROGER = gSubMenuSelection;
             break;
@@ -1506,6 +1514,10 @@ void MENU_ShowCurrentSetting(void)
         case MENU_PONMSG:
             gSubMenuSelection = gEeprom.POWER_ON_DISPLAY_MODE;
             break;
+
+        case MENU_BOOT_HINT:
+            gSubMenuSelection = gSetting_boot_hint;
+            return;
 
         case MENU_ROGER:
             gSubMenuSelection = gEeprom.ROGER;

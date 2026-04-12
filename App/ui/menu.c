@@ -158,6 +158,7 @@ const t_menu_item MenuList[] =
     {"Mic",         MENU_MIC           },
     {"ChDisp",      MENU_MDF           }, // was "MDF"
     {"POnMsg",      MENU_PONMSG        },
+    {"BootHnt",     MENU_BOOT_HINT     },
     {"BLTime",      MENU_ABR           }, // was "ABR"
     {"BLMin",       MENU_ABR_MIN       },
     {"BLMax",       MENU_ABR_MAX       },
@@ -418,6 +419,12 @@ const char gSubMenu_LANGUAGE[][8] =
 {
     "English",
     "\xE4\xB8\xAD\xE6\x96\x87"
+};
+
+const char gSubMenu_BOOT_HINT[][8] =
+{
+    "DingDJ",
+    "MeiliBJ"
 };
 
 const char gSubMenu_BATTYP[][12] =
@@ -1654,6 +1661,10 @@ void UI_DisplayMenu(void)
 
         case MENU_PONMSG:
             strcpy(String, SUBV(gSubMenu_PONMSG[gSubMenuSelection], gSubMenu_PONMSG_CN[gSubMenuSelection]));
+            break;
+
+        case MENU_BOOT_HINT:
+            strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
             break;
 
         case MENU_ROGER:
