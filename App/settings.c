@@ -395,7 +395,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     gSetting_live_DTMF_decoder = !!(Data[7] & (1u << 1));
     gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
     #ifdef ENABLE_AUDIO_BAR
-        gSetting_mic_bar       = false;
+        gSetting_mic_bar       = !!(Data[7] & (1u << 4));
     #endif
     #ifndef ENABLE_FEAT_F4HWN
         #ifdef ENABLE_AM_FIX
@@ -519,7 +519,23 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         gSetting_set_ptt_session = gSetting_set_ptt;
         gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
     #endif
+
+#ifdef ENABLE_AUDIO_BAR
+    SETTINGS_ForceMicBarOffWhenNotMainOnly();
+#endif
 }
+
+#ifdef ENABLE_AUDIO_BAR
+void SETTINGS_ForceMicBarOffWhenNotMainOnly(void)
+{
+    if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
+        return;
+    if (!gSetting_mic_bar)
+        return;
+    gSetting_mic_bar = false;
+    gRequestSaveSettings = true;
+}
+#endif
 
 void SETTINGS_LoadCalibration(void)
 {

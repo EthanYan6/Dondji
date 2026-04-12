@@ -203,6 +203,11 @@ const t_menu_item MenuList[] =
 #endif
     {"RxMode",      MENU_TDR           },
     {"Sql",         MENU_SQL           },
+#ifndef ENABLE_FEAT_F4HWN
+#ifdef ENABLE_AUDIO_BAR
+    {"MicBar",      MENU_MIC_BAR       },
+#endif
+#endif
 #ifdef ENABLE_FEAT_F4HWN
     {"SetPwr",      MENU_SET_PWR       },
     {"SetPTT",      MENU_SET_PTT       },
@@ -229,6 +234,9 @@ const t_menu_item MenuList[] =
 #endif
 #ifdef ENABLE_NOAA
     {"SetNWR",      MENU_NOAA_S    },
+#endif
+#ifdef ENABLE_AUDIO_BAR
+    {"MicBar",      MENU_MIC_BAR       },
 #endif
 #endif
     // hidden menu items from here on
@@ -755,6 +763,11 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         {
             UI_PrintStringSmallAtPixel("\xe4\xbc\x98\xe5\x85\x88\xe4\xbf\xa1\xe9\x81\x93", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("2", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_MIC)
+        {   /* 设置列表左栏：两行「麦克风」「增益」（字库由 App/tools/extract_chinese_font.py 生成） */
+            UI_PrintStringSmallAtPixel("\xe9\xba\xa6\xe5\x85\x8b\xe9\xa3\x8e", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe5\xa2\x9e\xe7\x9b\x8a", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else
         {

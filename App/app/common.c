@@ -40,6 +40,11 @@ void COMMON_SwitchVFOs()
     if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF)
         gEeprom.DUAL_WATCH = gEeprom.TX_VFO + 1;
 
+#ifdef ENABLE_FEAT_F4HWN
+    gDW = gEeprom.DUAL_WATCH;
+    gCB = gEeprom.CROSS_BAND_RX_TX;
+#endif
+
     gRequestSaveSettings  = 1;
     gFlagReconfigureVfos  = true;
     gScheduleDualWatch = true;

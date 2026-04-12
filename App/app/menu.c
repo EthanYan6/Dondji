@@ -70,6 +70,11 @@ static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
 
 bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 {
+#ifdef ENABLE_AUDIO_BAR
+    if (menu_id == MENU_MIC_BAR &&
+        (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF))
+        return true;
+#endif
     return menu_id == MENU_PONMSG ||
            menu_id == MENU_UPCODE ||
            menu_id == MENU_DWCODE ||
@@ -93,6 +98,15 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         return false;
     if (MENU_IsHiddenDtmfMenu(menu_id))
         return false;
+
+#ifdef ENABLE_AUDIO_BAR
+    /* 发射条 / Mic Bar：仅 Main Only 时在设置图标下显示；双信道时隐藏 */
+    if (menu_id == MENU_MIC_BAR) {
+        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
+            return false;
+        return (icon_index == 1u);
+    }
+#endif
 
     const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
                             menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
@@ -121,6 +135,18 @@ void MENU_UpdateMenuFilterForIcon(uint8_t icon_index)
         if (MENU_IsMenuInIconGroup((uint8_t)(i + 1), MenuList[i].menu_id, icon_index))
             gMenuFilteredMap[gMenuFilteredCount++] = i;
     }
+}
+
+void MENU_RefreshIconFilterAfterRxModeChange(void)
+{
+#ifdef ENABLE_AUDIO_BAR
+    if (gMenuUseMainOnlyStatus && !gMenuMainPageActive)
+    {
+        MENU_UpdateMenuFilterForIcon(gMenuMainPageIconIndex);
+        if (gMenuFilteredCount > 0u && gMenuCursor >= gMenuFilteredCount)
+            gMenuCursor = (uint8_t)(gMenuFilteredCount - 1u);
+    }
+#endif
 }
 
 void MENU_RecordSelectionBeforeLeaveMenuToMain(void)
@@ -831,6 +857,10 @@ void MENU_AcceptSetting(void)
 
             gFlagReconfigureVfos = true;
             gUpdateStatus        = true;
+#ifdef ENABLE_AUDIO_BAR
+            SETTINGS_ForceMicBarOffWhenNotMainOnly();
+#endif
+            MENU_RefreshIconFilterAfterRxModeChange();
             break;
 
         case MENU_BEEP:

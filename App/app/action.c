@@ -29,6 +29,9 @@
     #include "app/fm.h"
 #endif
 #include "app/scanner.h"
+#ifdef ENABLE_AUDIO_BAR
+    #include "app/menu.h"
+#endif
 #include "audio.h"
 #ifdef ENABLE_FMRADIO
     #include "driver/bk1080.h"
@@ -546,6 +549,14 @@ void ACTION_RxMode(void)
 
     cycle = !cycle;
     ACTION_Update();
+    /* SETTINGS_SaveSettings uses gDW/gCB when !gSaveRxMode; keep them in sync after side-key Rx mode change */
+    gDW = gEeprom.DUAL_WATCH;
+    gCB = gEeprom.CROSS_BAND_RX_TX;
+    gRequestSaveSettings = true;
+#ifdef ENABLE_AUDIO_BAR
+    SETTINGS_ForceMicBarOffWhenNotMainOnly();
+    MENU_RefreshIconFilterAfterRxModeChange();
+#endif
 }
 
 void ACTION_MainOnly(void)
@@ -567,6 +578,13 @@ void ACTION_MainOnly(void)
 
     cycle = !cycle;
     ACTION_Update();
+    gDW = gEeprom.DUAL_WATCH;
+    gCB = gEeprom.CROSS_BAND_RX_TX;
+    gRequestSaveSettings = true;
+#ifdef ENABLE_AUDIO_BAR
+    SETTINGS_ForceMicBarOffWhenNotMainOnly();
+    MENU_RefreshIconFilterAfterRxModeChange();
+#endif
 }
 
 #ifdef ENABLE_FEAT_F4HWN_AUDIO

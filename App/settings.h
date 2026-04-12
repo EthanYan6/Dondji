@@ -324,6 +324,9 @@ void     SETTINGS_FactoryReset(bool bIsAll);
 #endif
 void SETTINGS_SaveVfoIndices(void);
 void SETTINGS_SaveVfoIndicesFlush(void);
+#ifdef ENABLE_AUDIO_BAR
+void SETTINGS_ForceMicBarOffWhenNotMainOnly(void);
+#endif
 void SETTINGS_SaveSettings(void);
 void SETTINGS_SaveChannelName(uint16_t channel, const char * name);
 void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO, uint8_t Mode);

@@ -1034,6 +1034,10 @@ void UI_DisplayAudioBar(void)
         if(gLowBattery && !gLowBatteryConfirmed)
             return;
 
+        /* Mic bar only on Main Only; hide on dual-VFO main screen */
+        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
+            return;
+
 #ifdef ENABLE_FEAT_F4HWN
         RxBlinkLed = 0;
         RxBlinkLedCounter = 0;
@@ -1116,6 +1120,9 @@ void UI_DisplayAudioScope(void)
         s_was_tx = false;
         return;
     }
+
+    if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
+        return;
 
     // This prevents a sudden spike on the bar caused by release the PTT button
     if (!GPIO_IsPttPressed()
@@ -2780,7 +2787,8 @@ display_main_after_vfo_loop:
         const bool rx = FUNCTION_IsRx();
 
 #ifdef ENABLE_FEAT_F4HWN_AUDIO_SCOPE
-        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT) {
+        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
+            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
             // Reserve the line so no other element overwrites it.
             // Actual drawing is handled exclusively by the app.c timeslice.
             center_line = CENTER_LINE_AUDIO_SCOPE;
@@ -2788,16 +2796,10 @@ display_main_after_vfo_loop:
         else
 #endif
 #ifdef ENABLE_AUDIO_BAR
-        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT) {
-#ifdef ENABLE_FEAT_F4HWN
-            if (!isMainOnly() && !DualVfoShouldUseLegacyMain()) {
-                /* New dual layout uses all framebuffer rows */
-            } else
-#endif
-            {
-                center_line = CENTER_LINE_AUDIO_BAR;
-                UI_DisplayAudioBar();
-            }
+        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
+            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+            center_line = CENTER_LINE_AUDIO_BAR;
+            UI_DisplayAudioBar();
         }
         else
 #endif
