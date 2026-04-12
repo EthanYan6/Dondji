@@ -1219,6 +1219,56 @@ void UI_DisplayAudioScope(void)
 }
 #endif  // ENABLE_FEAT_F4HWN_AUDIO_SCOPE
 
+#ifdef ENABLE_FEAT_F4HWN
+/* 供 UI_DisplayMainOnlyStatusBar / 菜单顶栏 5 格信号条：与 DisplayRSSIBar(F4HWN) 同一映射 */
+static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
+{
+    if (!FUNCTION_IsRx()) {
+        gVFO_RSSI_bar_level[gEeprom.RX_VFO] = 0;
+        return;
+    }
+
+    int16_t rssi_dBm =
+        BK4819_GetRSSI_dBm()
+#ifdef ENABLE_AM_FIX
+        + ((gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM) ? AM_fix_get_gain_diff() : 0)
+#endif
+        + dBmCorrTable[gRxVfo->Band];
+
+    const int16_t s9_dBm = -93;
+    const int16_t s0_dBm = -141;
+
+    uint8_t s_level    = 1;
+    uint8_t overS9dBm  = 0;
+    uint8_t overS9Bars = 0;
+
+    if (rssi_dBm <= s9_dBm) {
+        int16_t sn = map(rssi_dBm, s0_dBm, s9_dBm, 1, 9);
+        if (sn < 1)
+            sn = 1;
+        if (sn > 9)
+            sn = 9;
+        s_level = (uint8_t)sn;
+    } else {
+        s_level = 9;
+        {
+            int32_t od = (int32_t)rssi_dBm - (int32_t)s9_dBm;
+            if (od < 0)
+                od = 0;
+            if (od > 255)
+                od = 255;
+            overS9dBm = (uint8_t)od;
+        }
+        overS9Bars = MIN(overS9dBm / 10u, 4u);
+    }
+
+    const uint8_t raw = s_level + overS9Bars;
+    gVFO_RSSI_bar_level[gEeprom.RX_VFO] = (raw * 6u + 6u) / 13u;
+    if (gVFO_RSSI_bar_level[gEeprom.RX_VFO] > 6u)
+        gVFO_RSSI_bar_level[gEeprom.RX_VFO] = 6u;
+}
+#endif
+
 void DisplayRSSIBar(const bool now)
 {
 #if defined(ENABLE_RSSI_BAR)
@@ -1403,13 +1453,16 @@ void DisplayRSSIBar(const bool now)
         if (now)
             ST7565_BlitLine(line);
     }
-    // 供顶部状态栏 5 格信号条使用：将 0~13 映射到 0~6
+#ifdef ENABLE_FEAT_F4HWN
+    F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
+#else
     {
         const uint8_t raw = s_level + overS9Bars;
         gVFO_RSSI_bar_level[gEeprom.RX_VFO] = (raw * 6u + 6u) / 13u;
         if (gVFO_RSSI_bar_level[gEeprom.RX_VFO] > 6u)
             gVFO_RSSI_bar_level[gEeprom.RX_VFO] = 6u;
     }
+#endif
 #else
     int16_t rssi = BK4819_GetRSSI();
     uint8_t Level;
@@ -1482,6 +1535,12 @@ void UI_MAIN_PrintAGC(bool now)
 
 void UI_MAIN_TimeSlice500ms(void)
 {
+#ifdef ENABLE_FEAT_F4HWN
+    if (gScreenToDisplay == DISPLAY_MENU) {
+        F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
+        gUpdateStatus = true;
+    } else
+#endif
     if(gScreenToDisplay==DISPLAY_MAIN) {
 #ifdef ENABLE_AGC_SHOW_DATA
         UI_MAIN_PrintAGC(true);

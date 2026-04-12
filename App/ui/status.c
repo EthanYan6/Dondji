@@ -81,7 +81,9 @@ void UI_DisplayMainOnlyStatusBar(void)
     x -= 2;
     uint8_t bars = 0;
     if (FUNCTION_IsRx()) {
-        bars = (gVFO_RSSI_bar_level[vfo] * 5 + 5) / 6;
+        /* RSSI 格与 gVFO_RSSI_bar_level 均按当前接收 VFO（双守时可为 B），不能用 TX_VFO */
+        const uint8_t rxVfo = gEeprom.RX_VFO;
+        bars = (gVFO_RSSI_bar_level[rxVfo] * 5 + 5) / 6;
         if (bars > 5) bars = 5;
     }
     for (uint8_t i = 0; i < 5; i++) {
@@ -146,7 +148,8 @@ void UI_DisplayStatus()
     memset(gStatusLine, 0, sizeof(gStatusLine));
 
 #ifdef ENABLE_FEAT_F4HWN
-    if (gScreenToDisplay == DISPLAY_MENU && gMenuUseMainOnlyStatus)
+    /* 菜单顶栏与 MAIN ONLY 主界面一致：天线、实时 RSSI 条、功率/带宽/静噪/步进、电量 */
+    if (gScreenToDisplay == DISPLAY_MENU)
     {
         UI_DisplayMainOnlyStatusBar();
         return;
