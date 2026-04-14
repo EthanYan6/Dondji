@@ -36,7 +36,7 @@
 
 <p align="center">
   <a href="https://star-history.com/#EthanYan6/Dondji&Date">
-    <img src="https://api.star-history.com/svg?repos=EthanYan6/Dondji&type=Date" />
+    <img src="https://api.star-history.com/svg?repos=EthanYan6/Dondji&type=Date&cache=0" />
   </a>
 </p>
 
