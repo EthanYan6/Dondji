@@ -761,7 +761,27 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         }
         else
 #endif
-        if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_1)
+        if (UI_MENU_GetCurrentMenuId() == MENU_R_DCS)
+        {
+            UI_PrintStringSmallAtPixel("接收", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("数字亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_R_CTCS)
+        {
+            UI_PrintStringSmallAtPixel("接收", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("模拟亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_T_DCS)
+        {
+            UI_PrintStringSmallAtPixel("发射", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("数字亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_T_CTCS)
+        {
+            UI_PrintStringSmallAtPixel("发射", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("模拟亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_1)
         {
             UI_PrintStringSmallAtPixel("\xe4\xbc\x98\xe5\x85\x88\xe4\xbf\xa1\xe9\x81\x93", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("1", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
@@ -775,6 +795,16 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         {   /* 设置列表左栏：两行「麦克风」「增益」（字库由 App/tools/extract_chinese_font.py 生成） */
             UI_PrintStringSmallAtPixel("\xe9\xba\xa6\xe5\x85\x8b\xe9\xa3\x8e", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("\xe5\xa2\x9e\xe7\x9b\x8a", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_MLONG)
+        {
+            UI_PrintStringSmallAtPixel("MENU", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
+            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_RP_STE)
+        {
+            UI_PrintStringSmallAtPixel("过中继", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("尾音消除", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else
         {

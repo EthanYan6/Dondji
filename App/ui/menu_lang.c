@@ -16,12 +16,12 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     {
     case MENU_STEP:         return "\xe6\xad\xa5\xe8\xbf\x9b";
     case MENU_TXP:          return "\xe5\x8a\x9f\xe7\x8e\x87";
-    case MENU_R_DCS:        return "\xe6\x8e\xa5\xe6\x94\xb6""DCS";
-    case MENU_R_CTCS:       return "\xe6\x8e\xa5\xe6\x94\xb6\xe4\xba\x9a\xe9\x9f\xb3";
-    case MENU_T_DCS:        return "\xe5\x8f\x91\xe5\xb0\x84""DCS";
-    case MENU_T_CTCS:       return "\xe5\x8f\x91\xe5\xb0\x84\xe4\xba\x9a\xe9\x9f\xb3";
-    case MENU_SFT_D:        return "\xe9\xa2\x91\xe5\x81\x8f\xe6\x96\xb9\xe5\x90\x91";
-    case MENU_OFFSET:       return "\xe9\xa2\x91\xe5\x81\x8f";
+    case MENU_R_DCS:        return "接收数字亚音";
+    case MENU_R_CTCS:       return "接收模拟亚音";
+    case MENU_T_DCS:        return "发射数字亚音";
+    case MENU_T_CTCS:       return "发射模拟亚音";
+    case MENU_SFT_D:        return "频差方向";
+    case MENU_OFFSET:       return "频差频率";
     case MENU_W_N:          return "\xe5\xae\xbd\xe7\xaa\x84\xe5\xb8\xa6";
 #ifndef ENABLE_FEAT_F4HWN
     case MENU_SCR:          return "\xe5\x8a\xa0\xe5\xaf\x86";
@@ -35,7 +35,7 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_LIST_CH:      return "\xe4\xbf\xa1\xe9\x81\x93\xe5\x88\x97\xe8\xa1\xa8";
     case MENU_MEM_CH:       return "\xe5\xad\x98\xe4\xbf\xa1\xe9\x81\x93";
     case MENU_DEL_CH:       return "\xe5\x88\xa0\xe4\xbf\xa1\xe9\x81\x93";
-    case MENU_MEM_NAME:     return "\xe4\xbf\xa1\xe9\x81\x93\xe5\x90\x8d";
+    case MENU_MEM_NAME:     return "命名信道";
     case MENU_S_LIST:       return "\xe6\x89\xab\xe6\x8f\x8f\xe5\x88\x97\xe8\xa1\xa8";
     case MENU_S_PRI:        return "\xe4\xbc\x98\xe5\x85\x88\xe6\x89\xab\xe6\x8f\x8f";
     case MENU_S_PRI_CH_1:   return "\xe4\xbc\x98\xe5\x85\x88\xe4\xbf\xa1\xe9\x81\x93""1";
@@ -50,11 +50,11 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_F1LONG:       return "F1\xe9\x95\xbf\xe6\x8c\x89";
     case MENU_F2SHRT:       return "F2\xe7\x9f\xad\xe6\x8c\x89";
     case MENU_F2LONG:       return "F2\xe9\x95\xbf\xe6\x8c\x89";
-    case MENU_MLONG:        return "M\xe9\x95\xbf\xe6\x8c\x89";
+    case MENU_MLONG:        return "MENU长按";
     case MENU_AUTOLK:       return "\xe8\x87\xaa\xe5\x8a\xa8\xe9\x94\x81\xe9\x94\xae";
     case MENU_LANGUAGE:     return "\xe8\xaf\xad\xe8\xa8\x80";
     case MENU_TOT:          return "\xe5\x8f\x91\xe5\xb0\x84\xe9\x99\x90\xe6\x97\xb6";
-    case MENU_SAVE:         return "\xe7\x9c\x81\xe7\x94\xb5";
+    case MENU_SAVE:         return "省电模式";
     case MENU_BAT_TXT:      return "\xe7\x94\xb5\xe6\xb1\xa0\xe6\x98\xbe\xe7\xa4\xba";
     case MENU_MIC:          return "\xe9\xba\xa6\xe5\x85\x8b\xe9\xa3\x8e\xe5\xa2\x9e\xe7\x9b\x8a"; /* 麦克风增益 — font: extract_chinese_font.py */
     case MENU_MDF:          return "\xe4\xbf\xa1\xe9\x81\x93\xe6\x98\xbe\xe7\xa4\xba";
@@ -70,8 +70,8 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
 #endif
     case MENU_ROGER:        return "\xe5\x8f\x91\xe5\xb0\x84\xe5\xb0\xbe\xe9\x9f\xb3";
     case MENU_STE:          return "\xe5\xb0\xbe\xe9\x9f\xb3\xe6\xb6\x88\xe9\x99\xa4";
-    case MENU_RP_STE:       return "\xe4\xb8\xad\xe7\xbb\xa7\xe5\xb0\xbe\xe9\x9f\xb3";
-    case MENU_1_CALL:       return "\xe5\xba\x94\xe6\x80\xa5\xe4\xbf\xa1\xe9\x81\x93";
+    case MENU_RP_STE:       return "过中继尾音消除";
+    case MENU_1_CALL:       return "按键即呼";
 #ifdef ENABLE_ALARM
     case MENU_AL_MOD:       return "\xe6\x8a\xa5\xe8\xad\xa6";
 #endif
