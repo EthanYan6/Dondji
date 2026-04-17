@@ -637,6 +637,50 @@ char    edit_original[17]; // a copy of the text before editing so that we can e
 char    edit[17];
 int     edit_index;
 
+static const char *UI_MENU_MemNameModeLabel(void)
+{
+    switch (gMemNameInputMode)
+    {
+        case MEM_NAME_INPUT_UPPER: return "A";
+        case MEM_NAME_INPUT_DIGIT: return "1";
+        case MEM_NAME_INPUT_SYMBOL: return ",";
+        case MEM_NAME_INPUT_LOWER:
+        default: return "a";
+    }
+}
+
+static void UI_MENU_DrawMemNameCandidates(unsigned int x1, unsigned int x2)
+{
+    const uint8_t count = gMemNameCandidateCount;
+    if (count == 0u || x2 <= x1)
+        return;
+
+    const unsigned int avail = (x2 - x1) + 1u;
+    for (uint8_t i = 0; i < count; i++)
+    {
+        char num[2];
+        char sym[2];
+        const unsigned int slot_l = x1 + (avail * i) / count;
+        const unsigned int slot_r = x1 + (avail * (i + 1u)) / count - 1u;
+        const unsigned int slot_w = (slot_r >= slot_l) ? (slot_r - slot_l + 1u) : 0u;
+        const unsigned int w_num = 6u;
+        const unsigned int w_sym = 6u;
+        const unsigned int token_w = w_num + 4u + w_sym; // "数字序号 + 4px + 符号"
+        unsigned int token_x = slot_l;
+
+        if (slot_w > token_w)
+            token_x = slot_l + (slot_w - token_w) / 2u;
+
+        num[0] = (char)('1' + i);
+        num[1] = 0;
+        sym[0] = gMemNameCandidates[i];
+        sym[1] = 0;
+
+        UI_PrintStringSmallAtPixel(num, token_x, token_x, 50u, 57u, 0u);
+        UI_PrintStringSmallAtPixel(sym, token_x + w_num + 4u, token_x + w_num + 4u, 50u, 57u, 0u);
+    }
+}
+
 static void UI_MENU_DrawLauncherGear40(uint8_t x, uint8_t y)
 {
     static const uint64_t GEAR40[40] = {
@@ -1443,6 +1487,45 @@ void UI_DisplayMenu(void)
         case MENU_MEM_NAME:
         {
             const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 0);
+            if (gIsInSubMenu && edit_index >= 0)
+            {
+                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x2 = menu_item_x2;
+#ifdef ENABLE_CHINESE
+                if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
+                    sub_val_x1 += 2u;
+#endif
+                UI_PrintStringSmallAtPixel(UI_MENU_MemNameModeLabel(), (uint8_t)(sub_val_x2 - 6u), (uint8_t)sub_val_x2, 20u, 27u, 0u);
+                UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 28u, 35u, 0u);
+                if (edit_index < 10)
+                {
+                    uint8_t char_width = 6;
+                    uint8_t char_spacing = char_width + 1;
+                    size_t edit_length = strlen(edit);
+                    uint8_t text_start = (uint8_t)sub_val_x1;
+                    if (sub_val_x2 > sub_val_x1 && edit_length > 0)
+                        text_start += (uint8_t)((((sub_val_x2 - sub_val_x1) - edit_length * char_spacing) + 1u) / 2u);
+                    {
+                        const uint8_t underline_x = (uint8_t)(text_start + (edit_index * char_spacing) + 1u);
+                        const uint8_t underline_fb_row = (uint8_t)(35u / 8u);
+                        if (underline_fb_row < FRAME_LINES)
+                            for (uint8_t c = 0; c < char_width; c++)
+                                gFrameBuffer[underline_fb_row][underline_x + c] |= 0x01u;
+                    }
+                }
+                if (gMemNameCandidateCount > 0u)
+                {
+                    UI_MENU_DrawMemNameCandidates((uint8_t)sub_val_x1, (uint8_t)sub_val_x2);
+                }
+                else
+                {
+                    UI_PrintStringSmallAtPixel(
+                        (gUiLanguage == UI_LANGUAGE_CN) ? "按#切换输入模式" : "Press # to switch mode",
+                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 50u, 57u, 0u);
+                }
+                already_printed = true;
+                break;
+            }
 
 #ifdef ENABLE_CHINESE
             {

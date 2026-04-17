@@ -53,6 +53,72 @@ static bool gMenuMainPageLastValid;
 static uint8_t gMenuMainPageLastIconIndex;
 static bool gMenuSecondPageLastValid[8];
 static uint8_t gMenuSecondPageLastMenuId[8];
+uint8_t gMemNameInputMode = MEM_NAME_INPUT_LOWER;
+uint8_t gMemNameCandidateCount;
+char gMemNameCandidates[5];
+uint8_t gMemNameSymbolPage;
+
+static const char *MENU_GetMemNameLettersByKey(const KEY_Code_t key)
+{
+    static const char *const map[] = {
+        "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"
+    };
+    if (key < KEY_2 || key > KEY_9)
+        return NULL;
+    return map[key - KEY_2];
+}
+
+static void MENU_BuildMemNameCandidatesFromKey(const KEY_Code_t key)
+{
+    const char *letters = MENU_GetMemNameLettersByKey(key);
+    gMemNameCandidateCount = 0;
+    if (letters == NULL)
+        return;
+
+    while (letters[gMemNameCandidateCount] != 0 && gMemNameCandidateCount < ARRAY_SIZE(gMemNameCandidates))
+    {
+        const char c = letters[gMemNameCandidateCount];
+        gMemNameCandidates[gMemNameCandidateCount] =
+            (gMemNameInputMode == MEM_NAME_INPUT_UPPER) ? (char)(c - ('a' - 'A')) : c;
+        gMemNameCandidateCount++;
+    }
+}
+
+static void MENU_BuildMemNameSymbolCandidates(void)
+{
+    static const char symbols[] = ".,!?@#$%&*+-/=_:;()[]{}<>\"'\\|~^`";
+    const uint8_t per_page = ARRAY_SIZE(gMemNameCandidates);
+    const uint8_t total = (uint8_t)(sizeof(symbols) - 1u);
+    const uint8_t pages = (uint8_t)((total + per_page - 1u) / per_page);
+    const uint8_t base = (uint8_t)(gMemNameSymbolPage * per_page);
+    gMemNameCandidateCount = 0;
+
+    if (pages == 0u)
+        return;
+    if (gMemNameSymbolPage >= pages)
+        gMemNameSymbolPage = 0u;
+
+    for (uint8_t i = 0; i < per_page; i++)
+    {
+        const uint8_t idx = (uint8_t)(base + i);
+        if (idx >= total)
+            break;
+        gMemNameCandidates[gMemNameCandidateCount++] = symbols[idx];
+    }
+}
+
+static void MENU_MemNameAdvanceAfterInput(void)
+{
+    gMemNameCandidateCount = 0;
+
+    if (++edit_index < 10)
+        return;
+
+    gFlagAcceptSetting  = false;
+    gAskForConfirmation = 0;
+    if (memcmp(edit_original, edit, sizeof(edit_original)) == 0)
+        gIsInSubMenu = false;
+}
 
 /** Icon-mode menu list: hide all DTMF-related items (they fall under Settings and Other by index). */
 static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
@@ -1729,16 +1795,56 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
         if (edit_index < 10)
         {
+            if (gMemNameInputMode == MEM_NAME_INPUT_DIGIT)
+            {
+                edit[edit_index] = '0' + Key - KEY_0;
+                gMemNameCandidateCount = 0;
+                MENU_MemNameAdvanceAfterInput();
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
+            }
+            if (gMemNameInputMode == MEM_NAME_INPUT_LOWER ||
+                gMemNameInputMode == MEM_NAME_INPUT_UPPER)
+            {
+                if (Key >= KEY_1 && Key <= KEY_4 && gMemNameCandidateCount > 0u)
+                {
+                    const uint8_t idx = (uint8_t)(Key - KEY_1);
+                    if (idx < gMemNameCandidateCount)
+                    {
+                        edit[edit_index] = gMemNameCandidates[idx];
+                        MENU_MemNameAdvanceAfterInput();
+                        gRequestDisplayScreen = DISPLAY_MENU;
+                        return;
+                    }
+                }
+                if (Key >= KEY_2 && Key <= KEY_9)
+                {
+                    MENU_BuildMemNameCandidatesFromKey(Key);
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
+            if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+            {
+                if (Key >= KEY_1 && Key <= KEY_5 && gMemNameCandidateCount > 0u)
+                {
+                    const uint8_t idx = (uint8_t)(Key - KEY_1);
+                    if (idx < gMemNameCandidateCount)
+                    {
+                        edit[edit_index] = gMemNameCandidates[idx];
+                        MENU_MemNameAdvanceAfterInput();
+                        gRequestDisplayScreen = DISPLAY_MENU;
+                        return;
+                    }
+                }
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
             if (Key <= KEY_9)
             {
                 edit[edit_index] = '0' + Key - KEY_0;
-
-                if (++edit_index >= 10)
-                {   // exit edit
-                    gFlagAcceptSetting  = false;
-                    gAskForConfirmation = 1;
-                }
-
                 gRequestDisplayScreen = DISPLAY_MENU;
             }
         }
@@ -1912,7 +2018,7 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                 
                 if (has_char_at_current)
                 {   // Delete character at current position
-                    edit[edit_index] = ' ';
+                    edit[edit_index] = '_';
                     gRequestDisplayScreen = DISPLAY_MENU;
                     return;
                 }
@@ -2059,6 +2165,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
         {
             gInputBoxIndex      = 0;
             edit_index          = -1;
+            gMemNameCandidateCount = 0;
         }
 
         return;
@@ -2082,6 +2189,9 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 
             // make a copy so we can test for change when exiting the menu item
             memcpy(edit_original, edit, sizeof(edit_original));
+            gMemNameInputMode = MEM_NAME_INPUT_LOWER;
+            gMemNameCandidateCount = 0;
+            gMemNameSymbolPage = 0;
 
             return;
         }
@@ -2174,17 +2284,10 @@ static void MENU_Key_STAR(const bool bKeyPressed, const bool bKeyHeld)
 
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && edit_index >= 0)
     {   // currently editing the channel name
-
         if (edit_index < 10)
         {
             edit[edit_index] = '-';
-
-            if (++edit_index >= 10)
-            {   // exit edit
-                gFlagAcceptSetting  = false;
-                gAskForConfirmation = 1;
-            }
-
+            gMemNameCandidateCount = 0;
             gRequestDisplayScreen = DISPLAY_MENU;
         }
 
@@ -2226,7 +2329,21 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
     }
 
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && edit_index >= 0)
-    {   // change the character
+    {   // symbol mode uses up/down to page candidates
+        if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL && bKeyPressed && Direction != 0)
+        {
+            static const uint8_t per_page = ARRAY_SIZE(gMemNameCandidates);
+            static const uint8_t total_symbols = sizeof(".,!?@#$%&*+-/=_:;()[]{}<>\"'\\|~^`") - 1u;
+            const uint8_t pages = (uint8_t)((total_symbols + per_page - 1u) / per_page);
+            if (pages > 0u)
+            {
+                gMemNameSymbolPage = NUMBER_AddWithWraparound(gMemNameSymbolPage, Direction > 0 ? 1 : -1, 0, pages - 1u);
+                MENU_BuildMemNameSymbolCandidates();
+                gRequestDisplayScreen = DISPLAY_MENU;
+            }
+            return;
+        }
+        // keep old behavior as fallback
         if (bKeyPressed && edit_index < 10 && Direction != 0)
         {
             const char   unwanted[] = "$%&!\"':;?^`|{}";
@@ -2402,16 +2519,11 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 if (!bKeyHeld && bKeyPressed)
                 {
                     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-                    if (edit_index < 10)
-                    {
-                        edit[edit_index] = ' ';
-                        if (++edit_index >= 10)
-                        {   // exit edit
-                            gFlagAcceptSetting  = false;
-                            gAskForConfirmation = 1;
-                        }
-                        gRequestDisplayScreen = DISPLAY_MENU;
-                    }
+                    gMemNameInputMode = (uint8_t)((gMemNameInputMode + 1u) % 4u);
+                    gMemNameCandidateCount = 0;
+                    if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+                        MENU_BuildMemNameSymbolCandidates();
+                    gRequestDisplayScreen = DISPLAY_MENU;
                 }
                 break;
             }

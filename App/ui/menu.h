@@ -238,6 +238,17 @@ extern char              edit_original[17];
 extern char              edit[17];
 extern int               edit_index;
 
+enum {
+    MEM_NAME_INPUT_LOWER = 0,
+    MEM_NAME_INPUT_UPPER,
+    MEM_NAME_INPUT_DIGIT,
+    MEM_NAME_INPUT_SYMBOL
+};
+extern uint8_t           gMemNameInputMode;
+extern uint8_t           gMemNameCandidateCount;
+extern char              gMemNameCandidates[5];
+extern uint8_t           gMemNameSymbolPage;
+
 void UI_DisplayMenu(void);
 const char *UI_MENU_GetMenuTitle(const t_menu_item *item);
 int UI_MENU_GetCurrentMenuId();
