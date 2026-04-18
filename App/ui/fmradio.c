@@ -29,9 +29,31 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 
+#ifdef ENABLE_CHINESE
+/* 仅中文 UI：与记忆频率差 1 步(0.1MHz) 时也显示 频率(CHnn)，不改变英文与按键逻辑 */
+static uint8_t FM_UI_CnMemorySlotForPlaying(void)
+{
+    const uint16_t play = gEeprom.FM_FrequencyPlaying;
+
+    for (unsigned i = 0; i < FM_CHANNELS_MAX; i++) {
+        if (!FM_CheckValidChannel((uint8_t)i))
+            continue;
+        const uint16_t mem = gFM_Channels[i];
+        if (mem == play)
+            return (uint8_t)(i + 1u);
+        if (mem > play) {
+            if (mem - play <= 1u)
+                return (uint8_t)(i + 1u);
+        } else if (play - mem <= 1u)
+            return (uint8_t)(i + 1u);
+    }
+    return 0;
+}
+#endif
+
 void UI_DisplayFM(void)
 {
-    char String[16] = {0};
+    char String[40] = {0};
     char *pPrintStr = String;
     UI_DisplayClear();
 
@@ -50,31 +72,73 @@ void UI_DisplayFM(void)
     //UI_PrintStringSmallNormal(String, 127 - 4*7, 0, 6);
 
     if (gAskToSave) {
-        pPrintStr = "SAVE?";
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            pPrintStr = "\xe4\xbf\x9d\xe5\xad\x98?";
+        else
+#endif
+            pPrintStr = "SAVE?";
     } else if (gAskToDelete) {
-        pPrintStr = "DEL?";
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            pPrintStr = "\xe5\x88\xa0\xe9\x99\xa4?";
+        else
+#endif
+            pPrintStr = "DEL?";
     } else if (gFM_ScanState == FM_SCAN_OFF) {
         if (gEeprom.FM_IsMrMode) {
-            sprintf(String, "MR(CH%02u)", gEeprom.FM_SelectedChannel + 1);
+#ifdef ENABLE_CHINESE
+            if (gUiLanguage == UI_LANGUAGE_CN)
+                sprintf(String, "\xe4\xbf\xa1\xe9\x81\x93(CH%02u)", (unsigned)gEeprom.FM_SelectedChannel + 1u);
+            else
+#endif
+                sprintf(String, "MR(CH%02u)", gEeprom.FM_SelectedChannel + 1);
             pPrintStr = String;
         } else {
-            pPrintStr = "VFO";
-            for (unsigned int i = 0; i < FM_CHANNELS_MAX; i++) {
-                if (gEeprom.FM_FrequencyPlaying == gFM_Channels[i]) {
-                    sprintf(String, "VFO(CH%02u)", i + 1);
+#ifdef ENABLE_CHINESE
+            if (gUiLanguage == UI_LANGUAGE_CN) {
+                const uint8_t slot = FM_UI_CnMemorySlotForPlaying();
+                if (slot != 0u) {
+                    sprintf(String, "\xe9\xa2\x91\xe7\x8e\x87(CH%02u)", (unsigned)slot);
                     pPrintStr = String;
-                    break;
+                } else
+                    pPrintStr = "\xe9\xa2\x91\xe7\x8e\x87";
+            } else
+#endif
+            {
+                pPrintStr = "VFO";
+                for (unsigned int i = 0; i < FM_CHANNELS_MAX; i++) {
+                    if (gEeprom.FM_FrequencyPlaying == gFM_Channels[i]) {
+                        sprintf(String, "VFO(CH%02u)", i + 1);
+                        pPrintStr = String;
+                        break;
+                    }
                 }
             }
         }
     } else if (gFM_AutoScan) {
-        sprintf(String, "A-SCAN(%u)", gFM_ChannelPosition);
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            sprintf(String, "\xe9\xa2\x91\xe7\x8e\x87\xe6\x89\xab\xe6\x8f\x8f(%u)", (unsigned)gFM_ChannelPosition);
+        else
+#endif
+            sprintf(String, "A-SCAN(%u)", gFM_ChannelPosition);
         pPrintStr = String;
     } else {
-        pPrintStr = "M-SCAN";
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            pPrintStr = "\xe4\xbf\xa1\xe9\x81\x93\xe6\x89\xab\xe6\x8f\x8f";
+        else
+#endif
+            pPrintStr = "M-SCAN";
     }
 
-    UI_PrintString(pPrintStr, 0, 127, 3, 10); // memory, vfo, scan
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN)
+        UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 36u, 52u, 3u);
+    else
+#endif
+        UI_PrintString(pPrintStr, 0, 127, 3, 10); /* memory, vfo, scan */
 
     memset(String, 0, sizeof(String));
     if (gAskToSave || (gEeprom.FM_IsMrMode && gInputBoxIndex > 0)) {

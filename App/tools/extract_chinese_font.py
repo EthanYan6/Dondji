@@ -10,6 +10,7 @@ import os
 # Menu item Chinese characters to support
 # 一级菜单: MR信道 VFO信道 收发设置 按键显示 DTMF控制 系统设置 功能选择 系统信息
 # 二级菜单和子选项根据Excel表格
+# 扫频页(中文): 频率 亚音 扫描中 — ui/scanner.c
 MENU_CHARS = """
 步进功率宽窄带调制繁忙锁定语音压扩频偏方向值段外发射接收发射存储删除信道名命名扫描列表
 静噪级别声控发射限时省电模式启用频段锁尾音消除中继过扫描恢复优先应急

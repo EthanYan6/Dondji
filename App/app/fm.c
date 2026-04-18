@@ -80,16 +80,18 @@ uint8_t FM_FindNextChannel(uint8_t Channel, uint8_t Direction)
 
 int FM_ConfigureChannelState(void)
 {
-    gEeprom.FM_FrequencyPlaying = gEeprom.FM_SelectedFrequency;
-
+    /* In MR mode, playing freq comes from memory slots, not FM_SelectedFrequency (VFO). */
     if (gEeprom.FM_IsMrMode) {
         const uint8_t Channel = FM_FindNextChannel(gEeprom.FM_SelectedChannel, FM_CHANNEL_UP);
         if (Channel == 0xFF) {
             gEeprom.FM_IsMrMode = false;
+            gEeprom.FM_FrequencyPlaying = gEeprom.FM_SelectedFrequency;
             return -1;
         }
         gEeprom.FM_SelectedChannel  = Channel;
         gEeprom.FM_FrequencyPlaying = gFM_Channels[Channel];
+    } else {
+        gEeprom.FM_FrequencyPlaying = gEeprom.FM_SelectedFrequency;
     }
 
     return 0;
@@ -634,6 +636,8 @@ void FM_Start(void)
     gFmRadioMode              = true;
     gFM_ScanState             = FM_SCAN_OFF;
     gFM_RestoreCountdown_10ms = 0;
+
+    (void)FM_ConfigureChannelState();
 
     BK1080_Init(gEeprom.FM_FrequencyPlaying, gEeprom.FM_Band/*, gEeprom.FM_Space*/);
     // Disable UHF LNA, enable VHF LNA
