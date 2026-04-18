@@ -840,6 +840,26 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
             UI_PrintStringSmallAtPixel("\xe9\xba\xa6\xe5\x85\x8b\xe9\xa3\x8e", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("\xe5\xa2\x9e\xe7\x9b\x8a", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_F1SHRT)
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_F1LONG)
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_F2SHRT)
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_F2LONG)
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
         else if (UI_MENU_GetCurrentMenuId() == MENU_MLONG)
         {
             UI_PrintStringSmallAtPixel("MENU", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);

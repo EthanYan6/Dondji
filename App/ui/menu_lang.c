@@ -46,10 +46,10 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_NOAA_S:       return "NOAA-S";
     #endif
 #endif
-    case MENU_F1SHRT:       return "F1\xe7\x9f\xad\xe6\x8c\x89";
-    case MENU_F1LONG:       return "F1\xe9\x95\xbf\xe6\x8c\x89";
-    case MENU_F2SHRT:       return "F2\xe7\x9f\xad\xe6\x8c\x89";
-    case MENU_F2LONG:       return "F2\xe9\x95\xbf\xe6\x8c\x89";
+    case MENU_F1SHRT:       return "\xe4\xbe\xa7\xe9\x94\xae""1\xe7\x9f\xad\xe6\x8c\x89";
+    case MENU_F1LONG:       return "\xe4\xbe\xa7\xe9\x94\xae""1\xe9\x95\xbf\xe6\x8c\x89";
+    case MENU_F2SHRT:       return "\xe4\xbe\xa7\xe9\x94\xae""2\xe7\x9f\xad\xe6\x8c\x89";
+    case MENU_F2LONG:       return "\xe4\xbe\xa7\xe9\x94\xae""2\xe9\x95\xbf\xe6\x8c\x89";
     case MENU_MLONG:        return "MENU长按";
     case MENU_AUTOLK:       return "\xe8\x87\xaa\xe5\x8a\xa8\xe9\x94\x81\xe9\x94\xae";
     case MENU_LANGUAGE:     return "\xe8\xaf\xad\xe8\xa8\x80";
