@@ -45,8 +45,8 @@ void UI_DisplayScanner(void)
         } else {
             pPrintStr = "\xe9\xa2\x91\xe7\x8e\x87:**.*****";
         }
-        /* x_end == x_start：不居中，左对齐（helper 仅在 x_end > x_start 时水平居中） */
-        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 2u, 14u, 3u);
+        /* NOTE: y<8 gets clamped in helper; use >=8 to make downward movement effective */
+        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 11u, 23u, 3u);
 
         if (gScanCssState < SCAN_CSS_STATE_FOUND || !gScanUseCssResult) {
             pPrintStr = "\xe4\xba\x9a\xe9\x9f\xb3:******";
@@ -59,7 +59,7 @@ void UI_DisplayScanner(void)
             sprintf(String, "DCS:D%03oN", DCS_Options[gScanCssResultCode]);
             pPrintStr = String;
         }
-        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 23u, 35u, 3u);
+        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 25u, 37u, 3u);
 
         memset(String, 0, sizeof(String));
         if (gScannerSaveState == SCAN_SAVE_CHANNEL) {
