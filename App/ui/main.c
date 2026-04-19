@@ -43,6 +43,8 @@
 
 #ifdef ENABLE_FEAT_F4HWN
     #include "driver/system.h"
+    #include "ui/dualvfo_u8g2_freq.h"
+    #include "ui/dualvfo_smeter_xbm.h"
 #endif
 
 center_line_t center_line = CENTER_LINE_NONE;
@@ -190,7 +192,7 @@ static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
 #define DV_Y_BOT_HDR   29u
 #define DV_Y_BOT_MAIN       39u /* A/B 上移 1px；旁信道号/RX 用 DV_Y_BOT_BESIDE_AB */
 #define DV_Y_BOT_BESIDE_AB  (DV_Y_BOT_MAIN + 2u) /* 框旁信道号、RX、TX 字下移 2px */
-#define DV_Y_BOT_FREQ_LINE  ((DV_Y_BOT_MAIN + DUAL_VFO_AB_BOT_H + 1u) - 10u) /* 较原单独行位置上移 10px */
+#define DV_Y_BOT_FREQ_LINE  ((DV_Y_BOT_MAIN + DUAL_VFO_AB_BOT_H + 1u) - 9u) /* 相对 -10 参考：下移 1px（整串含末两位） */
 /* 底栏：S 表在左；右为电池 8px + 其下居中百分比；DV_Y_METER 对齐电池页顶 */
 #define DV_Y_METER          50u /* 电池图标（及底栏）下移 2px */
 #define DV_BAT_ICON_H       8u
@@ -199,22 +201,16 @@ static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
 #define DV_BAT_FLUSH_RIGHT  0u /* batX = LCD_WIDTH - batW - 此值，0 即贴右 */
 #define DV_BAT_MODE_SHIFT_R (-1) /* 右下角 A/B 模式相对原布局左移 3px（原 +2 -> 现 -1） */
 #define DV_BAT_PCT_SHIFT_R  2u /* 电量百分比再右移 */
-/* S 表：刻度较原下移 5px；其下横条 + 9 条竖线；S/+dB 与「1-3-5-7-9」右端隔 2px，两行同 x */
+/* S 表：UV-KX 位图 + 离散 3×3 块（与 UI_DrawRSSI 一致）；S/+dB 列对齐 posX+38 */
 #define DV_SMETER_BAR_X0    1u
-#define DV_SMETER_BAR_W     33u
-#define DV_SMETER_LABEL_Y   (DV_Y_METER + 3u) /* S 表整体上移 2px */
-#define DV_SMETER_SCALE_W   (9u * 4u) /* "1-3-5-7-9" 最小字宽 */
-#define DV_SMETER_S_GAP     2u        /* 刻度末字符与 S 读数间隔 */
-#define DV_SMETER_SREAD_X   (DV_SMETER_SCALE_W + DV_SMETER_S_GAP)
-#define DV_SMETER_SVALUE_Y  DV_SMETER_LABEL_Y           /* S 值与刻度同一行 */
-#define DV_SMETER_DBB_Y     (DV_SMETER_LABEL_Y + 6u)    /* +dB 与 S 同列 */
-#define DV_SMETER_BAR_Y0    (DV_SMETER_LABEL_Y + 6u)
-#define DV_SMETER_VLINE_Y0  DV_SMETER_BAR_Y0
-#define DV_SMETER_VLINE_Y1  63u
-#define DV_SMETER_BAR_Y1    DV_SMETER_VLINE_Y1 /* 伸缩条与竖线同高 */
+#define DV_SMETER_LABEL_Y   (DV_Y_METER + 3u) /* 与 UV-KX DisplayRSSIBar 中 UI_DrawRSSI 的 y 一致 */
+#define DV_SMETER_SREAD_X   (DV_SMETER_BAR_X0 + 38u)
+#define DV_SMETER_SVALUE_Y  (DV_Y_METER + 2u) /* S 读数；较 +4 再上移 2px */
+#define DV_SMETER_DBB_Y     (DV_Y_METER + 8u) /* +dB 第二行；较 +10 再上移 2px */
 
 /* 副信道频率：3 列宽 2+2+1px（较原 1px/列总宽约 +2）；CHAR_W 含字后空，间隔较原再减 1px */
-#define DUAL_VFO_SUB_FREQ_H       8u
+/* 副频 u8g2 加粗字后竖向占位略增，RX/TX XOR 条与之匹配 */
+#define DUAL_VFO_SUB_FREQ_H       12u
 #define DUAL_VFO_SUB_FREQ_CHAR_W  7u
 /* A/B 行下方预留 1 像素再显示信道号 */
 #define DV_Y_TOP_CHID    (DV_Y_TOP_AB + DUAL_VFO_AB_TALL_H + 1u)
@@ -248,79 +244,25 @@ static void DualVfoClearRectPx(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
             PutPixel(xx, yy, false);
 }
 
-/* 频率数字样式：用 gFontBigDigits(10x16) 做缩放，接近截图里的粗体数字风格 */
-static bool DualVfoBigDigitPixel(char ch, uint8_t sx, uint8_t sy)
+/* UV-KX / u8g2_DrawXBM：每字节 bit0 为最左像素，依次左→右 */
+static void DualVfoDrawSmeterXbm(uint8_t x0, uint8_t y0)
 {
-    if (ch < '0' || ch > '9')
-        return false;
-    if (sx >= 10u || sy >= 16u)
-        return false;
-
-    const uint8_t *glyph = gFontBigDigits[(uint8_t)(ch - '0')];
-    if (sy < 8u)
-        return ((glyph[sx] >> sy) & 1u) != 0u;
-    return ((glyph[10u + sx] >> (sy - 8u)) & 1u) != 0u;
-}
-
-static void DualVfoDrawScaledBigDigit(char ch, uint8_t x0, uint8_t y0, uint8_t dstW, uint8_t dstH)
-{
-    for (uint8_t dx = 0; dx < dstW; dx++)
+    const unsigned stride = (DUALVFO_SMETER_XBM_WIDTH + 7u) / 8u;
+    for (uint8_t py = 0; py < DUALVFO_SMETER_XBM_HEIGHT; py++)
     {
-        const uint8_t sx = (uint8_t)((uint16_t)dx * 10u / dstW);
-        for (uint8_t dy = 0; dy < dstH; dy++)
+        for (uint8_t px = 0; px < DUALVFO_SMETER_XBM_WIDTH; px++)
         {
-            const uint8_t sy = (uint8_t)((uint16_t)dy * 16u / dstH);
-            if (DualVfoBigDigitPixel(ch, sx, sy))
-                PutPixel((uint8_t)(x0 + dx), (uint8_t)(y0 + dy), true);
+            const unsigned bi = (unsigned)py * stride + (unsigned)(px / 8u);
+            const uint8_t  b  = dualvfo_smeter_xbm_bits[bi];
+            if (b & (uint8_t)(1u << (px % 8u)))
+            {
+                const uint8_t x = (uint8_t)(x0 + px);
+                const uint8_t y = (uint8_t)(y0 + py);
+                if (x < LCD_WIDTH && y < LCD_HEIGHT)
+                    PutPixel(x, y, true);
+            }
         }
     }
-}
-
-/* 主频：每字符 8px 步进，数字本体 7x12，风格接近截图 */
-static uint8_t DualVfoDrawString2x(uint8_t x0, uint8_t y0, const char *s)
-{
-    uint8_t x = x0;
-    for (; *s; s++)
-    {
-        const char ch = *s;
-        if (ch >= '0' && ch <= '9')
-        {
-            DualVfoDrawScaledBigDigit(ch, x, y0, 7u, 12u);
-        }
-        else if (ch == '.')
-        {
-            /* 小数点放在下沿，3px 宽 */
-            PutPixel((uint8_t)(x + 1u), (uint8_t)(y0 + 10u), true);
-            PutPixel((uint8_t)(x + 2u), (uint8_t)(y0 + 10u), true);
-            PutPixel((uint8_t)(x + 1u), (uint8_t)(y0 + 11u), true);
-            PutPixel((uint8_t)(x + 2u), (uint8_t)(y0 + 11u), true);
-        }
-        x = (uint8_t)(x + 8u);
-    }
-    return x;
-}
-
-/* 副频：保持原行高 8px，数字本体 5x8，但沿用与主频一致的数字骨架 */
-static uint8_t DualVfoDrawStringSubFreqTall(uint8_t x0, uint8_t y0, const char *s)
-{
-    uint8_t x = x0;
-    for (; *s; s++)
-    {
-        const char ch = *s;
-        if (ch >= '0' && ch <= '9')
-        {
-            DualVfoDrawScaledBigDigit(ch, x, y0, 5u, DUAL_VFO_SUB_FREQ_H);
-        }
-        else if (ch == '.')
-        {
-            PutPixel((uint8_t)(x + 1u), (uint8_t)(y0 + DUAL_VFO_SUB_FREQ_H - 2u), true);
-            PutPixel((uint8_t)(x + 2u), (uint8_t)(y0 + DUAL_VFO_SUB_FREQ_H - 2u), true);
-            PutPixel((uint8_t)(x + 1u), (uint8_t)(y0 + DUAL_VFO_SUB_FREQ_H - 1u), true);
-            PutPixel((uint8_t)(x + 2u), (uint8_t)(y0 + DUAL_VFO_SUB_FREQ_H - 1u), true);
-        }
-        x = (uint8_t)(x + DUAL_VFO_SUB_FREQ_CHAR_W);
-    }
-    return x;
 }
 
 /* shortenTopBlack：为真时去掉反色条上方 1px 黑带（下面信道名与 A/B 之间少 1px 连续黑） */
@@ -522,13 +464,17 @@ static void DualVfoDrawTxOffsetSmallCentered(unsigned int vfoIdx, uint8_t gapL, 
 
 static void DualVfoDrawSubFreqSmallest(uint8_t y, uint32_t frequency, bool invertTail)
 {
-    char fs[16];
-    sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
-    const unsigned int w  = (unsigned int)strlen(fs) * DUAL_VFO_SUB_FREQ_CHAR_W;
-    const uint8_t      x0 = (w < LCD_WIDTH - 2u) ? (uint8_t)(LCD_WIDTH - 2u - w) : 2u;
-    DualVfoDrawStringSubFreqTall(x0, y, fs);
+    /* font_10_tr 基线：原 y+11，整体上移 4px → y+7；下面板反色条占至 y=35，XOR 上沿不低于 36 */
+    const uint8_t baseline = (uint8_t)(y + 7u);
+    const uint8_t x_sub   = DualVfoU8g2_DrawSubFreqStrip(frequency, baseline);
     if (invertTail)
-        DualVfoXorHStripColumns(x0, y, (uint8_t)(y + DUAL_VFO_SUB_FREQ_H - 1u));
+    {
+        uint8_t xor_y0 = (y >= 4u) ? (uint8_t)(y - 4u) : y;
+        if (xor_y0 < 36u)
+            xor_y0 = 36u;
+        const uint8_t xor_y1 = (uint8_t)(xor_y0 + DUAL_VFO_SUB_FREQ_H - 1u);
+        DualVfoXorHStripColumns(x_sub, xor_y0, xor_y1);
+    }
 }
 
 static void DualVfoDrawMainFreq2x(unsigned int vfoIdx, uint32_t frequency, bool invertTail)
@@ -539,10 +485,14 @@ static void DualVfoDrawMainFreq2x(unsigned int vfoIdx, uint32_t frequency, bool 
     uint8_t            x0 = (w < LCD_WIDTH - 4u) ? (uint8_t)(LCD_WIDTH - 2u - w) : 2u;
     if (x0 < 44u)
         x0 = 44u;
-    DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, x0, (uint8_t)(DV_Y_TOP_CH + 3u));
-    DualVfoDrawString2x(x0, DV_Y_TOP_CH, fs);
-    if (invertTail)
-        DualVfoXorHStripColumns(x0, DV_Y_TOP_CH, (uint8_t)(DV_Y_TOP_CH + 11u));
+    {
+        const uint8_t xf = DualVfoU8g2_MainFreqComputeDrawX(frequency, x0);
+        /* 仅主频 u8g2 数字（含末两位）用 xf 右移；Tx 偏置小字仍按名义左缘 x0 居中，避免牵动其它元素 */
+        DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, x0, (uint8_t)(DV_Y_TOP_CH + 3u));
+        DualVfoU8g2_DrawMainFreqStrip(frequency, xf, (uint8_t)(DV_Y_TOP_CH + 11u));
+        if (invertTail)
+            DualVfoXorHStripColumns(xf, DV_Y_TOP_CH, (uint8_t)(DV_Y_TOP_CH + 11u));
+    }
 }
 
 static void DualVfoAppendTone(char *buf, size_t cap, char tag, const FREQ_Config_t *pc)
@@ -702,53 +652,30 @@ static uint8_t DualVfoMapOverS9ToDisplayStep(unsigned overRaw)
     }
 }
 
-/* S 表横条像素数：右缘与竖线刻度（mL..mR 分 10 格、第 i 条在 mL+i*(mR-mL)/10）对齐；≤S9 在 tick1～tick9 间按 RSSI 插值，>S9 再到条带满宽 */
-static unsigned DualVfoSmeterBarPxFromRssi(int16_t rssi_dBm, int16_t s0_dBm, int16_t s9_dBm, uint8_t mL,
-                                           uint8_t mR, uint8_t barX0, uint8_t barW)
+/* UV-KX convertRSSIToSLevel：0..9 为档，10 为 >S9；与底栏方块个数一致 */
+static uint8_t DualVfoConvertRssiToUvSLevel(int16_t rssi_dBm)
 {
-    uint8_t       tick[10];
-    const uint8_t rightFull = (uint8_t)(barX0 + barW - 1u);
-    unsigned      i;
-
-    for (i = 1u; i <= 9u; i++)
-        tick[i] = (uint8_t)(mL + i * (mR - mL) / 10u);
-
-    int16_t rightEdge = 0;
-
-    if (rssi_dBm <= s9_dBm)
+    static const int16_t kUvSLevelThresholds[] = {
+        -121, -115, -109, -103, -97, -91, -85, -79, -73, -67
+    };
+    for (uint8_t level = 0; level < (uint8_t)ARRAY_SIZE(kUvSLevelThresholds); level++)
     {
-        int32_t sx = (int32_t)(rssi_dBm - s0_dBm) * 8000L / (int32_t)(s9_dBm - s0_dBm) + 1000L;
-        if (sx <= 1000)
-            rightEdge = 0;
-        else if (sx >= 9000)
-            rightEdge = (int16_t)tick[9];
-        else
-        {
-            const unsigned idx  = (unsigned)(sx - 1000) / 1000u;
-            const unsigned frac = (unsigned)(sx - 1000) % 1000u;
-            rightEdge =
-                (int16_t)tick[idx + 1u] +
-                (int16_t)(((int32_t)tick[idx + 2u] - (int32_t)tick[idx + 1u]) * (int32_t)frac / 1000L);
-        }
+        if (rssi_dBm <= kUvSLevelThresholds[level])
+            return level;
     }
-    else
-    {
-        int16_t re =
-            map(rssi_dBm, s9_dBm, (int16_t)(s9_dBm + 40), (int16_t)tick[9], (int16_t)rightFull);
-        if (re < (int16_t)tick[9])
-            re = (int16_t)tick[9];
-        if (re > (int16_t)rightFull)
-            re = (int16_t)rightFull;
-        rightEdge = re;
-    }
+    return 10u;
+}
 
-    if (rightEdge < (int16_t)barX0)
-        return 0u;
+/* UV-KX UI_DrawRSSI：u8g2_DrawBox(lcd, currentX, y + 6, 3, 3)，步进 4，最多 9 块 */
+static void DualVfoDrawSmeterBoxesUv(uint8_t s_level, uint8_t x, uint8_t y)
+{
+    uint8_t currentX = x;
+    for (uint8_t i = 0; i < s_level && i < 9u; i++)
     {
-        unsigned px = (unsigned)((int16_t)rightEdge - (int16_t)barX0 + 1);
-        if (px > barW)
-            px = barW;
-        return px;
+        const uint8_t y0 = (uint8_t)(y + 6u);
+        const uint8_t y1 = (uint8_t)(y0 + 2u);
+        DualVfoFillRectBlack(currentX, y0, (uint8_t)(currentX + 2u), y1);
+        currentX = (uint8_t)(currentX + 4u);
     }
 }
 
@@ -766,15 +693,12 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
         rowFbNext[c] = 0;
     }
 
-    const uint8_t mL = 0;
-    const uint8_t mR = 34;
-
-    GUI_DisplaySmallest("1-3-5-7-9", 0, DV_SMETER_LABEL_Y, false, true);
+    DualVfoDrawSmeterXbm(DV_SMETER_BAR_X0, DV_SMETER_LABEL_Y);
 
     {
         const bool   rxActive = FUNCTION_IsRx();
         int16_t      rssi_dBm = 0;
-        unsigned int barPx    = 0;
+        uint8_t      s_level  = 0;
         char         s9b[8]   = "";
         char         dbb[10]  = "";
 
@@ -785,21 +709,12 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             if (gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM)
                 rssi_dBm = (int16_t)(rssi_dBm + AM_fix_get_gain_diff());
 #endif
+            s_level = DualVfoConvertRssiToUvSLevel(rssi_dBm);
             const int16_t s9_dBm = -93;
-            const int16_t s0_dBm = -141;
-            /* 横条右缘对齐 9 条竖线刻度；最强（>S9）拉满条宽 */
-            barPx = DualVfoSmeterBarPxFromRssi(rssi_dBm, s0_dBm, s9_dBm, mL, mR, DV_SMETER_BAR_X0,
-                                               DV_SMETER_BAR_W);
-            if (rssi_dBm <= s9_dBm)
-            {
-                int16_t s_num = map(rssi_dBm, s0_dBm, s9_dBm, 1, 9);
-                if (s_num < 1)
-                    s_num = 1;
-                if (s_num > 9)
-                    s_num = 9;
-                sprintf(s9b, "S%u", (unsigned)s_num);
-            }
-            else
+
+            if (s_level >= 1u && s_level <= 9u)
+                sprintf(s9b, "S%u", (unsigned)s_level);
+            else if (s_level == 10u)
             {
                 int32_t overDb = (int32_t)rssi_dBm - (int32_t)s9_dBm;
                 if (overDb < 0)
@@ -807,21 +722,7 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
                 strcpy(s9b, "S9");
                 sprintf(dbb, "+%udB", (unsigned)DualVfoMapOverS9ToDisplayStep((unsigned)overDb));
             }
-        }
-
-        for (unsigned int i = 0; i < barPx; i++)
-        {
-            const uint8_t x = (uint8_t)(DV_SMETER_BAR_X0 + i);
-            for (uint8_t y = DV_SMETER_BAR_Y0; y <= DV_SMETER_BAR_Y1; y++)
-                PutPixel(x, y, true);
-        }
-
-        /* S1..S9 位 9 条竖线（刻度字下方） */
-        for (unsigned i = 1u; i <= 9u; i++)
-        {
-            const uint8_t tx = (uint8_t)(mL + (uint32_t)i * (uint32_t)(mR - mL) / 10u);
-            for (uint8_t y = DV_SMETER_VLINE_Y0; y <= DV_SMETER_VLINE_Y1; y++)
-                PutPixel(tx, y, true);
+            DualVfoDrawSmeterBoxesUv(s_level, DV_SMETER_BAR_X0, DV_SMETER_LABEL_Y);
         }
 
         if (s9b[0] != 0)

@@ -11,6 +11,7 @@ target_sources(Core INTERFACE
     Src/main.c
     Src/py32f071_it.c
     Src/system_py32f071.c
+    Src/syscalls.c
     startup_py32f071xx.s
 )
 
