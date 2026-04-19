@@ -21,6 +21,7 @@
 * Classic icon menu
 * Lock screen redesign
 * Chinese localization
+* Reworked channel rename flow; phone-style nine-grid (T9) text input
 
 ---
 

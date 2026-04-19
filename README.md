@@ -51,6 +51,7 @@
 - 🔒 Lock screen UI redesign
 - 🌏 Chinese / English localization
 - 🧭 Menu restructuring & UI refactor
+- 📝 Reworked channel rename flow; phone-style nine-grid (T9) text input
 
 ---
 
