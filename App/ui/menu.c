@@ -1539,9 +1539,20 @@ void UI_DisplayMenu(void)
                 }
                 else
                 {
-                    UI_PrintStringSmallAtPixel(
-                        (gUiLanguage == UI_LANGUAGE_CN) ? "按#切换输入模式" : "Press # to switch mode",
-                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 50u, 57u, 0u);
+                    /* 10 字输完按 MENU 会进入 SURE?/WAIT!（约 y52），与底部提示同一带区，故不再叠字 */
+                    const bool mem_name_still_editing_cursor =
+                        (edit_index < 10);
+                    const bool mem_name_not_in_confirm_dialog =
+                        (gAskForConfirmation == 0);
+                    const bool should_show_hash_mode_hint =
+                        mem_name_still_editing_cursor &&
+                        mem_name_not_in_confirm_dialog;
+                    if (should_show_hash_mode_hint)
+                    {
+                        UI_PrintStringSmallAtPixel(
+                            (gUiLanguage == UI_LANGUAGE_CN) ? "按#切换输入模式" : "Press # to switch mode",
+                            (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 50u, 57u, 0u);
+                    }
                 }
                 already_printed = true;
                 break;
