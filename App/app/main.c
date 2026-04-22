@@ -53,6 +53,15 @@ static VFO_Info_t gVfoBackup;
 static uint16_t   gScreenChannelBackup = 0;
 static uint16_t   gFreqChannelBackup = 0;
 
+static bool is_main_only_mode(void)
+{
+    const bool dual_watch_is_off = (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF);
+    const bool cross_band_is_off = (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+    const bool main_only_mode = dual_watch_is_off && cross_band_is_off;
+
+    return main_only_mode;
+}
+
 static void VFO_RestoreBackup(void) {
     if (gHasVfoBackup) {
         const uint8_t Vfo = gEeprom.TX_VFO;
@@ -208,6 +217,10 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
             break;
 
         case KEY_2:
+            if (is_main_only_mode()) {
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                break;
+            }
             #ifdef ENABLE_FEAT_F4HWN
                 gVfoConfigureMode     = VFO_CONFIGURE;
             #endif
@@ -423,6 +436,15 @@ void channelMoveSwitch(void) {
 static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
     if (bKeyHeld) { // key held down
+        const bool is_key_seven = (Key == KEY_7);
+
+        if (is_key_seven) {
+            if (bKeyPressed) {
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+            }
+            return;
+        }
+
         if (bKeyPressed) {
             if (gScreenToDisplay == DISPLAY_MAIN) {
                 if (gInputBoxIndex > 0) { // delete any inputted chars
@@ -834,93 +856,17 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 
 static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 {
-    if (gCurrentFunction == FUNCTION_TRANSMIT)
-        return;
-    
-    if (gInputBoxIndex) {
-        if (!bKeyHeld && bKeyPressed)
-            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
-        return;
-    }
+    const bool star_key_is_pressed = bKeyPressed;
+    const bool star_key_is_held = bKeyHeld;
+    const bool f_shortcut_active = gWasFKeyPressed;
 
-    if (!bKeyHeld && bKeyPressed) { // star key pressed
-        gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;  // beep when key is pressed
-        return;                                 // don't use the key till it's released
-    }
-
-    #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
-        if(gEeprom.MENU_LOCK == true) {
-            HideFKeyIcon();
-
-            return; // prevent F function if MENU LOCK is true
-        }
-    #endif
-
-    if (bKeyHeld && !gWasFKeyPressed){ // long press
-        if (!bKeyPressed) // released
-            return; 
-
-        /*
-        #ifdef ENABLE_FEAT_F4HWN_RESUME_STATE
-        if(gScanRangeStart == 0) // No ScanRange
-        {
-            gEeprom.CURRENT_STATE = 1;
-        }
-        else // ScanRange
-        {
-            gEeprom.CURRENT_STATE = 2;
-        }
-        SETTINGS_WriteCurrentState();
-        #endif
-        */
-        ACTION_Scan(false);// toggle scanning
-
-        gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-        return;
-    }
-    
-    if (!gWasFKeyPressed) // pressed without the F-key
-    {   
-        if (gScanStateDir == SCAN_OFF 
-#ifdef ENABLE_NOAA
-            && !IS_NOAA_CHANNEL(gTxVfo->CHANNEL_SAVE)
-#endif
-#ifdef ENABLE_SCAN_RANGES
-            && gScanRangeStart == 0
-#endif      
-        )
-        {   // start entering a DTMF string
-            memcpy(gDTMF_InputBox, gDTMF_String, MIN(sizeof(gDTMF_InputBox), sizeof(gDTMF_String) - 1));
-            gDTMF_InputBox_Index  = 0;
-            gDTMF_InputMode       = true;
-
-            gKeyInputCountdown    = key_input_timeout_500ms;
-
-            gRequestDisplayScreen = DISPLAY_MAIN;
-        }
-        else
-            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
-    }
-    else
-    {   // with the F-key
+    if (f_shortcut_active) {
         gWasFKeyPressed = false;
-
-#ifdef ENABLE_NOAA
-        if (IS_NOAA_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
-            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
-            return;
-        }               
-#endif
-        // scan the CTCSS/DCS code
-        gBackup_CROSS_BAND_RX_TX  = gEeprom.CROSS_BAND_RX_TX;
-        gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
-
-        SCANNER_Start(true);
-        gRequestDisplayScreen = DISPLAY_SCANNER;
     }
-    
-    //gPttWasReleased = true; Fixed issue #138
-    gUpdateStatus   = true;
+
+    if (!star_key_is_held && star_key_is_pressed) {
+        gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+    }
 }
 
 static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
