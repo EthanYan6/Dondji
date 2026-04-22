@@ -268,18 +268,18 @@ static void DualVfoDrawInvertedHeaderPx(uint8_t y, unsigned int vfoIdx, bool sho
 {
     char L[20];
     char R[22];
-    /* 信道名行：字体仍为 GUI_DisplaySmallest；默认上沿 y-1 黑带，下扩至 y+6 */
+    /* 信道名行：使用 u8g2 小字；默认上沿 y-1 黑带，下扩至 y+6 */
     const uint8_t yTop = shortenTopBlack ? y : ((y > 0u) ? (uint8_t)(y - 1u) : 0u);
     const uint8_t yBot = (uint8_t)(y + 6u); /* 原 y..y+5 共 6 行字区，下扩 1px */
     DualVfoFillRectBlack(0, yTop, (uint8_t)(LCD_WIDTH - 1u), yBot);
     DualVfoHeaderLeft(vfoIdx, L, sizeof(L));
     DualVfoHeaderRight(vfoIdx, R, sizeof(R));
     /* 黑底范围不变；字下移 1 像素 */
-    GUI_DisplaySmallest(L, 2, (uint8_t)(y + 1u), false, false);
+    DualVfoU8g2_DrawSmallText(L, 2u, (uint8_t)(y + 1u), false);
     {
-        const unsigned int rw = (unsigned int)strlen(R) * 4u;
+        const unsigned int rw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(R);
         const uint8_t      x = (rw < LCD_WIDTH - 4u) ? (uint8_t)(LCD_WIDTH - 2u - rw) : 2u;
-        GUI_DisplaySmallest(R, x, (uint8_t)(y + 1u), false, false);
+        DualVfoU8g2_DrawSmallText(R, x, (uint8_t)(y + 1u), false);
     }
 }
 
@@ -375,8 +375,11 @@ static void DualVfoDrawAbRxTxOnlyPx(unsigned int vfoIdx, uint8_t y, unsigned int
         else
         {
             /* 下面板：最小字 GUI_DisplaySmallest 单字约 4×6（与 helper.c 一致），在框内居中 */
-            UI_DrawRectangleBuffer(gFrameBuffer, (int16_t)innerL, (int16_t)y, (int16_t)innerR,
-                                   (int16_t)(y + (int16_t)abH - 1), true);
+            const int16_t boxLeft = (int16_t)innerL - 1;
+            const int16_t boxTop = (int16_t)y;
+            const int16_t boxRight = (int16_t)innerR;
+            const int16_t boxBottom = (int16_t)y + (int16_t)abH;
+            UI_DrawRectangleBuffer(gFrameBuffer, boxLeft, boxTop, boxRight, boxBottom, true);
             {
                 char          abStr[2] = { letter, '\0' };
                 const uint8_t smCellW  = 4u;
@@ -385,7 +388,7 @@ static void DualVfoDrawAbRxTxOnlyPx(unsigned int vfoIdx, uint8_t y, unsigned int
                     (uint8_t)(innerL + (abW > smCellW ? (uint8_t)((abW - smCellW) / 2u) : 0u) + 1u);
                 const uint8_t ty =
                     (uint8_t)(y + (abH > smH ? (uint8_t)((abH - smH) / 2u) : 0u) + 1u);
-                GUI_DisplaySmallest(abStr, tx, ty, false, true);
+                DualVfoU8g2_DrawSmallText(abStr, tx, ty, true);
             }
         }
     }
@@ -393,17 +396,17 @@ static void DualVfoDrawAbRxTxOnlyPx(unsigned int vfoIdx, uint8_t y, unsigned int
     if (rxHere)
     {
         if (rxBesideAb)
-            GUI_DisplaySmallest("RX", rxX, labelY, false, true);
+            DualVfoU8g2_DrawSmallText("RX", rxX, labelY, true);
     }
     else if (txHere)
-        GUI_DisplaySmallest("TX", txX, labelY, false, true);
+        DualVfoU8g2_DrawSmallText("TX", txX, labelY, true);
 }
 
 static void DualVfoDrawChIdSmallest(unsigned int vfoIdx, uint8_t x, uint8_t y)
 {
     char chId[14];
     DualVfoFmtChId(vfoIdx, chId, sizeof(chId));
-    GUI_DisplaySmallest(chId, x, y, false, true);
+    DualVfoU8g2_DrawSmallText(chId, x, y, true);
 }
 
 /* TxOffs：与菜单相同存贮，格式化为无末尾 0 的小数字符串（如 6.8、0.5） */
@@ -442,9 +445,10 @@ static void DualVfoDrawTxOffsetSmallCentered(unsigned int vfoIdx, uint8_t gapL, 
     DualVfoFmtTxOffsMHzTrim(num, sizeof(num), o);
 
     const char *const dir   = gSubMenu_SFT_D[d];
-    const unsigned int numw = (unsigned int)strlen(num) * 4u;
-    /* 方向 1 字宽 4px + 1px 间隔 + 数值 */
-    const unsigned int totalw = 4u + 1u + numw;
+    const unsigned int dirw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(dir);
+    const unsigned int numw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(num);
+    /* 方向 + 1px 间隔 + 数值 */
+    const unsigned int totalw = dirw + 1u + numw;
 
     const uint8_t      gapR = (uint8_t)(xFreqStart - 2u);
     const unsigned int maxw = (unsigned int)(gapR - gapL + 1u);
@@ -456,8 +460,8 @@ static void DualVfoDrawTxOffsetSmallCentered(unsigned int vfoIdx, uint8_t gapL, 
     if ((unsigned int)x + totalw > LCD_WIDTH)
         return;
 
-    GUI_DisplaySmallest(dir, x, y, false, true);
-    GUI_DisplaySmallest(num, (uint8_t)(x + 4u + 1u), y, false, true);
+    DualVfoU8g2_DrawSmallText(dir, x, y, true);
+    DualVfoU8g2_DrawSmallText(num, (uint8_t)(x + dirw + 1u), y, true);
 }
 
 static void DualVfoDrawSubFreqSmallest(uint8_t y, uint32_t frequency, bool invertTail)
@@ -527,9 +531,9 @@ static void DualVfoDrawTopDetailRowPx(unsigned int topVfoIdx, uint8_t y)
     DualVfoAppendTone(buf, sizeof(buf), 'R', &v->freq_config_RX);
     DualVfoAppendTone(buf, sizeof(buf), 'T', &v->freq_config_TX);
     {
-        const unsigned int lw = (unsigned int)strlen(buf) * 4u;
+        const unsigned int lw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(buf);
         const uint8_t      x  = (lw < LCD_WIDTH - 4u) ? (uint8_t)(LCD_WIDTH - 2u - lw) : 2u;
-        GUI_DisplaySmallest(buf, x, y, false, true);
+        DualVfoU8g2_DrawSmallText(buf, x, y, true);
     }
 }
 
@@ -548,7 +552,7 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
     if (state != VFO_STATE_NORMAL)
     {
         if (state < ARRAY_SIZE(VfoStateStr))
-            GUI_DisplaySmallest(VfoStateStr[state], 2, DV_Y_TOP_AB, false, true);
+            DualVfoU8g2_DrawSmallText(VfoStateStr[state], 2u, DV_Y_TOP_AB, true);
         return;
     }
 
@@ -586,7 +590,7 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
     if (state != VFO_STATE_NORMAL)
     {
         if (state < ARRAY_SIZE(VfoStateStr))
-            GUI_DisplaySmallest(VfoStateStr[state], 2, DV_Y_BOT_MAIN, false, true);
+            DualVfoU8g2_DrawSmallText(VfoStateStr[state], 2u, DV_Y_BOT_MAIN, true);
         return;
     }
 
@@ -603,14 +607,14 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
         char            chId[14];
         const uint8_t besideX0 = (uint8_t)(1u + DUAL_VFO_AB_BOT_W + 2u); /* innerR + 1 + 2px 间隔 */
         if (rxHere)
-            GUI_DisplaySmallest("RX", besideX0, DV_Y_BOT_BESIDE_AB, false, true);
+            DualVfoU8g2_DrawSmallText("RX", besideX0, DV_Y_BOT_BESIDE_AB, true);
         else
         {
             DualVfoFmtChId(vfoIdx, chId, sizeof(chId));
             uint8_t xch = besideX0;
             if (txHere)
                 xch = (uint8_t)(xch + 9u);
-            GUI_DisplaySmallest(chId, xch, DV_Y_BOT_BESIDE_AB, false, true);
+            DualVfoU8g2_DrawSmallText(chId, xch, DV_Y_BOT_BESIDE_AB, true);
         }
     }
 
@@ -724,9 +728,9 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
         }
 
         if (s9b[0] != 0)
-            GUI_DisplaySmallest(s9b, DV_SMETER_SREAD_X, DV_SMETER_SVALUE_Y, false, true);
+            DualVfoU8g2_DrawSmallText(s9b, DV_SMETER_SREAD_X, DV_SMETER_SVALUE_Y, true);
         if (dbb[0] != 0)
-            GUI_DisplaySmallest(dbb, DV_SMETER_SREAD_X, DV_SMETER_DBB_Y, false, true);
+            DualVfoU8g2_DrawSmallText(dbb, DV_SMETER_SREAD_X, DV_SMETER_DBB_Y, true);
     }
 
     {
@@ -746,7 +750,7 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
         const unsigned int pctV = BATTERY_VoltsToPercent(gBatteryVoltageAverage);
         sprintf(pb, "%u%%", pctV);
         {
-            const uint8_t textW = (uint8_t)(strlen(pb) * 4u);
+            const uint8_t textW = DualVfoU8g2_GetSmallTextWidth(pb);
             const uint8_t gapRx = 2u;
             uint8_t       pctPx;
             if (batW >= textW)
@@ -759,7 +763,7 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
                 pctPx = (uint8_t)(pctPx + DV_BAT_PCT_SHIFT_R);
 
             const char   *rxLab = DualVfoRxModeShortLabel();
-            const uint8_t rxW   = (uint8_t)(strlen(rxLab) * 4u);
+            const uint8_t rxW   = DualVfoU8g2_GetSmallTextWidth(rxLab);
             const int32_t rxX = (int32_t)batX - (int32_t)gapRx - (int32_t)rxW + (int32_t)DV_BAT_MODE_SHIFT_R;
             const bool    drawRx =
                 (rxX >= (int32_t)(DUAL_VFO_FREQ_COL + 1u) && (uint32_t)rxX + (uint32_t)rxW <= (uint32_t)batX);
@@ -774,8 +778,8 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             }
             memcpy(rowFb + batX, bat, batW);
             if (drawRx)
-                GUI_DisplaySmallest(rxLab, (uint8_t)rxX, DV_Y_RXMODE, false, true);
-            GUI_DisplaySmallest(pb, pctPx, DV_Y_PCT, false, true);
+                DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rxX, DV_Y_RXMODE, true);
+            DualVfoU8g2_DrawSmallText(pb, pctPx, DV_Y_PCT, true);
         }
     }
 }
