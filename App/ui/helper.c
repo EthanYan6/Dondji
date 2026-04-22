@@ -644,10 +644,33 @@ static void sort(int16_t *a, int16_t *b)
             const uint8_t lockRow = lockY / 8;
             memcpy(gFrameBuffer[lockRow] + lockX, gFontKeyLock, sizeof(gFontKeyLock));
             
-            // 在长方形框中间第二行显示"UNLOCK KEYBOARD"文字
+            // 在长方形框中间第二行显示解锁提示文字
             const uint8_t textY = 28;  // 文字 Y 坐标（固定位置）
             const uint8_t textRow = textY / 8;
-            UI_PrintStringSmallBold("UNLOCK KEYBOARD", 36, 92, textRow);
+            const char *unlock_hint_text = "UNLOCK KEYBOARD";
+
+#ifdef ENABLE_CHINESE
+            if (gUiLanguage == UI_LANGUAGE_CN) {
+                const uint8_t chinese_hint_base_x_start = 0u;
+                const uint8_t chinese_hint_base_x_end = 119u;
+                const uint8_t chinese_hint_offset_x = 1u;
+                const uint8_t chinese_hint_x_start = (uint8_t)(chinese_hint_base_x_start + chinese_hint_offset_x);
+                const uint8_t chinese_hint_x_end = (uint8_t)(chinese_hint_base_x_end + chinese_hint_offset_x);
+
+                unlock_hint_text = "长按#解锁";
+                UI_PrintStringSmallAtPixel(
+                    unlock_hint_text,
+                    chinese_hint_x_start,
+                    chinese_hint_x_end,
+                    28u,
+                    42u,
+                    3u
+                );
+            } else
+#endif
+            {
+                UI_PrintStringSmallBold(unlock_hint_text, 36, 92, textRow);
+            }
         }
     }
 

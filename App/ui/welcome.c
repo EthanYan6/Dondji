@@ -92,14 +92,32 @@ static inline uint16_t pct_x100(uint32_t used, uint32_t total)
 
 void UI_DisplayReleaseKeys(void)
 {
+    const char *line_one_text = "RELEASE";
+    const char *line_two_text = "ALL KEYS";
+
     memset(gStatusLine,  0, sizeof(gStatusLine));
 #if defined(ENABLE_FEAT_F4HWN_CTR) || defined(ENABLE_FEAT_F4HWN_INV)
         ST7565_ContrastAndInv();
 #endif
     UI_DisplayClear();
 
-    UI_PrintString("RELEASE", 0, 127, 1, 10);
-    UI_PrintString("ALL KEYS", 0, 127, 3, 10);
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        line_one_text = "解锁";
+        line_two_text = "全部按键";
+    }
+#endif
+
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        UI_PrintStringSmallAtPixel(line_one_text, 0, 127, 10u, 24u, 3u);
+        UI_PrintStringSmallAtPixel(line_two_text, 0, 127, 34u, 48u, 3u);
+    } else
+#endif
+    {
+        UI_PrintString(line_one_text, 0, 127, 1, 10);
+        UI_PrintString(line_two_text, 0, 127, 3, 10);
+    }
 
     ST7565_BlitStatusLine();  // blank status line
     ST7565_BlitFullScreen();
