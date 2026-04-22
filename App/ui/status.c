@@ -96,7 +96,7 @@ void UI_DisplayMainOnlyStatusBar(void)
     x += 10;
 
     if (pVfo->freq_config_RX.Frequency == pVfo->freq_config_TX.Frequency) {
-        DualVfoU8g2_DrawSmallTextStatus("|->|", (uint8_t)x, 1u, true);
+        GUI_DisplaySmallest("|->|", x, 1, true, true);
         x += 17;
     }
     x += 1;
@@ -135,8 +135,15 @@ void UI_DisplayMainOnlyStatusBar(void)
     sprintf(str, "%d.%02uK", pVfo->StepFrequency / 100, pVfo->StepFrequency % 100);
     DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
 
-    x = LCD_WIDTH - sizeof(BITMAP_BatteryLevel1) - 2;
-    UI_DrawBattery(line + x, gBatteryDisplayLevel, gLowBatteryBlink);
+    x = LCD_WIDTH - UI_BATTERY_ICON_WIDTH - 2;
+    {
+        uint8_t battery_bitmap[UI_BATTERY_ICON_WIDTH];
+        UI_DrawBattery(battery_bitmap, gBatteryDisplayLevel, gLowBatteryBlink);
+        for (uint8_t battery_pixel_x = 0u; battery_pixel_x < UI_BATTERY_ICON_WIDTH; battery_pixel_x++) {
+            battery_bitmap[battery_pixel_x] <<= 1;
+        }
+        memcpy(line + x, battery_bitmap, UI_BATTERY_ICON_WIDTH);
+    }
     ST7565_BlitStatusLine();
 #endif
 }
@@ -366,9 +373,16 @@ void UI_DisplayStatus()
     }
 
     // Battery
-    unsigned int x2 = LCD_WIDTH - sizeof(BITMAP_BatteryLevel1) - 0;
+    unsigned int x2 = LCD_WIDTH - UI_BATTERY_ICON_WIDTH - 0;
 
-    UI_DrawBattery(line + x2, gBatteryDisplayLevel, gLowBatteryBlink);
+    {
+        uint8_t battery_bitmap[UI_BATTERY_ICON_WIDTH];
+        UI_DrawBattery(battery_bitmap, gBatteryDisplayLevel, gLowBatteryBlink);
+        for (uint8_t battery_pixel_x = 0u; battery_pixel_x < UI_BATTERY_ICON_WIDTH; battery_pixel_x++) {
+            battery_bitmap[battery_pixel_x] <<= 1;
+        }
+        memcpy(line + x2, battery_bitmap, UI_BATTERY_ICON_WIDTH);
+    }
 
     bool BatTxt = true;
 

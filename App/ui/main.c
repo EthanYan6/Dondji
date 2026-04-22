@@ -734,9 +734,9 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
     }
 
     {
-        const unsigned batW = (unsigned int)sizeof(BITMAP_BatteryLevel1);
+        const unsigned batW = (unsigned int)UI_BATTERY_ICON_WIDTH;
         const unsigned batX = LCD_WIDTH - batW - DV_BAT_FLUSH_RIGHT;
-        uint8_t        bat[sizeof(BITMAP_BatteryLevel1)];
+        uint8_t        bat[UI_BATTERY_ICON_WIDTH];
 
         for (unsigned c = batX; c < LCD_WIDTH; c++)
         {
@@ -1609,8 +1609,11 @@ void UI_DisplayMain(void)
                 const int16_t display_rssi_dBm = (int16_t)(-rssi_dBm);
                 sprintf(dBmStr, "%d dBm", display_rssi_dBm);
                 const unsigned int w = DualVfoU8g2_GetSmallTextWidth(dBmStr);
-                const int x0 = (rightEdge - (int)w) > (int)contentX ? (rightEdge - (int)w) : (int)contentX;
-                DualVfoU8g2_DrawSmallText(dBmStr, (uint8_t)x0, (uint8_t)slotY, true);
+                const int right_aligned_x = (rightEdge - (int)w) > (int)contentX ? (rightEdge - (int)w) : (int)contentX;
+                int shifted_x = right_aligned_x - 2;
+                if (shifted_x < (int)contentX)
+                    shifted_x = (int)contentX;
+                DualVfoU8g2_DrawSmallText(dBmStr, (uint8_t)shifted_x, (uint8_t)slotY, true);
                 {
                     uint8_t s_level, overS9Bars = 0;
                     if (rssi_dBm >= 93) {
@@ -1630,8 +1633,11 @@ void UI_DisplayMain(void)
             } else if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo])) {
                 sprintf(String, "%04u", gEeprom.ScreenChannel[vfo] + 1);
                 const uint8_t chNumW = DualVfoU8g2_GetSmallTextWidth(String);
-                const int x0 = (rightEdge - (int)chNumW) > (int)contentX ? (rightEdge - (int)chNumW) : (int)contentX;
-                DualVfoU8g2_DrawSmallText(String, (uint8_t)x0, (uint8_t)slotY, true);
+                const int right_aligned_x = (rightEdge - (int)chNumW) > (int)contentX ? (rightEdge - (int)chNumW) : (int)contentX;
+                int shifted_x = right_aligned_x - 2;
+                if (shifted_x < (int)contentX)
+                    shifted_x = (int)contentX;
+                DualVfoU8g2_DrawSmallText(String, (uint8_t)shifted_x, (uint8_t)slotY, true);
             }
             /* 频率模式且未接收：右上角不显示 */
         }

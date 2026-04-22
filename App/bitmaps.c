@@ -108,34 +108,6 @@ const uint8_t gFontHold[2][5] =
     {0x00, 0x8, 0x14, 0x22, 0x41},
 };
 
-const uint8_t BITMAP_BatteryLevel[2] =
-{
-    0b01011101,
-    0b01011101
-};
-
-// Quansheng way (+ pole to the left)
-const uint8_t BITMAP_BatteryLevel1[17] =
-{
-    0b00000000,
-    0b00111110,
-    0b00100010,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01000001,
-    0b01111111
-};
-
 const uint8_t BITMAP_USB_C[9] =
 {
     0b00000000,
