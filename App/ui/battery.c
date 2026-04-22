@@ -19,6 +19,7 @@
 
 #include "driver/st7565.h"
 #include "functions.h"
+#include "helper/battery.h"
 #include "ui/battery.h"
 #include "../misc.h"
 
@@ -58,11 +59,16 @@ void UI_DrawBattery(uint8_t* bitmap, uint8_t level, uint8_t blink)
     }
 
     {
-        const uint8_t battery_level_clamped = (level > 7u) ? 7u : level;
+        /* 与界面百分比一致：gBatteryDisplayLevel 最高常为 6，用 level/7 永远无法填满 */
         const uint8_t battery_fill_pixel_capacity =
             (uint8_t)(battery_fill_right_limit - battery_fill_left_x + 1u);
-        const uint8_t battery_fill_pixels =
-            (uint8_t)((battery_level_clamped * battery_fill_pixel_capacity) / 7u);
+        unsigned int    percent_u = BATTERY_VoltsToPercent(gBatteryVoltageAverage);
+        if (percent_u > 100u)
+            percent_u = 100u;
+        const unsigned int fill_numerator = percent_u * (unsigned int)battery_fill_pixel_capacity + 50u;
+        uint8_t            battery_fill_pixels = (uint8_t)(fill_numerator / 100u);
+        if (battery_fill_pixels > battery_fill_pixel_capacity)
+            battery_fill_pixels = battery_fill_pixel_capacity;
 
         for (uint8_t fill_index = 0u; fill_index < battery_fill_pixels; fill_index++) {
             const uint8_t fill_x = (uint8_t)(battery_fill_left_x + fill_index);

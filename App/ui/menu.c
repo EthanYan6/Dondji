@@ -2282,4 +2282,12 @@ void UI_DisplayMenu(void)
     }
 
     ST7565_BlitFullScreen();
+#ifdef ENABLE_FEAT_F4HWN
+    /*
+     * 与主页面一致：顶栏（含电池）走 gStatusLine + BlitStatusLine。
+     * 双守等模式下主界面不通过 UI_DisplayStatus 维护顶栏，仅 gUpdateDisplay 刷菜单时
+     * 若不在这里补画，菜单顶栏电池会长期不更新。
+     */
+    UI_DisplayMainOnlyStatusBar();
+#endif
 }

@@ -161,6 +161,21 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
         }
     }
 
+    /* 图标填充按百分比绘制：等级未变时也要刷新顶栏/主屏，否则电量条不随电压实时变化 */
+    {
+        static uint8_t s_last_battery_percent_snapshot = 255u;
+        const unsigned int voltage_for_percent = gBatteryVoltageAverage;
+        unsigned int       percent_snapshot_u  = BATTERY_VoltsToPercent(voltage_for_percent);
+        if (percent_snapshot_u > 100u)
+            percent_snapshot_u = 100u;
+        const uint8_t percent_snapshot = (uint8_t)percent_snapshot_u;
+        if (percent_snapshot != s_last_battery_percent_snapshot)
+        {
+            s_last_battery_percent_snapshot = percent_snapshot;
+            gUpdateStatus  = true;
+            gUpdateDisplay = true;
+        }
+    }
 
     if ((gScreenToDisplay == DISPLAY_MENU) && UI_MENU_GetCurrentMenuId() == MENU_VOL)
         gUpdateDisplay = true;

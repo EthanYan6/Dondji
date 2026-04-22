@@ -199,6 +199,7 @@ static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
 #define DV_BAT_FLUSH_RIGHT  0u /* batX = LCD_WIDTH - batW - 此值，0 即贴右 */
 #define DV_BAT_MODE_SHIFT_R (-1) /* 右下角 A/B 模式相对原布局左移 3px（原 +2 -> 现 -1） */
 #define DV_BAT_PCT_SHIFT_R  2u /* 电量百分比再右移 */
+#define DV_BAT_MODE_PCT_HGAP_PX 4u /* 底栏：模式字与电量百分比水平间隔 */
 /* S 表：UV-KX 位图 + 离散 3×3 块（与 UI_DrawRSSI 一致）；S/+dB 列对齐 posX+38 */
 #define DV_SMETER_BAR_X0    1u
 #define DV_SMETER_LABEL_Y   (DV_Y_METER + 3u) /* 与 UV-KX DisplayRSSIBar 中 UI_DrawRSSI 的 y 一致 */
@@ -768,9 +769,27 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             const bool    drawRx =
                 (rxX >= (int32_t)(DUAL_VFO_FREQ_COL + 1u) && (uint32_t)rxX + (uint32_t)rxW <= (uint32_t)batX);
 
-            unsigned clearFrom = (unsigned)pctPx;
-            if (drawRx && (unsigned)rxX < clearFrom)
-                clearFrom = (unsigned)rxX;
+            /* 百分比保持原位置（已在屏右侧）；仅把模式字左移，使「模式右缘」与「% 左缘」至少间隔 gap */
+            int32_t       rx_draw_x = rxX;
+            const uint8_t pct_draw_x = pctPx;
+
+            if (drawRx)
+            {
+                const int32_t gap_i  = (int32_t)DV_BAT_MODE_PCT_HGAP_PX;
+                const int32_t rw_i   = (int32_t)rxW;
+                const int32_t min_rx = (int32_t)(DUAL_VFO_FREQ_COL + 1u);
+                const int32_t pct_left_edge = (int32_t)pctPx;
+                const int32_t max_rx_for_gap = pct_left_edge - gap_i - rw_i;
+
+                if (rx_draw_x > max_rx_for_gap)
+                    rx_draw_x = max_rx_for_gap;
+                if (rx_draw_x < min_rx)
+                    rx_draw_x = min_rx;
+            }
+
+            unsigned clearFrom = (unsigned)pct_draw_x;
+            if (drawRx && (unsigned)rx_draw_x < clearFrom)
+                clearFrom = (unsigned)rx_draw_x;
             for (unsigned c = clearFrom; c < LCD_WIDTH; c++)
             {
                 rowFb[c] = 0;
@@ -778,8 +797,8 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             }
             memcpy(rowFb + batX, bat, batW);
             if (drawRx)
-                DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rxX, DV_Y_RXMODE, true);
-            DualVfoU8g2_DrawSmallText(pb, pctPx, DV_Y_PCT, true);
+                DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rx_draw_x, DV_Y_RXMODE, true);
+            DualVfoU8g2_DrawSmallText(pb, pct_draw_x, DV_Y_PCT, true);
         }
     }
 }
