@@ -864,7 +864,7 @@ static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
         gWasFKeyPressed = false;
     }
 
-    if (!star_key_is_held && star_key_is_pressed) {
+    if (star_key_is_pressed || star_key_is_held) {
         gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
     }
 }
