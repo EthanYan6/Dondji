@@ -65,7 +65,8 @@
 
 ### 🔵 Dual VFO Compact UI
 
-<img width="639" height="402" src="https://github.com/user-attachments/assets/30ddf9ec-7244-44b9-9f34-3dfe35b7d42f" />
+<img width="512" height="320" alt="image" src="https://github.com/user-attachments/assets/45ca2d9c-52ba-4608-9412-6625f627811c" />
+
 
 ---
 
