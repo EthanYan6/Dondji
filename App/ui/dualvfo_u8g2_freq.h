@@ -13,5 +13,6 @@ void DualVfoU8g2_DrawMainFreqStrip(uint32_t frequency, uint8_t x_left, uint8_t b
 uint8_t DualVfoU8g2_DrawSubFreqStrip(uint32_t frequency, uint8_t baseline_y);
 uint8_t DualVfoU8g2_GetSmallTextWidth(const char *text);
 void DualVfoU8g2_DrawSmallText(const char *text, uint8_t x_left, uint8_t y_top, bool set_black);
+void DualVfoU8g2_DrawSmallTextStatus(const char *text, uint8_t x_left, uint8_t y_top, bool set_black);
 
 #endif

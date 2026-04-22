@@ -1606,10 +1606,11 @@ void UI_DisplayMain(void)
                 rssi_dBm = -rssi_dBm;
                 if (rssi_dBm > 141) rssi_dBm = 141;
                 if (rssi_dBm < 53) rssi_dBm = 53;
-                sprintf(dBmStr, "%d dBm", rssi_dBm);
-                const unsigned int w = strlen(dBmStr) * 4;
+                const int16_t display_rssi_dBm = (int16_t)(-rssi_dBm);
+                sprintf(dBmStr, "%d dBm", display_rssi_dBm);
+                const unsigned int w = DualVfoU8g2_GetSmallTextWidth(dBmStr);
                 const int x0 = (rightEdge - (int)w) > (int)contentX ? (rightEdge - (int)w) : (int)contentX;
-                GUI_DisplaySmallest(dBmStr, (uint8_t)x0, slotY, false, true);
+                DualVfoU8g2_DrawSmallText(dBmStr, (uint8_t)x0, (uint8_t)slotY, true);
                 {
                     uint8_t s_level, overS9Bars = 0;
                     if (rssi_dBm >= 93) {
@@ -1628,9 +1629,9 @@ void UI_DisplayMain(void)
                 gUpdateStatus = true;
             } else if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo])) {
                 sprintf(String, "%04u", gEeprom.ScreenChannel[vfo] + 1);
-                const uint8_t chNumW = 4 * 4;
+                const uint8_t chNumW = DualVfoU8g2_GetSmallTextWidth(String);
                 const int x0 = (rightEdge - (int)chNumW) > (int)contentX ? (rightEdge - (int)chNumW) : (int)contentX;
-                GUI_DisplaySmallest(String, (uint8_t)x0, slotY, false, true);
+                DualVfoU8g2_DrawSmallText(String, (uint8_t)x0, (uint8_t)slotY, true);
             }
             /* 频率模式且未接收：右上角不显示 */
         }
@@ -1665,16 +1666,15 @@ void UI_DisplayMain(void)
 
         // 方框下两行：第一行 time: 计时，第二行 亚音，均右对齐；整体上移 1px
         const int line1Y = 33, line2Y = 39;
-        const int smallCharW = 4;  /* 最小字约 4 像素/字 */
 #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
         {
             uint16_t t = (FUNCTION_IsRx()) ? (3600 - gRxTimerCountdown_500ms / 2) : (gTxTimerCountdown_500ms / 2);
             uint16_t m = t / 60;
             uint8_t s = (uint8_t)(t % 60);
             sprintf(String, "time: %02u:%02u", (unsigned)m, s);
-            const int w1 = (int)strlen(String) * smallCharW;
+            const int w1 = (int)DualVfoU8g2_GetSmallTextWidth(String);
             const int x1 = 127 - w1;
-            GUI_DisplaySmallest(String, (uint8_t)(x1 > 0 ? x1 : 0), line1Y + 2, false, true);
+            DualVfoU8g2_DrawSmallText(String, (uint8_t)(x1 > 0 ? x1 : 0), (uint8_t)(line1Y + 2), true);
         }
 #endif
         {
@@ -1706,9 +1706,9 @@ void UI_DisplayMain(void)
             }
             toneBuf[pos] = '\0';
             if (pos > 0) {
-                const int w2 = (int)strlen(toneBuf) * smallCharW;
+                const int w2 = (int)DualVfoU8g2_GetSmallTextWidth(toneBuf);
                 const int x2 = 127 - w2;
-                GUI_DisplaySmallest(toneBuf, (uint8_t)(x2 > 0 ? x2 : 0), line2Y + 2, false, true);
+                DualVfoU8g2_DrawSmallText(toneBuf, (uint8_t)(x2 > 0 ? x2 : 0), (uint8_t)(line2Y + 2), true);
             }
         }
 

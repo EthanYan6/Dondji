@@ -35,6 +35,7 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 #include "ui/status.h"
+#include "ui/dualvfo_u8g2_freq.h"
 #include "radio.h"
 
 #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
@@ -95,7 +96,7 @@ void UI_DisplayMainOnlyStatusBar(void)
     x += 10;
 
     if (pVfo->freq_config_RX.Frequency == pVfo->freq_config_TX.Frequency) {
-        GUI_DisplaySmallest("|->|", x, 1, true, true);
+        DualVfoU8g2_DrawSmallTextStatus("|->|", (uint8_t)x, 1u, true);
         x += 17;
     }
     x += 1;
@@ -106,7 +107,7 @@ void UI_DisplayMainOnlyStatusBar(void)
         if (idx == OUTPUT_POWER_USER)
             idx = gSetting_set_pwr + 1;
         if (idx >= 1 && idx <= 7) {
-            GUI_DisplaySmallest(pwr[idx - 1], x, 2, true, true);
+            DualVfoU8g2_DrawSmallTextStatus(pwr[idx - 1], (uint8_t)x, 2u, true);
             x += 9;
         }
     }
@@ -114,11 +115,11 @@ void UI_DisplayMainOnlyStatusBar(void)
 
     {
         const char *bw = (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "W" : "N";
-        GUI_DisplaySmallest(bw, x, 2, true, true);
+        DualVfoU8g2_DrawSmallTextStatus(bw, (uint8_t)x, 2u, true);
         x += 6;
         x += 1;
         sprintf(str, "%s", (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "25K" : "12K");
-        GUI_DisplaySmallest(str, x, 2, true, true);
+        DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
         x += 14;
     }
     x += 1;
@@ -127,12 +128,12 @@ void UI_DisplayMainOnlyStatusBar(void)
         uint8_t sq = gEeprom.SQUELCH_LEVEL;
         if (sq > 9) sq = 9;
         sprintf(str, "%u", sq);
-        GUI_DisplaySmallest(str, x, 2, true, true);
+        DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
     }
     x += 7;
 
     sprintf(str, "%d.%02uK", pVfo->StepFrequency / 100, pVfo->StepFrequency % 100);
-    GUI_DisplaySmallest(str, x, 2, true, true);
+    DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
 
     x = LCD_WIDTH - sizeof(BITMAP_BatteryLevel1) - 2;
     UI_DrawBattery(line + x, gBatteryDisplayLevel, gLowBatteryBlink);
