@@ -206,6 +206,8 @@ static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
 #define DV_SMETER_SREAD_X   (DV_SMETER_BAR_X0 + 38u)
 #define DV_SMETER_SVALUE_Y  (DV_Y_METER + 2u) /* S 读数；较 +4 再上移 2px */
 #define DV_SMETER_DBB_Y     (DV_Y_METER + 8u) /* +dB 第二行；较 +10 再上移 2px */
+#define DV_STATUS_BAR_LINE1_Y  (DV_Y_METER + 0u)
+#define DV_STATUS_BAR_LINE2_Y  (DV_Y_METER + 7u)
 
 /* 副信道频率：3 列宽 2+2+1px（较原 1px/列总宽约 +2）；CHAR_W 含字后空，间隔较原再减 1px */
 /* 副频 u8g2 加粗字后竖向占位略增，RX/TX XOR 条与之匹配 */
@@ -630,7 +632,7 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
 /* 与菜单 RxMode（gSubMenu_RXMode）四项顺序一致，底栏单行缩写 */
 static const char *DualVfoRxModeShortLabel(void)
 {
-    static const char *const abbrev[4] = {"MAIN", "A/B", "CROSS", "A"};
+    static const char *const abbrev[4] = {"MAIN", "A/B", "C", "A"};
     unsigned                 idx =
         (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF ? 1u : 0u) + (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF ? 2u : 0u);
     if (idx >= 4u)
@@ -679,6 +681,70 @@ static void DualVfoDrawSmeterBoxesUv(uint8_t s_level, uint8_t x, uint8_t y)
         const uint8_t y1 = (uint8_t)(y0 + 2u);
         DualVfoFillRectBlack(currentX, y0, (uint8_t)(currentX + 2u), y1);
         currentX = (uint8_t)(currentX + 4u);
+    }
+}
+
+static uint8_t s_dual_vfo_last_speaking_channel = 0u;
+static bool s_dual_vfo_has_rx_channel_history = false;
+
+static void DualVfoDrawBottomStatusBar(uint8_t left_limit_x, uint8_t right_limit_x)
+{
+    (void)left_limit_x;
+    (void)right_limit_x;
+
+    const bool is_receiving_signal = FUNCTION_IsRx();
+    if (is_receiving_signal)
+    {
+        const uint8_t current_rx_channel = gEeprom.RX_VFO;
+        const bool current_rx_channel_is_valid = (current_rx_channel <= 1u);
+        if (current_rx_channel_is_valid)
+        {
+            s_dual_vfo_last_speaking_channel = current_rx_channel;
+            s_dual_vfo_has_rx_channel_history = true;
+        }
+    }
+
+    const bool has_active_rx_channel = s_dual_vfo_has_rx_channel_history;
+    const uint8_t active_channel = s_dual_vfo_last_speaking_channel;
+
+    char line_1_text[16];
+    char line_2_text[16];
+    char arrow_text[4];
+    if (active_channel == 0u)
+    {
+        strcpy(line_1_text, "LAST A");
+        strcpy(line_2_text, "B");
+        strcpy(arrow_text, "<<");
+    }
+    else
+    {
+        strcpy(line_1_text, "LAST A");
+        strcpy(line_2_text, "B");
+        strcpy(arrow_text, "<<");
+    }
+
+    const uint8_t line_1_prefix_width = DualVfoU8g2_GetSmallTextWidth("LAST ");
+    const uint8_t channel_letter_width = DualVfoU8g2_GetSmallTextWidth("A");
+    const uint8_t arrow_gap_width = DualVfoU8g2_GetSmallTextWidth(" ");
+
+    const unsigned int status_anchor_x = 54u;
+    const unsigned int line_1_x_u = status_anchor_x;
+    const unsigned int line_2_x_u = line_1_x_u + (unsigned int)line_1_prefix_width;
+    const unsigned int arrow_x_u = line_2_x_u + (unsigned int)channel_letter_width + (unsigned int)arrow_gap_width;
+    const uint8_t line_1_x = (uint8_t)line_1_x_u;
+    const uint8_t line_2_x = (uint8_t)line_2_x_u;
+    const uint8_t arrow_x = (uint8_t)arrow_x_u;
+
+    DualVfoClearRectPx((uint8_t)status_anchor_x, DV_STATUS_BAR_LINE1_Y, (uint8_t)(status_anchor_x + 34u), (uint8_t)(DV_STATUS_BAR_LINE2_Y + 6u));
+    DualVfoU8g2_DrawSmallText(line_1_text, line_1_x, DV_STATUS_BAR_LINE1_Y, true);
+    DualVfoU8g2_DrawSmallText(line_2_text, line_2_x, DV_STATUS_BAR_LINE2_Y, true);
+    if (has_active_rx_channel && active_channel == 0u)
+    {
+        DualVfoU8g2_DrawSmallText(arrow_text, arrow_x, DV_STATUS_BAR_LINE1_Y, true);
+    }
+    else if (has_active_rx_channel)
+    {
+        DualVfoU8g2_DrawSmallText(arrow_text, arrow_x, DV_STATUS_BAR_LINE2_Y, true);
     }
 }
 
@@ -798,6 +864,37 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             if (drawRx)
                 DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rx_draw_x, DV_Y_RXMODE, true);
             DualVfoU8g2_DrawSmallText(pb, pct_draw_x, DV_Y_PCT, true);
+            const uint8_t smeter_text_right_x =
+                (uint8_t)(DV_SMETER_SREAD_X + DualVfoU8g2_GetSmallTextWidth("+5dB"));
+            uint8_t status_left_limit_x = (uint8_t)(DUAL_VFO_FREQ_COL + 1u);
+            const uint8_t smeter_safe_left_x = (uint8_t)(smeter_text_right_x + 2u);
+            if (smeter_safe_left_x > status_left_limit_x)
+            {
+                status_left_limit_x = smeter_safe_left_x;
+            }
+            uint8_t status_right_limit_x = (uint8_t)(batX - 2u);
+            {
+                uint8_t right_reserved_left_x = pct_draw_x;
+                if (drawRx && rx_draw_x >= 0)
+                {
+                    const uint8_t rx_draw_x_u8 = (uint8_t)rx_draw_x;
+                    if (rx_draw_x_u8 < right_reserved_left_x)
+                    {
+                        right_reserved_left_x = rx_draw_x_u8;
+                    }
+                }
+
+                if (right_reserved_left_x > 2u)
+                {
+                    const uint8_t right_safe_x = (uint8_t)(right_reserved_left_x - 2u);
+                    if (right_safe_x < status_right_limit_x)
+                    {
+                        status_right_limit_x = right_safe_x;
+                    }
+                }
+            }
+
+            DualVfoDrawBottomStatusBar(status_left_limit_x, status_right_limit_x);
         }
     }
 }
