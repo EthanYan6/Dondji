@@ -1685,15 +1685,37 @@ void APP_TimeSlice500ms(void)
         }
     }
 
-    // regular display updates (once every 2 sec) - if need be
+    /*
+     * 顶栏电量等：不用约 2s 定时强刷。
+     * FM / 双守 / 菜单 / MAIN ONLY 均由内容变化触发（电量见 BATTERY_GetReadings 整数百分比等）。
+     */
     if ((gBatteryCheckCounter & 3) == 0)
     {
-        if (gChargingWithTypeC || gSetting_battery_text > 0)
-            gUpdateStatus = true;
-        #ifdef ENABLE_SHOW_CHARGE_LEVEL
+#ifdef ENABLE_FMRADIO
+        const bool is_fm_screen = (gScreenToDisplay == DISPLAY_FM);
+#else
+        const bool is_fm_screen = false;
+#endif
+#ifdef ENABLE_FEAT_F4HWN
+        const bool is_dual_vfo_main = UI_IsDualVfoMainScreen();
+        const bool is_menu_top      = (gScreenToDisplay == DISPLAY_MENU);
+        const bool is_main_only_top =
+            (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
+             gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+#else
+        const bool is_dual_vfo_main = false;
+        const bool is_menu_top      = false;
+        const bool is_main_only_top = false;
+#endif
+        if (!is_fm_screen && !is_dual_vfo_main && !is_menu_top && !is_main_only_top)
+        {
+            if (gChargingWithTypeC || gSetting_battery_text > 0)
+                gUpdateStatus = true;
+            #ifdef ENABLE_SHOW_CHARGE_LEVEL
             if (gChargingWithTypeC)
                 gUpdateDisplay = true;
-        #endif
+            #endif
+        }
     }
 
     if (!gCssBackgroundScan && gScanStateDir == SCAN_OFF && !SCANNER_IsScanning()

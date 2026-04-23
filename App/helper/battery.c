@@ -33,6 +33,7 @@ uint16_t          gBatteryCurrent;
 uint16_t          gBatteryVoltages[4];
 uint16_t          gBatteryVoltageAverage;
 uint8_t           gBatteryDisplayLevel;
+uint8_t           gBatteryIconFillPercent;
 bool              gChargingWithTypeC;
 bool              gLowBatteryBlink;
 bool              gLowBattery;
@@ -161,7 +162,7 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
         }
     }
 
-    /* 图标填充按百分比绘制：等级未变时也要刷新顶栏/主屏，否则电量条不随电压实时变化 */
+    /* FM / 双守：电池图标与旁路百分比均以「整数百分比」为步进；变化 1% 才更新填充并触发界面刷新 */
     {
         static uint8_t s_last_battery_percent_snapshot = 255u;
         const unsigned int voltage_for_percent = gBatteryVoltageAverage;
@@ -172,8 +173,15 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
         if (percent_snapshot != s_last_battery_percent_snapshot)
         {
             s_last_battery_percent_snapshot = percent_snapshot;
-            gUpdateStatus  = true;
-            gUpdateDisplay = true;
+            gBatteryIconFillPercent = percent_snapshot;
+            gUpdateStatus           = true;
+#ifdef ENABLE_FMRADIO
+            const bool is_fm_screen = (gScreenToDisplay == DISPLAY_FM);
+#else
+            const bool is_fm_screen = false;
+#endif
+            if (!is_fm_screen)
+                gUpdateDisplay = true;
         }
     }
 

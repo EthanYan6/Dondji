@@ -62,7 +62,7 @@ void UI_DrawBattery(uint8_t* bitmap, uint8_t level, uint8_t blink)
         /* 与界面百分比一致：gBatteryDisplayLevel 最高常为 6，用 level/7 永远无法填满 */
         const uint8_t battery_fill_pixel_capacity =
             (uint8_t)(battery_fill_right_limit - battery_fill_left_x + 1u);
-        unsigned int    percent_u = BATTERY_VoltsToPercent(gBatteryVoltageAverage);
+        unsigned int percent_u = (unsigned int)gBatteryIconFillPercent;
         if (percent_u > 100u)
             percent_u = 100u;
         const unsigned int fill_numerator = percent_u * (unsigned int)battery_fill_pixel_capacity + 50u;

@@ -38,6 +38,9 @@
 #include "ui/dualvfo_u8g2_freq.h"
 #include "radio.h"
 
+/* 顶栏：电压/百分比小字与电池图标左缘水平间隔（像素） */
+#define STATUS_BAT_TEXT_TO_ICON_GAP_PX 3u
+
 #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
 #ifndef ENABLE_FEAT_F4HWN_DEBUG
 static void convertTime(uint8_t *line, uint8_t type)
@@ -114,13 +117,9 @@ void UI_DisplayMainOnlyStatusBar(void)
     x += 1;
 
     {
-        const char *bw = (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "W" : "N";
-        DualVfoU8g2_DrawSmallTextStatus(bw, (uint8_t)x, 2u, true);
+        const char *bandwidth_letter = (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "W" : "N";
+        DualVfoU8g2_DrawSmallTextStatus(bandwidth_letter, (uint8_t)x, 2u, true);
         x += 6;
-        x += 1;
-        sprintf(str, "%s", (pVfo->CHANNEL_BANDWIDTH == BANDWIDTH_WIDE) ? "25K" : "12K");
-        DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
-        x += 14;
     }
     x += 1;
 
@@ -132,7 +131,26 @@ void UI_DisplayMainOnlyStatusBar(void)
     }
     x += 7;
 
-    sprintf(str, "%d.%02uK", pVfo->StepFrequency / 100, pVfo->StepFrequency % 100);
+    {
+        const uint16_t step_frequency_hz = pVfo->StepFrequency;
+        const uint16_t step_khz_whole = step_frequency_hz / 100u;
+        const uint16_t step_khz_frac = step_frequency_hz % 100u;
+        const unsigned int step_khz_whole_u = (unsigned int)step_khz_whole;
+        const unsigned int step_khz_frac_u = (unsigned int)step_khz_frac;
+
+        if (step_khz_frac == 0u) {
+            sprintf(str, "%uK", step_khz_whole_u);
+        } else {
+            const uint16_t step_frac_tenths = step_khz_frac / 10u;
+            const uint16_t step_frac_ones = step_khz_frac % 10u;
+
+            if (step_frac_ones == 0u) {
+                sprintf(str, "%u.%uK", step_khz_whole_u, (unsigned int)step_frac_tenths);
+            } else {
+                sprintf(str, "%u.%02uK", step_khz_whole_u, step_khz_frac_u);
+            }
+        }
+    }
     DualVfoU8g2_DrawSmallTextStatus(str, (uint8_t)x, 2u, true);
 
     x = LCD_WIDTH - UI_BATTERY_ICON_WIDTH - 2;
@@ -144,6 +162,23 @@ void UI_DisplayMainOnlyStatusBar(void)
         }
         memcpy(line + x, battery_bitmap, UI_BATTERY_ICON_WIDTH);
     }
+
+    /*
+     * MAIN ONLY / 菜单顶栏：电池旁固定显示整数电量百分比（与 gBatteryIconFillPercent 一致）；
+     * 图标填充由 UI_DrawBattery 使用该值，仅在 BATTERY_GetReadings 中百分比变化 1% 时更新。
+     */
+    {
+        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
+        const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
+        const unsigned int bat_left_u = (unsigned int)x;
+        const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+        if (bat_left_u > gap_u + (unsigned int)text_w)
+        {
+            const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
+            DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+        }
+    }
+
     ST7565_BlitStatusLine();
 #endif
 }
@@ -384,36 +419,47 @@ void UI_DisplayStatus()
         memcpy(line + x2, battery_bitmap, UI_BATTERY_ICON_WIDTH);
     }
 
-    bool BatTxt = true;
+    bool BatTxt = false;
 
-    switch (gSetting_battery_text) {
+#ifdef ENABLE_FMRADIO
+    if (gScreenToDisplay == DISPLAY_FM)
+    {
+        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
+        BatTxt = true;
+    }
+    else
+#endif
+    {
+        switch (gSetting_battery_text)
+        {
         default:
         case 0:
-            BatTxt = false;
             break;
 
-        case 1:    // voltage
-            const uint16_t voltage = (gBatteryVoltageAverage <= 999) ? gBatteryVoltageAverage : 999; // limit to 9.99V
+        case 1: {
+            const uint16_t voltage =
+                (gBatteryVoltageAverage <= 999) ? gBatteryVoltageAverage : 999;
             sprintf(str, "%u.%02u", voltage / 100, voltage % 100);
+            BatTxt = true;
             break;
+        }
 
-        case 2:     // percentage
-            //gBatteryVoltageAverage = 999;
-            sprintf(str, "%02u%%", BATTERY_VoltsToPercent(gBatteryVoltageAverage));
+        case 2:
+            sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
+            BatTxt = true;
             break;
+        }
     }
 
     if (BatTxt) {
-        x2 -= (7 * strlen(str));
-        UI_PrintStringSmallBufferNormal(str, line + x2);
-        /*
-        uint8_t shift = (strlen(str) < 5) ? 92 : 88;
-        GUI_DisplaySmallest(str, shift, 1, true, true);
-
-        for (uint8_t i = shift - 2; i < 110; i++) {
-            gStatusLine[i] ^= 0x7F; // invert
+        const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
+        const unsigned int bat_left_u = (unsigned int)x2;
+        const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+        if (bat_left_u > gap_u + (unsigned int)text_w)
+        {
+            const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
+            DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
         }
-        */
     }
 
     // **************

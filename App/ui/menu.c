@@ -154,7 +154,9 @@ const t_menu_item MenuList[] =
     {"Lang",        MENU_LANGUAGE      },
     {"TxTOut",      MENU_TOT           }, // was "TOT"
     {"BatSav",      MENU_SAVE          }, // was "SAVE"
+#if !defined(ENABLE_FEAT_F4HWN)
     {"BatTxt",      MENU_BAT_TXT       },
+#endif
     {"Mic",         MENU_MIC           },
     {"ChDisp",      MENU_MDF           }, // was "MDF"
     {"POnMsg",      MENU_PONMSG        },

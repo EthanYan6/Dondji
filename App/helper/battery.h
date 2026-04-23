@@ -26,6 +26,8 @@ extern uint16_t          gBatteryCurrent;
 extern uint16_t          gBatteryVoltages[4];
 extern uint16_t          gBatteryVoltageAverage;
 extern uint8_t           gBatteryDisplayLevel;
+/* 与「整数电量百分比」同步：仅在该百分比变化时更新，供电池图标填充与 FM/双守旁文字统一 */
+extern uint8_t           gBatteryIconFillPercent;
 extern bool              gChargingWithTypeC;
 extern bool              gLowBatteryBlink;
 extern bool              gLowBattery;

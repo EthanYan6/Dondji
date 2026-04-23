@@ -141,12 +141,15 @@ bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
         (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF))
         return true;
 #endif
+#if !defined(ENABLE_FEAT_F4HWN)
+    if (menu_id == MENU_BAT_TXT)
+        return true;
+#endif
     return menu_id == MENU_PONMSG ||
            menu_id == MENU_UPCODE ||
            menu_id == MENU_DWCODE ||
            menu_id == MENU_PTT_ID ||
-           menu_id == MENU_VOX ||
-           menu_id == MENU_BAT_TXT;
+           menu_id == MENU_VOX;
 }
 
 uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index)
@@ -176,9 +179,17 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
 
     const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
                             menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
-    /* "Lang" inserted at start of settings block; +「开机提示」 */
+    /*
+     * 设置图标下条目与 MenuList 行序一致；F4HWN 已去掉 BatTxt，原连续段上界由 44 收为 43。
+     * SetNav / Reset 行序随可选编译项变化，用 menu_id 归类避免错位。
+     */
+#if defined(ENABLE_FEAT_F4HWN)
+    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 43) ||
+                             (menu_id == MENU_SET_NAV || menu_id == MENU_RESET);
+#else
     const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 44) ||
                              menu_number_1based == 54 || menu_number_1based == 55;
+#endif
     const bool in_about = (menu_id == MENU_VOL);
     const bool in_other = !(in_channel || in_settings || in_about);
 

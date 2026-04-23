@@ -747,9 +747,8 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
         UI_DrawBattery(bat, gBatteryDisplayLevel, gLowBatteryBlink);
         memcpy(rowFb + batX, bat, batW);
 
-        char         pb[8];
-        const unsigned int pctV = BATTERY_VoltsToPercent(gBatteryVoltageAverage);
-        sprintf(pb, "%u%%", pctV);
+        char pb[8];
+        sprintf(pb, "%u%%", (unsigned)gBatteryIconFillPercent);
         {
             const uint8_t textW = DualVfoU8g2_GetSmallTextWidth(pb);
             const uint8_t gapRx = 2u;
@@ -1196,6 +1195,42 @@ static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
     if (gVFO_RSSI_bar_level[gEeprom.RX_VFO] > 6u)
         gVFO_RSSI_bar_level[gEeprom.RX_VFO] = 6u;
 }
+
+/*
+ * 与 UI_DisplayMainOnlyStatusBar 中 5 格 RSSI 一致：仅接收时按 gVFO_RSSI_bar_level 换算格数；
+ * 快照变化才置 gUpdateStatus，避免菜单 / MAIN ONLY 顶栏定时强刷。
+ */
+static void F4HWN_RequestStatusBarIfTopRssiSnapshotChanged(void)
+{
+    const bool on_menu = (gScreenToDisplay == DISPLAY_MENU);
+    const bool on_main_only =
+        (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
+         gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+    if (!on_menu && !on_main_only)
+        return;
+
+    const bool     rx_active = FUNCTION_IsRx();
+    uint8_t        bars_0_to_5 = 0u;
+    if (rx_active)
+    {
+        const uint8_t rx_vfo_idx = gEeprom.RX_VFO;
+        const unsigned int raw_bars =
+            (unsigned int)gVFO_RSSI_bar_level[rx_vfo_idx] * 5u + 5u;
+        unsigned int div6 = raw_bars / 6u;
+        if (div6 > 5u)
+            div6 = 5u;
+        bars_0_to_5 = (uint8_t)div6;
+    }
+
+    const uint16_t snapshot_u16 =
+        (uint16_t)((rx_active ? 1u : 0u) << 8) | (uint16_t)bars_0_to_5;
+    static uint16_t s_prev_top_rssi_snapshot = 0xFFFFu;
+    if (snapshot_u16 != s_prev_top_rssi_snapshot)
+    {
+        s_prev_top_rssi_snapshot = snapshot_u16;
+        gUpdateStatus = true;
+    }
+}
 #endif
 
 void DisplayRSSIBar(const bool now)
@@ -1467,7 +1502,7 @@ void UI_MAIN_TimeSlice500ms(void)
 #ifdef ENABLE_FEAT_F4HWN
     if (gScreenToDisplay == DISPLAY_MENU) {
         F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
-        gUpdateStatus = true;
+        F4HWN_RequestStatusBarIfTopRssiSnapshotChanged();
     } else
 #endif
     if(gScreenToDisplay==DISPLAY_MAIN) {
@@ -1538,6 +1573,14 @@ void UI_MAIN_TimeSlice500ms(void)
         }
 #endif
         }
+#ifdef ENABLE_FEAT_F4HWN
+        if (isMainOnly())
+        {
+            if (!FUNCTION_IsRx())
+                F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
+            F4HWN_RequestStatusBarIfTopRssiSnapshotChanged();
+        }
+#endif
     }
 }
 
