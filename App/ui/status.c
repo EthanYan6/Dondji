@@ -183,6 +183,45 @@ void UI_DisplayMainOnlyStatusBar(void)
 #endif
 }
 
+void UI_SpectrumDrawStatusLineDbRangeAndBattery(const char *db_range_text)
+{
+#ifdef ENABLE_FEAT_F4HWN
+    char               str[8];
+    uint8_t           *line = gStatusLine;
+    unsigned int        x;
+
+    memset(gStatusLine, 0, sizeof(gStatusLine));
+
+    if (db_range_text != NULL && db_range_text[0] != '\0') {
+        DualVfoU8g2_DrawSmallTextStatus(db_range_text, 0u, 2u, true);
+    }
+
+    x = LCD_WIDTH - UI_BATTERY_ICON_WIDTH - 2;
+    {
+        uint8_t battery_bitmap[UI_BATTERY_ICON_WIDTH];
+        UI_DrawBattery(battery_bitmap, gBatteryDisplayLevel, gLowBatteryBlink);
+        for (uint8_t battery_pixel_x = 0u; battery_pixel_x < UI_BATTERY_ICON_WIDTH; battery_pixel_x++) {
+            battery_bitmap[battery_pixel_x] <<= 1;
+        }
+        memcpy(line + x, battery_bitmap, UI_BATTERY_ICON_WIDTH);
+    }
+
+    {
+        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
+        const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
+        const unsigned int bat_left_u = (unsigned int)x;
+        const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+        if (bat_left_u > gap_u + (unsigned int)text_w)
+        {
+            const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
+            DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+        }
+    }
+#else
+    (void)db_range_text;
+#endif
+}
+
 void UI_DisplayStatus()
 {
     char str[8] = "";
@@ -204,6 +243,20 @@ void UI_DisplayStatus()
         UI_DisplayMainOnlyStatusBar();
         return;
     }
+
+    /* 一键测频：顶栏与 MAIN ONLY / 菜单一致（电池旁为整数百分比，非菜单项「电池文本」电压） */
+    if (gScreenToDisplay == DISPLAY_SCANNER) {
+        UI_DisplayMainOnlyStatusBar();
+        return;
+    }
+
+#ifdef ENABLE_FMRADIO
+    /* FM：顶栏与菜单 / MAIN ONLY 一致 */
+    if (gScreenToDisplay == DISPLAY_FM) {
+        UI_DisplayMainOnlyStatusBar();
+        return;
+    }
+#endif
 
     /* 双 VFO 主界面：不单独刷空白状态行；顶行由 ST7565_BlitFullScreenDualVfoTightTop 与 gFrameBuffer[0] 合并输出 */
     if (UI_IsDualVfoMainScreen())

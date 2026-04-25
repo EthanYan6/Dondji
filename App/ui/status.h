@@ -20,5 +20,8 @@
 void UI_DisplayStatus();
 void UI_DisplayMainOnlyStatusBar(void);
 
+/* 频谱顶栏：仅左侧 dB 范围小字 + 右侧电池与百分比（不写 gStatusLine 外；不 Blit，由调用方 Blit） */
+void UI_SpectrumDrawStatusLineDbRangeAndBattery(const char *db_range_text);
+
 #endif
 

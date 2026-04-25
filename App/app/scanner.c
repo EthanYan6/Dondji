@@ -318,12 +318,21 @@ void SCANNER_Start(bool singleFreq)
 
     uint8_t  backupStep      = gRxVfo->STEP_SETTING;
     uint16_t backupFrequency = gRxVfo->StepFrequency;
+    /*
+     * RADIO_InitInfo 会 memset 整份 VFO 并把 OUTPUT_POWER 置为 LOW1 等默认值，
+     * 仅用于扫频时重配硬件；须保留用户功率与带宽，否则顶栏/ EEPROM 镜像与进测频前不一致。
+     */
+    const uint8_t backup_output_power    = gRxVfo->OUTPUT_POWER;
+    const uint8_t backup_channel_bw      = gRxVfo->CHANNEL_BANDWIDTH;
 
     RADIO_InitInfo(gRxVfo, gRxVfo->CHANNEL_SAVE, gRxVfo->pRX->Frequency);
 
-    gRxVfo->STEP_SETTING  = backupStep;
-    gRxVfo->StepFrequency = backupFrequency;
+    gRxVfo->STEP_SETTING         = backupStep;
+    gRxVfo->StepFrequency        = backupFrequency;
+    gRxVfo->OUTPUT_POWER         = backup_output_power;
+    gRxVfo->CHANNEL_BANDWIDTH    = backup_channel_bw;
 
+    RADIO_ConfigureSquelchAndOutputPower(gRxVfo);
     RADIO_SetupRegisters(true);
 
 #ifdef ENABLE_NOAA

@@ -1303,7 +1303,13 @@ static void F4HWN_RequestStatusBarIfTopRssiSnapshotChanged(void)
     const bool on_main_only =
         (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
          gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
-    if (!on_menu && !on_main_only)
+    const bool on_scanner = (gScreenToDisplay == DISPLAY_SCANNER);
+#ifdef ENABLE_FMRADIO
+    const bool on_fm = (gScreenToDisplay == DISPLAY_FM);
+#else
+    const bool on_fm = false;
+#endif
+    if (!on_menu && !on_main_only && !on_scanner && !on_fm)
         return;
 
     const bool     rx_active = FUNCTION_IsRx();
@@ -1597,12 +1603,20 @@ void UI_MAIN_PrintAGC(bool now)
 void UI_MAIN_TimeSlice500ms(void)
 {
 #ifdef ENABLE_FEAT_F4HWN
-    if (gScreenToDisplay == DISPLAY_MENU) {
-        F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
-        F4HWN_RequestStatusBarIfTopRssiSnapshotChanged();
-    } else
+    {
+        const bool status_bar_rssi_slice =
+            (gScreenToDisplay == DISPLAY_MENU) || (gScreenToDisplay == DISPLAY_SCANNER)
+#ifdef ENABLE_FMRADIO
+            || (gScreenToDisplay == DISPLAY_FM)
 #endif
-    if(gScreenToDisplay==DISPLAY_MAIN) {
+            ;
+        if (status_bar_rssi_slice) {
+            F4HWN_UpdateGvfoRssiBarLevelForStatusBar();
+            F4HWN_RequestStatusBarIfTopRssiSnapshotChanged();
+        }
+    }
+#endif
+    if (gScreenToDisplay == DISPLAY_MAIN) {
 #ifdef ENABLE_AGC_SHOW_DATA
         UI_MAIN_PrintAGC(true);
         return;
@@ -1848,25 +1862,31 @@ void UI_DisplayMain(void)
             const FREQ_Config_t *pRx = &pVfo->freq_config_RX;
             const FREQ_Config_t *pTx = &pVfo->freq_config_TX;
             if (pRx->CodeType != CODE_TYPE_OFF) {
-                pos += sprintf(toneBuf + pos, "R");
                 if (pRx->CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-                    pos += sprintf(toneBuf + pos, "CT%u.%u", CTCSS_Options[pRx->Code] / 10, CTCSS_Options[pRx->Code] % 10);
+                    pos += sprintf(
+                        toneBuf + pos,
+                        "RCT: %u.%u",
+                        (unsigned)(CTCSS_Options[pRx->Code] / 10),
+                        (unsigned)(CTCSS_Options[pRx->Code] % 10));
                 } else if (pRx->CodeType == CODE_TYPE_DIGITAL) {
-                    pos += sprintf(toneBuf + pos, "DCS%03oN", DCS_Options[pRx->Code]);
+                    pos += sprintf(toneBuf + pos, "R: DCS%03oN", (unsigned)DCS_Options[pRx->Code]);
                 } else {
-                    pos += sprintf(toneBuf + pos, "DCS%03oI", DCS_Options[pRx->Code]);
+                    pos += sprintf(toneBuf + pos, "R: DCS%03oI", (unsigned)DCS_Options[pRx->Code]);
                 }
                 if (pTx->CodeType != CODE_TYPE_OFF)
                     toneBuf[pos++] = ' ';
             }
             if (pTx->CodeType != CODE_TYPE_OFF) {
-                pos += sprintf(toneBuf + pos, "T");
                 if (pTx->CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-                    pos += sprintf(toneBuf + pos, "CT%u.%u", CTCSS_Options[pTx->Code] / 10, CTCSS_Options[pTx->Code] % 10);
+                    pos += sprintf(
+                        toneBuf + pos,
+                        "TCT: %u.%u",
+                        (unsigned)(CTCSS_Options[pTx->Code] / 10),
+                        (unsigned)(CTCSS_Options[pTx->Code] % 10));
                 } else if (pTx->CodeType == CODE_TYPE_DIGITAL) {
-                    pos += sprintf(toneBuf + pos, "DCS%03oN", DCS_Options[pTx->Code]);
+                    pos += sprintf(toneBuf + pos, "T: DCS%03oN", (unsigned)DCS_Options[pTx->Code]);
                 } else {
-                    pos += sprintf(toneBuf + pos, "DCS%03oI", DCS_Options[pTx->Code]);
+                    pos += sprintf(toneBuf + pos, "T: DCS%03oI", (unsigned)DCS_Options[pTx->Code]);
                 }
             }
             toneBuf[pos] = '\0';

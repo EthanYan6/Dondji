@@ -22,10 +22,17 @@
 #include "chFrScanner.h"
 #endif
 
+#include "board.h"
 #include "driver/backlight.h"
 #include "frequencies.h"
+#include "helper/battery.h"
 #include "ui/helper.h"
 #include "ui/main.h"
+#include "ui/status.h"
+
+#ifdef ENABLE_FEAT_F4HWN
+#include "ui/dualvfo_u8g2_freq.h"
+#endif
 
 #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
 #include "screenshot.h"
@@ -113,11 +120,11 @@ const int8_t LNAsOptions[] = {-19, -16, -11, 0};
 const int8_t LNAOptions[] = {-24, -19, -14, -9, -6, -4, -2, 0};
 const int8_t VGAOptions[] = {-33, -27, -21, -15, -9, -6, -3, 0};
 //const char *BPFOptions[] = {"8.46", "7.25", "6.35", "5.64", "5.08", "4.62", "4.23"};
-#endif
 
-uint16_t statuslineUpdateTimer = 0;
+/* 顶栏信道名绘制区，清除宽度勿覆盖右侧与 MAIN ONLY 一致的电池与百分比 */
+#define SPECTRUM_STATUS_CH_NAME_X0    46u
+#define SPECTRUM_STATUS_CH_NAME_CLR_W 48u
 
-#ifdef ENABLE_FEAT_F4HWN_SPECTRUM
 static void LoadSettings()
 {
     uint8_t Data[8] = {0};
@@ -998,6 +1005,19 @@ static void DrawStatus()
 #else
     sprintf(String, "%d/%d", settings.dbMin, settings.dbMax);
 #endif
+
+#ifdef ENABLE_FEAT_F4HWN
+    {
+        BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[gBatteryVoltageIndex], &gBatteryCurrent);
+        gBatteryVoltageIndex++;
+        if (gBatteryVoltageIndex > 3)
+            gBatteryVoltageIndex = 0;
+    }
+    BATTERY_GetReadings(true);
+
+    /* 仅 dB 范围 + 电池与百分比，勿用整段 MAIN ONLY 顶栏（会与频谱右侧小字/信道名重叠） */
+    UI_SpectrumDrawStatusLineDbRangeAndBattery(String);
+#else
     GUI_DisplaySmallest(String, 0, 1, true, true);
 
     BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[gBatteryCheckCounter++ % 4],
@@ -1008,9 +1028,6 @@ static void DrawStatus()
                        4 * 760 / gBatteryCalibration[3];
 
     unsigned perc = BATTERY_VoltsToPercent(voltage);
-
-    // sprintf(String, "%d %d", voltage, perc);
-    // GUI_DisplaySmallest(String, 48, 1, true, true);
 
     gStatusLine[116] = 0b00011100;
     gStatusLine[117] = 0b00111110;
@@ -1026,6 +1043,7 @@ static void DrawStatus()
             gStatusLine[i] = 0b00111110;
         }
     }
+#endif
 }
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
@@ -1053,12 +1071,18 @@ static void ShowChannelName(uint32_t f)
             }
         }
         if (channelName[0] != 0) {
-            UI_PrintStringSmallBufferNormal(channelName, gStatusLine + 36);
+            uint8_t clear_width = DualVfoU8g2_GetSmallTextWidth(channelName);
+            if (clear_width < SPECTRUM_STATUS_CH_NAME_CLR_W)
+                clear_width = SPECTRUM_STATUS_CH_NAME_CLR_W;
+            if ((uint32_t)SPECTRUM_STATUS_CH_NAME_X0 + (uint32_t)clear_width > LCD_WIDTH)
+                clear_width = (uint8_t)(LCD_WIDTH - SPECTRUM_STATUS_CH_NAME_X0);
+            memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, clear_width);
+            DualVfoU8g2_DrawSmallTextStatus(channelName, SPECTRUM_STATUS_CH_NAME_X0, 2u, true);
         }
     }
     else
     {
-        memset(&gStatusLine[36], 0, 100 - 28);
+        memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, SPECTRUM_STATUS_CH_NAME_CLR_W);
     }
     ST7565_BlitStatusLine();
 }
@@ -1070,14 +1094,56 @@ static void DrawF(uint32_t f)
     UI_PrintStringSmallNormal(String, 8, 127, 0);
 
     sprintf(String, "%3s", gModulationStr[settings.modulationType]);
+#ifdef ENABLE_FEAT_F4HWN
+    {
+        const uint8_t text_width_mod = DualVfoU8g2_GetSmallTextWidth(String);
+        uint8_t       x_mod            = 0u;
+        if (LCD_WIDTH > 2u + text_width_mod)
+            x_mod = (uint8_t)(LCD_WIDTH - 2u - text_width_mod);
+        DualVfoU8g2_DrawSmallText(String, x_mod, 1u, true);
+    }
+#else
     GUI_DisplaySmallest(String, 116, 1, false, true);
+#endif
+
     sprintf(String, "%4sk", bwOptions[settings.listenBw]);
+#ifdef ENABLE_FEAT_F4HWN
+    {
+        const uint8_t text_width_bw = DualVfoU8g2_GetSmallTextWidth(String);
+        uint8_t       x_bw          = 0u;
+        if (LCD_WIDTH > 2u + text_width_bw)
+            x_bw = (uint8_t)(LCD_WIDTH - 2u - text_width_bw);
+        DualVfoU8g2_DrawSmallText(String, x_bw, 7u, true);
+    }
+#else
     GUI_DisplaySmallest(String, 108, 7, false, true);
+#endif
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
     ShowChannelName(f);
 #endif
 }
+
+#ifdef ENABLE_FEAT_F4HWN
+/* 底部步进旁：3×5 的 0x7F（上加下减），与未开 F4HWN 时 GUI_DisplaySmallest 一致；字宽约 4px */
+#define SPECTRUM_BOTTOM_PM_3X5_WIDTH_PX 4u
+/* 仅「±」字模 + 步进 k 数（如 800.00k）相对原位置右移；左右两侧主频不动 */
+#define SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX 10u
+
+static const char spectrum_pm_glyph_3x5[] = "\x7F";
+
+static uint8_t Spectrum_U8g2PlusMinusColumnWidth(void)
+{
+    const uint8_t width_pm = SPECTRUM_BOTTOM_PM_3X5_WIDTH_PX;
+    return width_pm;
+}
+
+static void Spectrum_U8g2DrawPlusMinus(uint8_t x_left, uint8_t y_top, bool set_black)
+{
+    (void)set_black;
+    GUI_DisplaySmallest(spectrum_pm_glyph_3x5, x_left, y_top, false, true);
+}
+#endif
 
 static void DrawNums()
 {
@@ -1094,20 +1160,114 @@ static void DrawNums()
         {
             sprintf(String, "%ux", GetStepsCount());
         }
+#ifdef ENABLE_FEAT_F4HWN
+        DualVfoU8g2_DrawSmallText(String, 0u, 1u, true);
+        sprintf(String, "%u.%02uk", GetScanStep() / 100, GetScanStep() % 100);
+        DualVfoU8g2_DrawSmallText(String, 0u, 7u, true);
+#else
         GUI_DisplaySmallest(String, 0, 1, false, true);
         sprintf(String, "%u.%02uk", GetScanStep() / 100, GetScanStep() % 100);
         GUI_DisplaySmallest(String, 0, 7, false, true);
+#endif
     }
 
     if (IsCenterMode())
     {
+#ifdef ENABLE_FEAT_F4HWN
+        {
+            char           part_left[16];
+            char           part_khz[16];
+            const unsigned step_whole = (unsigned)(settings.frequencyChangeStep / 100u);
+            const unsigned step_frac  = (unsigned)(settings.frequencyChangeStep % 100u);
+
+            sprintf(part_left, "%u.%05u", currentFreq / 100000, currentFreq % 100000);
+            sprintf(part_khz, "%u.%02uk", step_whole, step_frac);
+
+            const uint8_t width_left  = DualVfoU8g2_GetSmallTextWidth(part_left);
+            const uint8_t width_col   = Spectrum_U8g2PlusMinusColumnWidth();
+            const uint8_t width_khz  = DualVfoU8g2_GetSmallTextWidth(part_khz);
+            const uint8_t gap_px      = 2u;
+            const uint32_t total_w_u =
+                (uint32_t)width_left + (uint32_t)gap_px + (uint32_t)width_col +
+                (uint32_t)gap_px + (uint32_t)width_khz;
+            uint8_t x0 = 0u;
+            if (total_w_u <= (uint32_t)LCD_WIDTH)
+                x0 = (uint8_t)(((uint32_t)LCD_WIDTH - total_w_u) / 2u);
+
+            DualVfoU8g2_DrawSmallText(part_left, x0, 49u, true);
+            {
+                const uint8_t x_stack =
+                    (uint8_t)(x0 + width_left + gap_px + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
+                Spectrum_U8g2DrawPlusMinus(x_stack, 49u, true);
+            }
+            {
+                const uint8_t x_khz = (uint8_t)(x0 + width_left + gap_px + width_col + gap_px +
+                                               SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
+                DualVfoU8g2_DrawSmallText(part_khz, x_khz, 49u, true);
+            }
+        }
+#else
         sprintf(String, "%u.%05u \x7F%u.%02uk", currentFreq / 100000,
                 currentFreq % 100000, settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
         GUI_DisplaySmallest(String, 36, 49, false, true);
+#endif
     }
     else
     {
+#ifdef ENABLE_FEAT_F4HWN
+        {
+            char           line_start[16];
+            char           line_step[16];
+            char           line_end[16];
+            const unsigned step_khz_whole = (unsigned)(settings.frequencyChangeStep / 100u);
+            const unsigned step_khz_frac  = (unsigned)(settings.frequencyChangeStep % 100u);
+
+            sprintf(line_start, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
+            sprintf(line_step, "%u.%02uk", step_khz_whole, step_khz_frac);
+            sprintf(line_end, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
+
+            DualVfoU8g2_DrawSmallText(line_start, 0u, 49u, true);
+
+            const uint8_t width_start = DualVfoU8g2_GetSmallTextWidth(line_start);
+            const uint8_t width_col   = Spectrum_U8g2PlusMinusColumnWidth();
+            const uint8_t width_khz   = DualVfoU8g2_GetSmallTextWidth(line_step);
+            const uint8_t width_end   = DualVfoU8g2_GetSmallTextWidth(line_end);
+            const uint8_t gap_px      = 2u;
+            const uint8_t width_mid   = (uint8_t)(gap_px + width_col + gap_px + width_khz);
+
+            uint8_t x_end = 0u;
+            if (LCD_WIDTH > 2u + width_end)
+                x_end = (uint8_t)(LCD_WIDTH - 2u - width_end);
+
+            uint8_t x_step = (uint8_t)(width_start + 2u);
+            {
+                const uint8_t shift_px = SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX;
+                const uint16_t width_mid_u     = (uint16_t)width_mid;
+                const uint16_t x_end_u         = (uint16_t)x_end;
+                const uint16_t shift_u         = (uint16_t)shift_px;
+                const uint16_t margin_u        = 2u;
+                const uint16_t x_step_max_u =
+                    (x_end_u > width_mid_u + margin_u + shift_u)
+                        ? (uint16_t)(x_end_u - width_mid_u - margin_u - shift_u)
+                        : (uint16_t)x_step;
+                const uint8_t x_step_max = (uint8_t)x_step_max_u;
+                if (x_step > x_step_max)
+                    x_step = x_step_max;
+            }
+
+            {
+                const uint8_t x_pm = (uint8_t)(x_step + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
+                Spectrum_U8g2DrawPlusMinus(x_pm, 49u, true);
+            }
+            {
+                const uint8_t x_khz = (uint8_t)(x_step + gap_px + width_col + gap_px +
+                                               SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
+                DualVfoU8g2_DrawSmallText(line_step, x_khz, 49u, true);
+            }
+            DualVfoU8g2_DrawSmallText(line_end, x_end, 49u, true);
+        }
+#else
         sprintf(String, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
         GUI_DisplaySmallest(String, 0, 49, false, true);
 
@@ -1117,6 +1277,7 @@ static void DrawNums()
 
         sprintf(String, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
         GUI_DisplaySmallest(String, 93, 49, false, true);
+#endif
     }
 }
 
@@ -1377,7 +1538,9 @@ static void RenderFreqInput() { UI_PrintString(freqInputString, 2, 127, 0, 8); }
 
 static void RenderStatus()
 {
+#ifndef ENABLE_FEAT_F4HWN
     memset(gStatusLine, 0, sizeof(gStatusLine));
+#endif
     DrawStatus();
     ST7565_BlitStatusLine();
 }
@@ -1422,9 +1585,15 @@ static void RenderStill()
     int dbm = Rssi2DBm(scanInfo.rssi);
     uint8_t s = DBm2S(dbm);
     sprintf(String, "S: %u", s);
+#ifdef ENABLE_FEAT_F4HWN
+    DualVfoU8g2_DrawSmallText(String, 4u, 25u, true);
+    sprintf(String, "%d dBm", dbm);
+    DualVfoU8g2_DrawSmallText(String, 28u, 25u, true);
+#else
     GUI_DisplaySmallest(String, 4, 25, false, true);
     sprintf(String, "%d dBm", dbm);
     GUI_DisplaySmallest(String, 28, 25, false, true);
+#endif
 
     if (!monitorMode)
     {
@@ -1454,8 +1623,13 @@ static void RenderStill()
             }
         }
         sprintf(String, "%s", registerSpecs[idx].name);
+#ifdef ENABLE_FEAT_F4HWN
+        DualVfoU8g2_DrawSmallText(String, (uint8_t)(offset + 2u), (uint8_t)(row * 8u + 2u),
+                                   menuState != idx);
+#else
         GUI_DisplaySmallest(String, offset + 2, row * 8 + 2, false,
                             menuState != idx);
+#endif
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
         if(idx == 1)
@@ -1479,8 +1653,13 @@ static void RenderStill()
 #else
         sprintf(String, "%u", GetRegMenuValue(idx));
 #endif
+#ifdef ENABLE_FEAT_F4HWN
+        DualVfoU8g2_DrawSmallText(String, (uint8_t)(offset + 2u), (uint8_t)((row + 1u) * 8u + 1u),
+                                   menuState != idx);
+#else
         GUI_DisplaySmallest(String, offset + 2, (row + 1) * 8 + 1, false,
                             menuState != idx);
+#endif
     }
 }
 
@@ -1722,11 +1901,10 @@ static void Tick()
             UpdateStill();
         }
     }
-    if (redrawStatus || ++statuslineUpdateTimer > 4096)
+    if (redrawStatus)
     {
         RenderStatus();
         redrawStatus = false;
-        statuslineUpdateTimer = 0;
     }
     if (redrawScreen)
     {

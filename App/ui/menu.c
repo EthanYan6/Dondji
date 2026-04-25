@@ -79,18 +79,6 @@ static uint8_t CH_mem_blk_y0(void)
     const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
     return (uint8_t)(top + pad);
 }
-static void CH_sub_val_bounds(unsigned *px1, unsigned *px2, unsigned menu_value_x1, unsigned menu_item_x2, unsigned menu_item_x1, bool icon_layout)
-{
-    unsigned x1 = menu_value_x1;
-    if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu && menu_item_x1 == 0u)
-        x1 = menu_value_x1 + 8u;
-    if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
-        x1 = x1 + 2u;
-    if (gUiLanguage == UI_LANGUAGE_CN && !gIsInSubMenu && x1 >= 50u)
-        x1 = x1 + 2u;
-    *px1 = x1;
-    *px2 = menu_item_x2;
-}
 /* SysInf (MENU_VOL): line height for stacking — Han uses 12px band, ASCII small 7px */
 static uint8_t VOL_line_band_height(const char *line)
 {
@@ -1541,7 +1529,7 @@ void UI_DisplayMenu(void)
                 }
                 else
                 {
-                    /* 10 字输完按 MENU 会进入 SURE?/WAIT!（约 y52），与底部提示同一带区，故不再叠字 */
+                    /* 10 字输完按 MENU 会进入确认?/请等待!（约 y52），与底部提示同一带区，故不再叠字 */
                     const bool mem_name_still_editing_cursor =
                         (edit_index < 10);
                     const bool mem_name_not_in_confirm_dialog =
@@ -1707,22 +1695,20 @@ void UI_DisplayMenu(void)
             else if(gSubMenuSelection < 81)
             {
                 sprintf(String, "CARRIER\n%02ds:%03dms", ((gSubMenuSelection * 250) / 1000), ((gSubMenuSelection * 250) % 1000));
-                //#if !defined(ENABLE_SPECTRUM) || !defined(ENABLE_FMRADIO)
-                //ST7565_Gauge(5, 1, 80, gSubMenuSelection);
-                gaugeLine = 5;
+                /*
+                 * 条所在 gFrameBuffer 行须 <7：F4HWN 全屏刷新只输出 [0]..[6] 到硬件行 1..7，
+                 * 子菜单 gauge 行 = gaugeLine+2，若仍用 5 则落到 [7] 屏外。
+                 */
+                gaugeLine = 4;
                 gaugeMin = 1;
                 gaugeMax = 80;
-                //#endif
             }
             else
             {
                 sprintf(String, "TIMEOUT\n%02dm:%02ds", (((gSubMenuSelection - 80) * 5) / 60), (((gSubMenuSelection - 80) * 5) % 60));
-                //#if !defined(ENABLE_SPECTRUM) || !defined(ENABLE_FMRADIO)
-                //ST7565_Gauge(5, 80, 104, gSubMenuSelection);
-                gaugeLine = 5;
+                gaugeLine = 4;
                 gaugeMin = 80;
                 gaugeMax = 104;
-                //#endif
             }
             break;
 
@@ -2271,13 +2257,24 @@ void UI_DisplayMenu(void)
          UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME ||
          UI_MENU_GetCurrentMenuId() == MENU_DEL_CH) && gAskForConfirmation)
     {
-        char *pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
+        const char *pPrintStr;
 #ifdef ENABLE_CHINESE
-        {
-            unsigned cx1, cx2;
-            CH_sub_val_bounds(&cx1, &cx2, menu_value_x1, menu_item_x2, menu_item_x1, icon_layout);
-            UI_PrintStringSmallAtPixel(pPrintStr, (uint8_t)cx1, (uint8_t)cx2, 52u, 59u, 0u);
+        /*
+         * 存信道 / 删信道 / 命名信道 / 复位：共用本段。
+         * 标点与 FM 页一致：汉字 + 英文 ? / !（勿用全角 U+FF1F/U+FF01，混排绘制更稳）。
+         */
+        if (gAskForConfirmation == 1) {
+            /* 确 U+786E = UTF-8 E7 A1 AE */
+            pPrintStr = "\xe7\xa1\xae\xe8\xae\xa4?";
+        } else {
+            pPrintStr = "\xe8\xaf\xb7\xe7\xad\x89\xe5\xbe\x85!";
         }
+#else
+        pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
+#endif
+#ifdef ENABLE_CHINESE
+        /* 整行宽度居中 */
+        UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 52u, 59u, 3u);
 #else
         UI_PrintStringSmallNormal(pPrintStr, menu_value_x1, menu_item_x2, 6);
 #endif

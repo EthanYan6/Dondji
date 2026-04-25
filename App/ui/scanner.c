@@ -34,6 +34,11 @@ void UI_DisplayScanner(void)
 
     UI_DisplayClear();
 
+#ifdef ENABLE_FEAT_F4HWN
+    /* 与菜单 UI_DisplayMenu 相同：顶栏（gStatusLine）下方第一行像素画横线 */
+    UI_DrawLineBuffer(gFrameBuffer, 0, 0, (int16_t)(LCD_WIDTH - 1u), 0, true);
+#endif
+
 #ifdef ENABLE_CHINESE
     if (gUiLanguage == UI_LANGUAGE_CN)
     {
@@ -63,11 +68,15 @@ void UI_DisplayScanner(void)
 
         memset(String, 0, sizeof(String));
         if (gScannerSaveState == SCAN_SAVE_CHANNEL) {
-            pPrintStr = "SAVE?";
+            /* 与 FM 中文「保存?」相同：汉字 + ASCII ? */
+            pPrintStr = "\xe4\xbf\x9d\xe5\xad\x98?";
             UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
         } else if (gScannerSaveState == SCAN_SAVE_CHAN_SEL) {
-            strcpy(String, "SAVE:");
-            UI_GenerateChannelStringEx(String + 5, gShowChPrefix, gScanChannel);
+            /* 「保存:」+ 信道号，与上方「保存?」确认语义一致；前缀 UTF-8 共 7 字节 */
+            static const char save_chan_prefix_cn[] = "\xe4\xbf\x9d\xe5\xad\x98:";
+            const size_t save_chan_prefix_len = sizeof(save_chan_prefix_cn) - 1u;
+            memcpy(String, save_chan_prefix_cn, save_chan_prefix_len);
+            UI_GenerateChannelStringEx(String + save_chan_prefix_len, gShowChPrefix, gScanChannel);
             UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
         } else if (gScanCssState < SCAN_CSS_STATE_FOUND) {
             static const char scan_cn[] = "\xe6\x89\xab\xe6\x8f\x8f\xe4\xb8\xad";
@@ -80,7 +89,14 @@ void UI_DisplayScanner(void)
             }
             UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
         } else if (gScanCssState == SCAN_CSS_STATE_FOUND) {
-            UI_PrintStringSmallAtPixel("SCAN CMP.", 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
+            /* 扫描完成 */
+            UI_PrintStringSmallAtPixel(
+                "\xe6\x89\xab\xe6\x8f\x8f\xe5\xae\x8c\xe6\x88\x90",
+                0u,
+                LCD_WIDTH - 1u,
+                40u,
+                54u,
+                3u);
         } else {
             UI_PrintStringSmallAtPixel("SCAN FAIL.", 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
         }

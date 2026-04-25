@@ -180,7 +180,12 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
 #else
             const bool is_fm_screen = false;
 #endif
-            if (!is_fm_screen)
+#ifdef ENABLE_FEAT_F4HWN
+            const bool is_scanner_screen = (gScreenToDisplay == DISPLAY_SCANNER);
+#else
+            const bool is_scanner_screen = false;
+#endif
+            if (!is_fm_screen && !is_scanner_screen)
                 gUpdateDisplay = true;
         }
     }

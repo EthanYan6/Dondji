@@ -37,20 +37,54 @@ static void dualvfo_u8g2_prepare_small_font_text(const char *input_text, char *o
     if (input_text == NULL)
         return;
 
+    size_t read_index  = 0u;
     size_t write_index = 0u;
-    while (input_text[write_index] != '\0' && write_index + 1u < output_capacity)
-    {
-        const char source_char = input_text[write_index];
-        char       mapped_char = source_char;
 
-        if (source_char >= 'a' && source_char <= 'z')
-            mapped_char = (char)(source_char - 'a' + 'A');
+    while (input_text[read_index] != '\0' && write_index + 1u < output_capacity)
+    {
+        const unsigned char byte0 = (unsigned char)input_text[read_index];
+
+        /* UTF-8 U+00B1 PLUS-MINUS SIGN: 0xC2 0xB1 */
+        if (byte0 == 0xC2u && input_text[read_index + 1u] != '\0')
+        {
+            const unsigned char byte1 = (unsigned char)input_text[read_index + 1u];
+            if (byte1 == 0xB1u)
+            {
+                if (write_index + 2u >= output_capacity)
+                    break;
+                output_text[write_index] = (char)0xC2;
+                write_index++;
+                output_text[write_index] = (char)0xB1;
+                write_index++;
+                read_index += 2u;
+                continue;
+            }
+        }
+
+        /* Latin-1 plus-minus: normalize to UTF-8 for u8g2_DrawStr */
+        if (byte0 == 0xB1u)
+        {
+            if (write_index + 2u >= output_capacity)
+                break;
+            output_text[write_index] = (char)0xC2;
+            write_index++;
+            output_text[write_index] = (char)0xB1;
+            write_index++;
+            read_index++;
+            continue;
+        }
+
+        char mapped_char = (char)byte0;
+
+        if (mapped_char >= 'a' && mapped_char <= 'z')
+            mapped_char = (char)(mapped_char - 'a' + 'A');
 
         if (mapped_char < 0x20 || mapped_char > 0x5f)
             mapped_char = ' ';
 
         output_text[write_index] = mapped_char;
         write_index++;
+        read_index++;
     }
 
     output_text[write_index] = '\0';

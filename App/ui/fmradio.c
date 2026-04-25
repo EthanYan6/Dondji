@@ -22,12 +22,60 @@
 #include "driver/bk1080.h"
 #include "driver/st7565.h"
 #include "external/printf/printf.h"
+#include "font.h"
 #include "misc.h"
 #include "settings.h"
 #include "ui/fmradio.h"
 #include "ui/helper.h"
 #include "ui/inputbox.h"
 #include "ui/ui.h"
+
+/* 与 UI_PrintString(..., Line=0, Width=8) 相同布局，整字下移若干像素 */
+#define FM_UI_BIG_FM_LABEL_DOWN_SHIFT_PX 3u
+
+static void FM_UI_DrawBigFmMark(void)
+{
+    const char      label[]     = "FM";
+    const uint8_t   start_x     = 2u;
+    const uint8_t   char_pitch  = 8u;
+    const uint8_t   down_shift  = FM_UI_BIG_FM_LABEL_DOWN_SHIFT_PX;
+    const size_t    label_len   = sizeof(label) - 1u;
+    size_t          char_index;
+
+    for (char_index = 0u; char_index < label_len; char_index++) {
+        const char ch = label[char_index];
+        if (ch <= ' ' || ch >= 127)
+            continue;
+
+        const unsigned int glyph_index = (unsigned int)(ch - ' ' - 1u);
+        const unsigned int ofs         = (unsigned int)start_x + (unsigned int)char_index * (unsigned int)char_pitch;
+        uint8_t            col;
+
+        for (col = 0u; col < 7u; col++) {
+            const uint8_t x = (uint8_t)(ofs + (unsigned int)col);
+            uint8_t        row_in_glyph;
+
+            for (row_in_glyph = 0u; row_in_glyph < 8u; row_in_glyph++) {
+                const uint8_t mask = (uint8_t)(1u << row_in_glyph);
+                if ((gFontBig[glyph_index][col] & mask) == 0u)
+                    continue;
+                {
+                    const uint8_t y_pixel = (uint8_t)(row_in_glyph + down_shift);
+                    UI_DrawPixelBuffer(gFrameBuffer, x, y_pixel, true);
+                }
+            }
+            for (row_in_glyph = 0u; row_in_glyph < 8u; row_in_glyph++) {
+                const uint8_t mask = (uint8_t)(1u << row_in_glyph);
+                if ((gFontBig[glyph_index][(uint8_t)(col + 7u)] & mask) == 0u)
+                    continue;
+                {
+                    const uint8_t y_pixel = (uint8_t)(row_in_glyph + 8u + down_shift);
+                    UI_DrawPixelBuffer(gFrameBuffer, x, y_pixel, true);
+                }
+            }
+        }
+    }
+}
 
 #ifdef ENABLE_CHINESE
 /* 仅中文 UI：与记忆频率差 1 步(0.1MHz) 时也显示 频率(CHnn)，不改变英文与按键逻辑 */
@@ -57,7 +105,12 @@ void UI_DisplayFM(void)
     char *pPrintStr = String;
     UI_DisplayClear();
 
-    UI_PrintString("FM", 2, 0, 0, 8);
+#ifdef ENABLE_FEAT_F4HWN
+    /* 与菜单一致：定制顶栏（status.c）下方内容区顶边横线 */
+    UI_DrawLineBuffer(gFrameBuffer, 0, 0, (int16_t)(LCD_WIDTH - 1u), 0, true);
+#endif
+
+    FM_UI_DrawBigFmMark();
 
     sprintf(String, "%d%s-%dM", 
         BK1080_GetFreqLoLimit(gEeprom.FM_Band)/10,

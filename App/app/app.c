@@ -1687,7 +1687,7 @@ void APP_TimeSlice500ms(void)
 
     /*
      * 顶栏电量等：不用约 2s 定时强刷。
-     * FM / 双守 / 菜单 / MAIN ONLY 均由内容变化触发（电量见 BATTERY_GetReadings 整数百分比等）。
+     * FM / 双守 / 菜单 / MAIN ONLY / 测频 均由内容变化触发（电量见 BATTERY_GetReadings 整数百分比等）。
      */
     if ((gBatteryCheckCounter & 3) == 0)
     {
@@ -1702,12 +1702,14 @@ void APP_TimeSlice500ms(void)
         const bool is_main_only_top =
             (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
              gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+        const bool is_scanner_top = (gScreenToDisplay == DISPLAY_SCANNER);
 #else
         const bool is_dual_vfo_main = false;
         const bool is_menu_top      = false;
         const bool is_main_only_top = false;
+        const bool is_scanner_top    = false;
 #endif
-        if (!is_fm_screen && !is_dual_vfo_main && !is_menu_top && !is_main_only_top)
+        if (!is_fm_screen && !is_dual_vfo_main && !is_menu_top && !is_main_only_top && !is_scanner_top)
         {
             if (gChargingWithTypeC || gSetting_battery_text > 0)
                 gUpdateStatus = true;
