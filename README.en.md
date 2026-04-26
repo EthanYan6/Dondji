@@ -34,8 +34,8 @@
 ## 🧭 MAIN ONLY Mode
 
 1. Press Menu
-2. Go to Settings (No.2)
-3. Go to RxMode (No.20)
+2. Go to Display (No.3)
+3. Go to RxMode (No.2)
 4. Select MAIN ONLY
 5. Exit
 
@@ -53,13 +53,13 @@ Enable:
 
 ## 🔀 Dual VFO UI
 
-<img width="639" src="https://github.com/user-attachments/assets/30ddf9ec-7244-44b9-9f34-3dfe35b7d42f" />
+<img width="643" height="407" alt="image" src="https://github.com/user-attachments/assets/d606de69-2cc5-4f27-871b-d4d28c5e967e" />
 
 ---
 
 ## 🌐 Language
 
-Menu → Settings → Lang → 中文 / English
+Menu → Display → Lang → 中文 / English
 
 ---
 
