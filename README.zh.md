@@ -27,15 +27,15 @@
 
 ## 📸 主界面
 
-<img width="643" src="https://github.com/user-attachments/assets/2097c20d-58fc-4577-ba84-dbfc83876e03" />
+<img width="643" height="407" src="https://github.com/user-attachments/assets/2097c20d-58fc-4577-ba84-dbfc83876e03" />
 
 ---
 
 ## 🧭 如何进入 MAIN ONLY
 
 1. 按 Menu
-2. 进入第 2 项：设置
-3. 选择第 20 项：接收模式
+2. 进入第 3 项：显示
+3. 选择第 2 项：接收模式
 4. 选择：仅主信道
 5. 退出菜单
 
@@ -53,13 +53,13 @@
 
 ## 🔀 双 VFO 页面
 
-<img width="639" src="https://github.com/user-attachments/assets/30ddf9ec-7244-44b9-9f34-3dfe35b7d42f" />
+<img width="643" height="407" alt="image" src="https://github.com/user-attachments/assets/d606de69-2cc5-4f27-871b-d4d28c5e967e" />
 
 ---
 
 ## 🌐 语言切换
 
-Menu → 设置 → Lang → 中文 / English
+Menu → 显示 → 显示语言 → 中文 / English
 
 ---
 
