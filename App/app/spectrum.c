@@ -1336,6 +1336,52 @@ static void DrawArrow(uint8_t x)
     }
 }
 
+static void DrawChickenIcon(uint8_t icon_left_x, uint8_t icon_top_y)
+{
+    static const char *chicken_rows[] = {
+        "....................",
+        ".......#.#..........",
+        "......#####.........",
+        "....##.....##.......",
+        "...##........##..#..",
+        "..##...........####.",
+        "..#.....#........##.",
+        "..#...............#.",
+        "..##..............#.",
+        "...##............##.",
+        "....###........##...",
+        "......##########....",
+        "........#..#........",
+        ".......##..##.......",
+    };
+
+    const uint8_t chicken_width = 20u;
+    const uint8_t chicken_height = (uint8_t)ARRAY_SIZE(chicken_rows);
+
+    for (uint8_t row_index = 0; row_index < chicken_height; ++row_index)
+    {
+        const char *current_row = chicken_rows[row_index];
+        uint8_t pixel_y = icon_top_y + row_index;
+
+        for (uint8_t column_index = 0; column_index < chicken_width; ++column_index)
+        {
+            char current_symbol = current_row[column_index];
+            bool should_draw_pixel = false;
+
+            if (current_symbol == '#')
+            {
+                should_draw_pixel = true;
+            }
+
+            if (should_draw_pixel)
+            {
+                uint8_t pixel_x = icon_left_x + column_index;
+                PutPixel(pixel_x, pixel_y, true);
+            }
+        }
+    }
+}
+
 static void OnKeyDown(uint8_t key)
 {
     bool nav = gEeprom.SET_NAV;
@@ -1661,6 +1707,13 @@ static void RenderStill()
                             menuState != idx);
 #endif
     }
+
+    {
+        const uint8_t chicken_icon_left_x = 97u;
+        const uint8_t chicken_icon_top_y = 33u;
+        DrawChickenIcon(chicken_icon_left_x, chicken_icon_top_y);
+    }
+
 }
 
 static void Render()
@@ -1985,4 +2038,10 @@ void APP_RunSpectrum()
     }
 
     BACKLIGHT_TurnOn();
+}
+
+bool APP_IsSpectrumActive(void)
+{
+    bool is_spectrum_active = isInitialized;
+    return is_spectrum_active;
 }

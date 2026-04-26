@@ -15,6 +15,12 @@
  */
 
 #include "debugging.h"
+#ifdef ENABLE_SPECTRUM
+#include "app/spectrum.h"
+#endif
+#ifdef ENABLE_FEAT_F4HWN_GAME
+#include "app/breakout.h"
+#endif
 #include "driver/st7565.h"
 #include "screenshot.h"
 #include "misc.h"
@@ -94,9 +100,23 @@ void SCREENSHOT_Update(bool force)
 
     // ==== BUILD FRAME ONCE ====
     // Dual VFO tight-top: full screen in gFrameBuffer[0..7]. Else: gStatusLine + gFrameBuffer[0..6].
-    const bool dualTightTop = UI_IsDualVfoMainScreen();
+    bool is_spectrum_active = false;
+#ifdef ENABLE_SPECTRUM
+    is_spectrum_active = APP_IsSpectrumActive();
+#endif
 
-    if (dualTightTop) {
+    bool is_breakout_active = false;
+#ifdef ENABLE_FEAT_F4HWN_GAME
+    is_breakout_active = APP_IsBreakoutActive();
+#endif
+
+    bool is_dual_vfo_tight_top = UI_IsDualVfoMainScreen();
+    if (is_spectrum_active || is_breakout_active)
+    {
+        is_dual_vfo_tight_top = false;
+    }
+
+    if (is_dual_vfo_tight_top) {
         for (uint8_t l = 0; l < 8; l++)
             SCREENSHOT_Line(gFrameBuffer[l], frameBuffer, &index);
     } else {

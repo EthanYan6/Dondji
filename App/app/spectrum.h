@@ -178,6 +178,7 @@ typedef struct PeakInfo
 } PeakInfo;
 
 void APP_RunSpectrum(void);
+bool APP_IsSpectrumActive(void);
 
 #endif /* ifndef SPECTRUM_H */
 

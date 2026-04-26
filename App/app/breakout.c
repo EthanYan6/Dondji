@@ -500,3 +500,9 @@ void APP_RunBreakout(void) {
             #endif
         }
 }
+
+bool APP_IsBreakoutActive(void)
+{
+    bool is_breakout_active = isInitialized;
+    return is_breakout_active;
+}

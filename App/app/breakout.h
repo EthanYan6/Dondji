@@ -75,3 +75,4 @@ void drawWall(void);
 void initRacket(void);
 void drawRacket(void);
 void APP_RunBreakout(void);
+bool APP_IsBreakoutActive(void);
