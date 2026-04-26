@@ -632,7 +632,7 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
 /* 与菜单 RxMode（gSubMenu_RXMode）四项顺序一致，底栏单行缩写 */
 static const char *DualVfoRxModeShortLabel(void)
 {
-    static const char *const abbrev[4] = {"MAIN", "A/B", "C", "A"};
+    static const char *const abbrev[4] = {"MAIN", "A/B", "CROSS", "A"};
     unsigned                 idx =
         (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF ? 1u : 0u) + (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF ? 2u : 0u);
     if (idx >= 4u)

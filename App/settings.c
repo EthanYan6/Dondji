@@ -472,10 +472,10 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         // TODO: address TBD
         PY25Q16_ReadBuffer(0x00A158, Data, 8);
         gSetting_set_pwr = (((Data[7] & 0xF0) >> 4) < 7) ? ((Data[7] & 0xF0) >> 4) : 0;
-        gSetting_set_ptt = (((Data[7] & 0x0F)) < 2) ? ((Data[7] & 0x0F)) : 0;
+        gSetting_set_ptt = 0;
 
-        gSetting_set_tot = (((Data[6] & 0xF0) >> 4) < 4) ? ((Data[6] & 0xF0) >> 4) : 0;
-        gSetting_set_eot = (((Data[6] & 0x0F)) < 4) ? ((Data[6] & 0x0F)) : 0;
+        gSetting_set_tot = 0;
+        gSetting_set_eot = 0;
 
         /*
         int tmp = ((Data[5] & 0xF0) >> 4);
@@ -491,11 +491,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
 
         int tmp = (Data[5] & 0xF0) >> 4;
 
-#ifdef ENABLE_FEAT_F4HWN_INV
-        gSetting_set_inv = (tmp >> 0) & 0x01;
-#else
         gSetting_set_inv = 0;
-#endif
         gSetting_set_lck = (tmp >> 1) & 0x01;
         gSetting_set_met = 0;
         gSetting_set_gui = 0;
@@ -517,7 +513,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         // Warning
 
         // And set special session settings for actions
-        gSetting_set_ptt_session = gSetting_set_ptt;
+        gSetting_set_ptt_session = 0;
         gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
     #endif
 
@@ -1039,13 +1035,19 @@ void SETTINGS_SaveSettings(void)
     State[4] = gSetting_set_tmr ? (1 << 0) : 0;
 #endif
 
+    gSetting_set_inv = 0;
+
     tmp =   (gSetting_set_inv << 0) |
             (gSetting_set_lck << 1) |
             (gSetting_set_met << 2) |
             (gSetting_set_gui << 3);
 
     State[5] = ((tmp << 4) | (gSetting_set_ctr & 0x0F));
+    gSetting_set_tot = 0;
+    gSetting_set_eot = 0;
     State[6] = ((gSetting_set_tot << 4) | (gSetting_set_eot & 0x0F));
+    gSetting_set_ptt = 0;
+    gSetting_set_ptt_session = 0;
     State[7] = ((gSetting_set_pwr << 4) | (gSetting_set_ptt & 0x0F));
 
     gEeprom.KEY_LOCK_PTT = gSetting_set_lck;

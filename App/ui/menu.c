@@ -121,6 +121,7 @@ const t_menu_item MenuList[] =
     {"ChSave",      MENU_MEM_CH        }, // was "MEM-CH"
     {"ChDele",      MENU_DEL_CH        }, // was "DEL-CH"
     {"ChName",      MENU_MEM_NAME      },
+    {"ChDisp",      MENU_MDF           }, // was "MDF"
 
     {"ScList",       MENU_S_LIST       },
     {"ScPri",        MENU_S_PRI        },
@@ -132,6 +133,7 @@ const t_menu_item MenuList[] =
         {"NOAA-S",      MENU_NOAA_S    },
     #endif
 #endif
+    {"Sql",         MENU_SQL           },
     {"F1Shrt",      MENU_F1SHRT        },
     {"F1Long",      MENU_F1LONG        },
     {"F2Shrt",      MENU_F2SHRT        },
@@ -140,13 +142,13 @@ const t_menu_item MenuList[] =
 
     {"KeyLck",      MENU_AUTOLK        }, // was "AUTOLk"
     {"Lang",        MENU_LANGUAGE      },
+    {"RxMode",      MENU_TDR           },
     {"TxTOut",      MENU_TOT           }, // was "TOT"
     {"BatSav",      MENU_SAVE          }, // was "SAVE"
 #if !defined(ENABLE_FEAT_F4HWN)
     {"BatTxt",      MENU_BAT_TXT       },
 #endif
     {"Mic",         MENU_MIC           },
-    {"ChDisp",      MENU_MDF           }, // was "MDF"
     {"POnMsg",      MENU_PONMSG        },
     {"BootHnt",     MENU_BOOT_HINT     },
     {"BLTime",      MENU_ABR           }, // was "ABR"
@@ -192,8 +194,6 @@ const t_menu_item MenuList[] =
 #else
     {"BatVol",      MENU_VOL           }, // was "VOL"
 #endif
-    {"RxMode",      MENU_TDR           },
-    {"Sql",         MENU_SQL           },
 #ifndef ENABLE_FEAT_F4HWN
 #ifdef ENABLE_AUDIO_BAR
     {"MicBar",      MENU_MIC_BAR       },
@@ -861,6 +861,11 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
             UI_PrintStringSmallAtPixel("过中继", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("尾音消除", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_TDR)
+        {
+            UI_PrintStringSmallAtPixel("\xe6\x8e\xa5\xe6\x94\xb6\xe6\xa8\xa1\xe5\xbc\x8f", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("<\xe8\xae\xbe\xe4\xb8\xbb\xe9\xa1\xb5>", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
         else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
         {
             UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
@@ -950,6 +955,47 @@ static void UI_MENU_DrawLauncherOther40(uint8_t x, uint8_t y)
     UI_DrawLineBuffer(gFrameBuffer, x + 5, y + 33, x + 42, y + 33, true);
 }
 
+static void UI_MENU_DrawLauncherDisplay40(uint8_t x, uint8_t y)
+{
+    uint8_t body_left = (uint8_t)(x + 6u);
+    uint8_t body_top = (uint8_t)(y + 10u);
+    uint8_t body_right = (uint8_t)(x + 42u);
+    uint8_t body_bottom = (uint8_t)(y + 33u);
+    uint8_t screen_left = (uint8_t)(x + 12u);
+    uint8_t screen_top = (uint8_t)(y + 14u);
+    uint8_t screen_right = (uint8_t)(x + 30u);
+    uint8_t screen_bottom = (uint8_t)(y + 25u);
+    uint8_t antenna_top_left_x = (uint8_t)(x + 21u);
+    uint8_t antenna_top_right_x = (uint8_t)(x + 30u);
+    uint8_t antenna_mid_x = (uint8_t)(x + 24u);
+    uint8_t antenna_top_y = (uint8_t)(y + 2u);
+    uint8_t antenna_bottom_y = body_top;
+
+    UI_DrawRectangleBuffer(gFrameBuffer, body_left, body_top, body_right, body_bottom, true);
+    UI_DrawRectangleBuffer(gFrameBuffer, screen_left, screen_top, screen_right, screen_bottom, true);
+
+    {
+        uint8_t left_line_height = (uint8_t)(antenna_bottom_y - antenna_top_y);
+        uint8_t right_line_height = (uint8_t)(antenna_bottom_y - antenna_top_y);
+        uint8_t left_line_dx = (uint8_t)(antenna_mid_x - antenna_top_left_x);
+        uint8_t right_line_dx = (uint8_t)(antenna_top_right_x - antenna_mid_x);
+        uint8_t line_step = 0u;
+
+        for (line_step = 0u; line_step <= left_line_height; line_step++)
+        {
+            uint8_t line_y = (uint8_t)(antenna_top_y + line_step);
+            uint8_t left_line_x = (uint8_t)(antenna_top_left_x + (line_step * left_line_dx) / left_line_height);
+            uint8_t right_line_x = (uint8_t)(antenna_top_right_x - (line_step * right_line_dx) / right_line_height);
+
+            PutPixel(left_line_x, line_y, true);
+            PutPixel(right_line_x, line_y, true);
+        }
+    }
+
+    UI_DrawRectangleBuffer(gFrameBuffer, x + 34u, y + 16u, x + 36u, y + 19u, true);
+    UI_DrawRectangleBuffer(gFrameBuffer, x + 34u, y + 22u, x + 36u, y + 25u, true);
+}
+
 static void UI_MENU_DrawLauncherAbout40(uint8_t x, uint8_t y)
 {
     const int16_t cx = (int16_t)x + 24;
@@ -985,10 +1031,11 @@ static void UI_MENU_DrawLauncherAbout40(uint8_t x, uint8_t y)
 
 static void UI_MENU_DrawLauncherPage(void)
 {
-    static const char * const names_en[] = {"Channel", "Settings", "Other", "About"};
+    static const char * const names_en[] = {"Channel", "Settings", "Display", "Other", "About"};
     static const char * const names_cn[] = {
         "\xe4\xbf\xa1\xe9\x81\x93",
         "\xe8\xae\xbe\xe7\xbd\xae",
+        "\xe6\x98\xbe\xe7\xa4\xba",
         "\xe5\x85\xb6\xe5\xae\x83",
         "\xe5\x85\xb3\xe4\xba\x8e"
     };
@@ -1011,9 +1058,13 @@ static void UI_MENU_DrawLauncherPage(void)
     }
     else if (idx == 2)
     {
-        UI_MENU_DrawLauncherOther40(icon_left, icon_top);
+        UI_MENU_DrawLauncherDisplay40(icon_left, icon_top);
     }
     else if (idx == 3)
+    {
+        UI_MENU_DrawLauncherOther40(icon_left, icon_top);
+    }
+    else if (idx == 4)
     {
         UI_MENU_DrawLauncherAbout40(icon_left, icon_top);
     }

@@ -149,7 +149,11 @@ bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
            menu_id == MENU_UPCODE ||
            menu_id == MENU_DWCODE ||
            menu_id == MENU_PTT_ID ||
-           menu_id == MENU_VOX;
+           menu_id == MENU_VOX ||
+           menu_id == MENU_SET_INV ||
+           menu_id == MENU_SET_PTT ||
+           menu_id == MENU_SET_TOT ||
+           menu_id == MENU_SET_EOT;
 }
 
 uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index)
@@ -177,33 +181,130 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
     }
 #endif
 
-    const bool in_channel = (menu_number_1based >= 1 && menu_number_1based <= 12) ||
-                            menu_number_1based == 15 || menu_number_1based == 16 || menu_number_1based == 17;
-    /*
-     * 设置图标下条目与 MenuList 行序一致；F4HWN 已去掉 BatTxt，原连续段上界由 44 收为 43。
-     * SetNav / Reset 行序随可选编译项变化，用 menu_id 归类避免错位。
-     */
-#if defined(ENABLE_FEAT_F4HWN)
-    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 43) ||
-                             (menu_id == MENU_SET_NAV || menu_id == MENU_RESET);
-#else
-    const bool in_settings = (menu_number_1based >= 23 && menu_number_1based <= 44) ||
-                             menu_number_1based == 54 || menu_number_1based == 55;
-#endif
+    (void)menu_number_1based;
+
+    bool in_channel = false;
+    bool in_settings = false;
+    bool in_display = false;
+
+    /* 仅对明确指定的菜单做分组；未指定的一律归入“其它”。 */
+    if (menu_id == MENU_STEP ||
+        menu_id == MENU_TXP ||
+        menu_id == MENU_R_DCS ||
+        menu_id == MENU_R_CTCS ||
+        menu_id == MENU_T_DCS ||
+        menu_id == MENU_T_CTCS ||
+        menu_id == MENU_SFT_D ||
+        menu_id == MENU_OFFSET ||
+        menu_id == MENU_W_N ||
+        menu_id == MENU_BCL ||
+        menu_id == MENU_COMPAND ||
+        menu_id == MENU_AM ||
+        menu_id == MENU_MEM_CH ||
+        menu_id == MENU_DEL_CH ||
+        menu_id == MENU_MEM_NAME ||
+        menu_id == MENU_MDF)
+    {
+        in_channel = true;
+    }
+
+    if (menu_id == MENU_SQL ||
+        menu_id == MENU_ROGER ||
+        menu_id == MENU_STE ||
+        menu_id == MENU_RP_STE ||
+        menu_id == MENU_BEEP ||
+        menu_id == MENU_MIC ||
+        menu_id == MENU_F1SHRT ||
+        menu_id == MENU_F1LONG ||
+        menu_id == MENU_F2SHRT ||
+        menu_id == MENU_F2LONG ||
+        menu_id == MENU_MLONG)
+    {
+        in_settings = true;
+    }
+
+    if (menu_id == MENU_LANGUAGE ||
+        menu_id == MENU_TDR ||
+        menu_id == MENU_BOOT_HINT ||
+        menu_id == MENU_ABR ||
+        menu_id == MENU_ABR_MIN ||
+        menu_id == MENU_ABR_MAX ||
+        menu_id == MENU_ABR_ON_TX_RX ||
+        menu_id == MENU_SET_CTR ||
+        menu_id == MENU_SET_INV)
+    {
+        in_display = true;
+    }
+
     const bool in_about = (menu_id == MENU_VOL);
-    const bool in_other = !(in_channel || in_settings || in_about);
+    const bool in_other = !(in_channel || in_settings || in_display || in_about);
 
     if (icon_index == 0)
         return in_channel;     // Channel
     if (icon_index == 1)
         return in_settings;    // Settings
-    if (icon_index == 3)
+    if (icon_index == 2u)
+        return in_display;     // Display
+    if (icon_index == 4u)
         return in_about;       // About
     if (!in_other)
         return false;
-    if (icon_index == 2u && menu_id == MENU_TX_LOCK)
+    if (icon_index == 3u && menu_id == MENU_TX_LOCK)
         return false;          // Other: hide TX_LOCK entry
     return true;
+}
+
+static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
+{
+    if (icon_index == 0u)
+    {
+        if (menu_id == MENU_STEP) return 0u;
+        if (menu_id == MENU_TXP) return 1u;
+        if (menu_id == MENU_R_DCS) return 2u;
+        if (menu_id == MENU_R_CTCS) return 3u;
+        if (menu_id == MENU_T_DCS) return 4u;
+        if (menu_id == MENU_T_CTCS) return 5u;
+        if (menu_id == MENU_SFT_D) return 6u;
+        if (menu_id == MENU_OFFSET) return 7u;
+        if (menu_id == MENU_W_N) return 8u;
+        if (menu_id == MENU_BCL) return 9u;
+        if (menu_id == MENU_COMPAND) return 10u;
+        if (menu_id == MENU_AM) return 11u;
+        if (menu_id == MENU_MEM_CH) return 12u;
+        if (menu_id == MENU_DEL_CH) return 13u;
+        if (menu_id == MENU_MEM_NAME) return 14u;
+        if (menu_id == MENU_MDF) return 15u;
+    }
+
+    if (icon_index == 1u)
+    {
+        if (menu_id == MENU_SQL) return 0u;
+        if (menu_id == MENU_ROGER) return 1u;
+        if (menu_id == MENU_STE) return 2u;
+        if (menu_id == MENU_RP_STE) return 3u;
+        if (menu_id == MENU_BEEP) return 4u;
+        if (menu_id == MENU_MIC) return 5u;
+        if (menu_id == MENU_F1SHRT) return 6u;
+        if (menu_id == MENU_F1LONG) return 7u;
+        if (menu_id == MENU_F2SHRT) return 8u;
+        if (menu_id == MENU_F2LONG) return 9u;
+        if (menu_id == MENU_MLONG) return 10u;
+    }
+
+    if (icon_index == 2u)
+    {
+        if (menu_id == MENU_LANGUAGE) return 0u;
+        if (menu_id == MENU_TDR) return 1u;
+        if (menu_id == MENU_BOOT_HINT) return 2u;
+        if (menu_id == MENU_ABR) return 3u;
+        if (menu_id == MENU_ABR_MIN) return 4u;
+        if (menu_id == MENU_ABR_MAX) return 5u;
+        if (menu_id == MENU_ABR_ON_TX_RX) return 6u;
+        if (menu_id == MENU_SET_CTR) return 7u;
+        if (menu_id == MENU_SET_INV) return 8u;
+    }
+
+    return 255u;
 }
 
 void MENU_UpdateMenuFilterForIcon(uint8_t icon_index)
@@ -211,8 +312,35 @@ void MENU_UpdateMenuFilterForIcon(uint8_t icon_index)
     gMenuFilteredCount = 0;
     for (uint8_t i = 0; i < gMenuListCount && gMenuFilteredCount < ARRAY_SIZE(gMenuFilteredMap); i++)
     {
-        if (MENU_IsMenuInIconGroup((uint8_t)(i + 1), MenuList[i].menu_id, icon_index))
-            gMenuFilteredMap[gMenuFilteredCount++] = i;
+        bool is_in_group = MENU_IsMenuInIconGroup((uint8_t)(i + 1), MenuList[i].menu_id, icon_index);
+        if (is_in_group)
+        {
+            uint8_t new_priority = MENU_GetIconOrderPriority(icon_index, MenuList[i].menu_id);
+            uint8_t insert_pos = gMenuFilteredCount;
+
+            for (uint8_t j = 0; j < gMenuFilteredCount; j++)
+            {
+                uint8_t existing_index = gMenuFilteredMap[j];
+                uint8_t existing_menu_id = MenuList[existing_index].menu_id;
+                uint8_t existing_priority = MENU_GetIconOrderPriority(icon_index, existing_menu_id);
+
+                if (new_priority < existing_priority)
+                {
+                    insert_pos = j;
+                    break;
+                }
+            }
+
+            if (insert_pos < gMenuFilteredCount)
+            {
+                for (uint8_t k = gMenuFilteredCount; k > insert_pos; k--)
+                {
+                    gMenuFilteredMap[k] = gMenuFilteredMap[k - 1u];
+                }
+            }
+            gMenuFilteredMap[insert_pos] = i;
+            gMenuFilteredCount++;
+        }
     }
 }
 
@@ -257,7 +385,7 @@ void MENU_ActivateMainPage(void)
         gSubMenuSelection = gMenuMainPageLastIconIndex;
     else
         gSubMenuSelection = 0; // default Channel on cold start
-    /* gSubMenuSelection is only a launcher icon index (0..3); never reuse raw menu values here */
+    /* gSubMenuSelection is only a launcher icon index (0..4); never reuse raw menu values here */
     gMenuMainPageIconIndex = (icon_count > 0) ? ((uint8_t)gSubMenuSelection % icon_count) : 0u;
 }
 
@@ -270,7 +398,7 @@ void MENU_OpenFromMainScreen(void)
 
 uint8_t MENU_MainPageIconCount(void)
 {
-    return 4;
+    return 5;
 }
 
 uint8_t MENU_GetActiveMenuCount(void)
@@ -1237,14 +1365,14 @@ void MENU_AcceptSetting(void)
             gRequestSaveChannel = 1;
             break;
         case MENU_SET_PTT:
-            gSetting_set_ptt = gSubMenuSelection;
-            gSetting_set_ptt_session = gSetting_set_ptt; // Special for action
+            gSetting_set_ptt = 0;
+            gSetting_set_ptt_session = 0;
             break;
         case MENU_SET_TOT:
-            gSetting_set_tot = gSubMenuSelection;
+            gSetting_set_tot = 0;
             break;
         case MENU_SET_EOT:
-            gSetting_set_eot = gSubMenuSelection;
+            gSetting_set_eot = 0;
             break;
         #ifdef ENABLE_FEAT_F4HWN_CTR
         case MENU_SET_CTR:
@@ -1252,7 +1380,7 @@ void MENU_AcceptSetting(void)
             break;
         #endif
         case MENU_SET_INV:
-            gSetting_set_inv = gSubMenuSelection;
+            gSetting_set_inv = 0;
             break;
         case MENU_SET_LCK:
             gSetting_set_lck = gSubMenuSelection;
@@ -1711,13 +1839,17 @@ void MENU_ShowCurrentSetting(void)
             gSubMenuSelection = gSetting_set_pwr;
             break;
         case MENU_SET_PTT:
-            gSubMenuSelection = gSetting_set_ptt_session;
+            gSetting_set_ptt = 0;
+            gSetting_set_ptt_session = 0;
+            gSubMenuSelection = 0;
             break;
         case MENU_SET_TOT:
-            gSubMenuSelection = gSetting_set_tot;
+            gSetting_set_tot = 0;
+            gSubMenuSelection = 0;
             break;
         case MENU_SET_EOT:
-            gSubMenuSelection = gSetting_set_eot;
+            gSetting_set_eot = 0;
+            gSubMenuSelection = 0;
             break;
         #ifdef ENABLE_FEAT_F4HWN_CTR
         case MENU_SET_CTR:
@@ -1725,7 +1857,8 @@ void MENU_ShowCurrentSetting(void)
             break;
         #endif
         case MENU_SET_INV:
-            gSubMenuSelection = gSetting_set_inv;
+            gSetting_set_inv = 0;
+            gSubMenuSelection = 0;
             break;
         case MENU_SET_LCK:
             gSubMenuSelection = gSetting_set_lck;
@@ -2139,8 +2272,8 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             gMenuCursor = UI_MENU_GetMenuIdx(gMenuSecondPageLastMenuId[gMenuMainPageIconIndex]);
         else
             gMenuCursor = 0;
-        /* About (icon 3): list is only MENU_VOL (SysInf / firmware) — avoid stale cursor mapping to another group */
-        if (gMenuMainPageIconIndex == 3u)
+        /* About (icon 4): list is only MENU_VOL (SysInf / firmware) — avoid stale cursor mapping to another group */
+        if (gMenuMainPageIconIndex == 4u)
             gMenuCursor = 0;
         gRequestDisplayScreen = DISPLAY_MENU;
         return;
