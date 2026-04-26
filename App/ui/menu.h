@@ -217,7 +217,7 @@ extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char        gSubMenu_LANGUAGE[2][8];
-extern const char        gSubMenu_BOOT_HINT[2][8];
+extern const char        gSubMenu_BOOT_HINT[3][12];
 extern const char        gSubMenu_BATTYP[5][12];
 
 #ifndef ENABLE_FEAT_F4HWN

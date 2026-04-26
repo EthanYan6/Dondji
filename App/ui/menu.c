@@ -411,10 +411,11 @@ const char gSubMenu_LANGUAGE[][8] =
     "\xE4\xB8\xAD\xE6\x96\x87"
 };
 
-const char gSubMenu_BOOT_HINT[][8] =
+const char gSubMenu_BOOT_HINT[][12] =
 {
     "DingDJ",
-    "MeiliBJ"
+    "MeiliBJ",
+    "55th"
 };
 
 const char gSubMenu_BATTYP[][12] =
@@ -860,6 +861,11 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
             UI_PrintStringSmallAtPixel("过中继", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("尾音消除", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
+        {
+            UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
         else
         {
             /* Upper-middle of left pane; keep y_end < ~40 so rows 5+ stay for values on the right */
@@ -889,6 +895,10 @@ static void UI_MENU_DrawCccMenuChrome(const t_menu_item *item)
     const char *title = UI_MENU_GetMenuTitle(item);
 
 #ifdef ENABLE_CHINESE
+    if (item != NULL && item->menu_id == MENU_VOL && gUiLanguage == UI_LANGUAGE_CN)
+    {
+        title = "\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>";
+    }
     /* Title band +3px down vs previous 8..15 */
     UI_PrintStringSmallAtPixel(title, 2, 2, 11, 18, 3u);
 #else
@@ -1796,7 +1806,36 @@ void UI_DisplayMenu(void)
             break;
 
         case MENU_BOOT_HINT:
-            strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
+            if (gSubMenuSelection == 2)
+            {
+                bool is_level2_menu = false;
+                if (!gIsInSubMenu)
+                {
+                    is_level2_menu = true;
+                }
+
+                if (is_level2_menu)
+                {
+#ifdef ENABLE_CHINESE
+                    if (gUiLanguage == UI_LANGUAGE_CN)
+                    {
+                        strcpy(String, "\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\n\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88");
+                    }
+                    else
+#endif
+                    {
+                        strcpy(String, "55th\nEdition");
+                    }
+                }
+                else
+                {
+                    strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
+                }
+            }
+            else
+            {
+                strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
+            }
             break;
 
         case MENU_ROGER:
@@ -2098,6 +2137,31 @@ void UI_DisplayMenu(void)
                         i++;
                     lines--;
                 }
+            }
+            else if (len > 0u && lines == 2u &&
+                     UI_MENU_GetCurrentMenuId() == MENU_BOOT_HINT &&
+                     !gIsInSubMenu &&
+                     gSubMenuSelection == 2 &&
+                     gUiLanguage == UI_LANGUAGE_CN)
+            {
+                const uint8_t line_draw_mode = 3u;
+                const char *first_line_text = String;
+                const char *second_line_text = String;
+                uint8_t first_line_y_start = (uint8_t)(y * 8u);
+                uint8_t first_line_y_end = (uint8_t)(first_line_y_start + 11u);
+                uint8_t second_line_y_start = first_line_y_start;
+                uint8_t second_line_y_end = first_line_y_end;
+                size_t first_line_length = strlen(first_line_text);
+                size_t second_line_offset = 0u;
+
+                second_line_offset = first_line_length + 1u;
+                second_line_text = String + second_line_offset;
+                second_line_y_start = SF_after_2px(first_line_y_start, CH_CN_H);
+                second_line_y_start = (uint8_t)(second_line_y_start + 5u);
+                second_line_y_end = (uint8_t)(second_line_y_start + 11u);
+
+                UI_PrintStringSmallAtPixel(first_line_text, sub_val_x1, sub_val_x2, first_line_y_start, first_line_y_end, line_draw_mode);
+                UI_PrintStringSmallAtPixel(second_line_text, sub_val_x1, sub_val_x2, second_line_y_start, second_line_y_end, line_draw_mode);
             }
             else if (len > 0u && lines == 2u &&
                      (UI_MENU_GetCurrentMenuId() == MENU_F1SHRT ||

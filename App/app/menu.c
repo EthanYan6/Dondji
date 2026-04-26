@@ -201,6 +201,8 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         return in_about;       // About
     if (!in_other)
         return false;
+    if (icon_index == 2u && menu_id == MENU_TX_LOCK)
+        return false;          // Other: hide TX_LOCK entry
     return true;
 }
 

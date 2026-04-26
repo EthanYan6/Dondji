@@ -267,7 +267,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         uint8_t langHint[2] = { 0, 0 };
         PY25Q16_ReadBuffer(0x00A170, langHint, sizeof(langHint));
         gUiLanguage = (langHint[0] < 2) ? langHint[0] : UI_LANGUAGE_EN;
-        gSetting_boot_hint = (langHint[1] < 2) ? langHint[1] : 0;
+        gSetting_boot_hint = (langHint[1] < 3) ? langHint[1] : 2;
     }
     #ifdef ENABLE_RSSI_BAR
         for (uint8_t i = 0; i < 7; i++) {
@@ -1060,7 +1060,7 @@ void SETTINGS_SaveSettings(void)
     {
         uint8_t langHint[2];
         langHint[0] = gUiLanguage & 1u;
-        langHint[1] = gSetting_boot_hint & 1u;
+        langHint[1] = (gSetting_boot_hint < 3) ? gSetting_boot_hint : 2;
         PY25Q16_WriteBuffer(0x00A170, langHint, sizeof(langHint), false);
     }
 }
