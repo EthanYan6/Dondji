@@ -167,6 +167,11 @@ uint8_t MENU_GetVisibleCursorForActualIndex(uint8_t actual_menu_list_index)
 
 static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, uint8_t icon_index)
 {
+    const bool is_channel_display_menu = (menu_id == MENU_MDF);
+
+    if (is_channel_display_menu)
+        return false;
+
     if (MENU_IsMenuIdExcludedFromBrowse(menu_id))
         return false;
     if (MENU_IsHiddenDtmfMenu(menu_id))
