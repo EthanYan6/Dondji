@@ -141,6 +141,77 @@ static void UI_MENU_GetMemPercents(uint16_t *flash_percent_x10, uint16_t *sram_p
     *flash_percent_x10 = flash_result;
     *sram_percent_x10 = sram_result;
 }
+
+static uint8_t UI_MENU_GetRowPixelStart(const uint8_t row)
+{
+    uint16_t row_pixel_start = 0u;
+    uint8_t pixel_start = 0u;
+
+    row_pixel_start = (uint16_t)row * 8u;
+    if (row_pixel_start > 63u)
+    {
+        row_pixel_start = 63u;
+    }
+    pixel_start = (uint8_t)row_pixel_start;
+    return pixel_start;
+}
+
+static void UI_MENU_FormatBuildTimeBeijing(char *time_output, const size_t output_size)
+{
+    int utc_hour = 0;
+    int utc_minute = 0;
+    int utc_second = 0;
+    int beijing_hour = 0;
+    int beijing_minute = 0;
+    int beijing_second = 0;
+    int beijing_total_seconds = 0;
+
+    if (time_output == NULL || output_size < 16u)
+    {
+        return;
+    }
+
+    if (BuildTime[0] < '0' || BuildTime[0] > '9' ||
+        BuildTime[1] < '0' || BuildTime[1] > '9' ||
+        BuildTime[2] != ':' ||
+        BuildTime[3] < '0' || BuildTime[3] > '9' ||
+        BuildTime[4] < '0' || BuildTime[4] > '9' ||
+        BuildTime[5] != ':' ||
+        BuildTime[6] < '0' || BuildTime[6] > '9' ||
+        BuildTime[7] < '0' || BuildTime[7] > '9')
+    {
+        strcpy(time_output, BuildTime);
+        return;
+    }
+
+    utc_hour = (BuildTime[0] - '0') * 10 + (BuildTime[1] - '0');
+    utc_minute = (BuildTime[3] - '0') * 10 + (BuildTime[4] - '0');
+    utc_second = (BuildTime[6] - '0') * 10 + (BuildTime[7] - '0');
+
+    beijing_total_seconds = (utc_hour * 3600) + (utc_minute * 60) + utc_second + (8 * 3600);
+    while (beijing_total_seconds >= 86400)
+    {
+        beijing_total_seconds = beijing_total_seconds - 86400;
+    }
+
+    beijing_hour = beijing_total_seconds / 3600;
+    beijing_minute = (beijing_total_seconds % 3600) / 60;
+    beijing_second = beijing_total_seconds % 60;
+
+    time_output[0] = 'B';
+    time_output[1] = 'J';
+    time_output[2] = 'T';
+    time_output[3] = ' ';
+    time_output[4] = (char)('0' + (beijing_hour / 10));
+    time_output[5] = (char)('0' + (beijing_hour % 10));
+    time_output[6] = ':';
+    time_output[7] = (char)('0' + (beijing_minute / 10));
+    time_output[8] = (char)('0' + (beijing_minute % 10));
+    time_output[9] = ':';
+    time_output[10] = (char)('0' + (beijing_second / 10));
+    time_output[11] = (char)('0' + (beijing_second % 10));
+    time_output[12] = '\0';
+}
 #endif
 
 const t_menu_item MenuList[] =
@@ -915,8 +986,7 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
         {
-            UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, 10u, 36u, 3u);
         }
         else
         {
@@ -1248,6 +1318,7 @@ void UI_DisplayMenu(void)
     unsigned int       i;
     char               String[64];  // bigger cuz we can now do multi-line in one string (use '\n' char)
     char               top_right_badge[16];
+    uint8_t            top_right_badge_line;
 
 #ifdef ENABLE_DTMF_CALLING
     char               Contact[16];
@@ -1275,6 +1346,7 @@ void UI_DisplayMenu(void)
 
     memset(String, 0, sizeof(String));
     memset(top_right_badge, 0, sizeof(top_right_badge));
+    top_right_badge_line = 1u;
 
     bool already_printed = false;
 
@@ -2027,39 +2099,168 @@ void UI_DisplayMenu(void)
 #ifdef ENABLE_FEAT_F4HWN
         {
             uint8_t page = 0u;
+            uint8_t level2_value_down_offset_pixels = 0u;
+            uint8_t level3_value_down_offset_pixels = 0u;
             if (gIsInSubMenu)
             {
                 page = (uint8_t)gSubMenuSelection;
+                level3_value_down_offset_pixels = 9u;
+            }
+            else
+            {
+                level2_value_down_offset_pixels = 15u;
             }
 
             if (page == 0u)
             {
-                sprintf(String, "Dondji\n%s\nBD1AHN", VERSION_STRING_2);
+                const uint8_t info_line_up_offset_pixels = 5u;
+                const uint8_t info_line_gap_pixels = 3u;
+                const uint8_t info_line_height_pixels = 8u;
+                uint8_t info_line1_y_start = 0u;
+                uint8_t info_line1_y_end = 0u;
+                uint8_t info_line2_y_start = 0u;
+                uint8_t info_line2_y_end = 0u;
+                uint8_t info_line3_y_start = 0u;
+                uint8_t info_line3_y_end = 0u;
+
+                if (gIsInSubMenu)
+                {
+                    edit[0] = '\0';
+                }
+                else
+                {
+                    strcpy(edit, "<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>");
+                }
+                info_line1_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
+                if (info_line1_y_start >= info_line_up_offset_pixels)
+                {
+                    info_line1_y_start = (uint8_t)(info_line1_y_start - info_line_up_offset_pixels);
+                }
+                else
+                {
+                    info_line1_y_start = 0u;
+                }
+                info_line1_y_end = (uint8_t)(info_line1_y_start + info_line_height_pixels - 1u);
+                info_line1_y_start = (uint8_t)(info_line1_y_start + level2_value_down_offset_pixels);
+                info_line1_y_end = (uint8_t)(info_line1_y_end + level2_value_down_offset_pixels);
+                info_line1_y_start = (uint8_t)(info_line1_y_start + level3_value_down_offset_pixels);
+                info_line1_y_end = (uint8_t)(info_line1_y_end + level3_value_down_offset_pixels);
+
+                info_line2_y_start = (uint8_t)(info_line1_y_end + 1u + info_line_gap_pixels);
+                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
+
+                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
+                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
+
+                UI_PrintStringSmallAtPixel("Dondji", menu_value_x1, menu_item_x2, info_line1_y_start, info_line1_y_end, 0u);
+                UI_PrintStringSmallAtPixel(VERSION_STRING_2, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
+                UI_PrintStringSmallAtPixel("BD1AHN", menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
+                String[0] = '\0';
+                already_printed = true;
                 break;
             }
 
             if (page == 1u)
             {
-                strcpy(top_right_badge, "BUILD");
-                UI_PrintStringSmallNormal(BuildDate, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(2));
-                UI_PrintStringSmallNormal(BuildTime, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(3));
-                UI_PrintStringSmallNormal(BuildCommit, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(5));
+                const uint8_t info_label_up_offset_pixels = 5u;
+                const uint8_t info_line_gap_pixels = 3u;
+                const uint8_t info_line_height_pixels = 8u;
+                uint8_t info_label_y_start = 0u;
+                uint8_t info_label_y_end = 0u;
+                uint8_t info_line2_y_start = 0u;
+                uint8_t info_line2_y_end = 0u;
+                uint8_t info_line3_y_start = 0u;
+                uint8_t info_line3_y_end = 0u;
+                char beijing_build_time[16];
+
+                UI_MENU_FormatBuildTimeBeijing(beijing_build_time, sizeof(beijing_build_time));
+
+                info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
+                if (info_label_y_start >= info_label_up_offset_pixels)
+                {
+                    info_label_y_start = (uint8_t)(info_label_y_start - info_label_up_offset_pixels);
+                }
+                else
+                {
+                    info_label_y_start = 0u;
+                }
+                info_label_y_end = (uint8_t)(info_label_y_start + 7u);
+                info_label_y_start = (uint8_t)(info_label_y_start + level2_value_down_offset_pixels);
+                info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
+                info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
+                info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
+                info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
+                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
+                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
+                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
+
+                UI_PrintStringSmallAtPixel("BUILD", menu_value_x1, menu_item_x2, info_label_y_start, info_label_y_end, 0u);
+                UI_PrintStringSmallAtPixel(BuildDate, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
+                UI_PrintStringSmallAtPixel(beijing_build_time, menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
+                if (level2_value_down_offset_pixels > 0u)
+                {
+                    uint8_t build_commit_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(5));
+                    uint8_t build_commit_y_end = (uint8_t)(build_commit_y_start + 7u);
+                    build_commit_y_start = (uint8_t)(build_commit_y_start + level2_value_down_offset_pixels);
+                    build_commit_y_end = (uint8_t)(build_commit_y_end + level2_value_down_offset_pixels);
+                    UI_PrintStringSmallAtPixel(BuildCommit, menu_value_x1, menu_item_x2, build_commit_y_start, build_commit_y_end, 0u);
+                }
+                else if (level3_value_down_offset_pixels > 0u)
+                {
+                    uint8_t build_commit_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(5));
+                    uint8_t build_commit_y_end = (uint8_t)(build_commit_y_start + 7u);
+                    build_commit_y_start = (uint8_t)(build_commit_y_start + level3_value_down_offset_pixels);
+                    build_commit_y_end = (uint8_t)(build_commit_y_end + level3_value_down_offset_pixels);
+                    UI_PrintStringSmallAtPixel(BuildCommit, menu_value_x1, menu_item_x2, build_commit_y_start, build_commit_y_end, 0u);
+                }
+                else
+                {
+                    UI_PrintStringSmallNormal(BuildCommit, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(5));
+                }
                 already_printed = true;
                 break;
             }
 
             if (page == 2u)
             {
+                const uint8_t info_label_up_offset_pixels = 5u;
+                const uint8_t info_line_gap_pixels = 3u;
+                const uint8_t info_line_height_pixels = 8u;
+                uint8_t info_label_y_start = 0u;
+                uint8_t info_label_y_end = 0u;
+                uint8_t info_line2_y_start = 0u;
+                uint8_t info_line2_y_end = 0u;
+                uint8_t info_line3_y_start = 0u;
+                uint8_t info_line3_y_end = 0u;
                 uint16_t flash_percent_x10 = 0u;
                 uint16_t sram_percent_x10 = 0u;
 
                 UI_MENU_GetMemPercents(&flash_percent_x10, &sram_percent_x10);
 
-                strcpy(top_right_badge, "MEMORY");
+                info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
+                if (info_label_y_start >= info_label_up_offset_pixels)
+                {
+                    info_label_y_start = (uint8_t)(info_label_y_start - info_label_up_offset_pixels);
+                }
+                else
+                {
+                    info_label_y_start = 0u;
+                }
+                info_label_y_end = (uint8_t)(info_label_y_start + 7u);
+                info_label_y_start = (uint8_t)(info_label_y_start + level2_value_down_offset_pixels);
+                info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
+                info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
+                info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
+                info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
+                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
+                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
+                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
+
+                UI_PrintStringSmallAtPixel("MEMORY", menu_value_x1, menu_item_x2, info_label_y_start, info_label_y_end, 0u);
                 sprintf(String, "FLASH %u.%u%%", flash_percent_x10 / 10u, flash_percent_x10 % 10u);
-                UI_PrintStringSmallNormal(String, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(2));
+                UI_PrintStringSmallAtPixel(String, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
                 sprintf(String, "SRAM  %u.%u%%", sram_percent_x10 / 10u, sram_percent_x10 % 10u);
-                UI_PrintStringSmallNormal(String, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(4));
+                UI_PrintStringSmallAtPixel(String, menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
                 already_printed = true;
                 break;
             }
@@ -2339,7 +2540,19 @@ void UI_DisplayMenu(void)
             if (UI_MENU_GetCurrentMenuId() == MENU_VOL && len > 0)
             {
                 uint8_t yp = (uint8_t)(MENU_VALUE_ROW(1u) * 8u);
-                UI_PrintStringSmallAtPixel(edit, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 7u), 0u);
+                uint8_t dondji_tag_y_start = 0u;
+                uint8_t dondji_tag_y_end = 0u;
+
+                if (yp >= 2u)
+                {
+                    dondji_tag_y_start = (uint8_t)(yp - 2u);
+                }
+                else
+                {
+                    dondji_tag_y_start = 0u;
+                }
+                dondji_tag_y_end = (uint8_t)(dondji_tag_y_start + 7u);
+                UI_PrintStringSmallAtPixel(edit, sub_val_x1, sub_val_x2, dondji_tag_y_start, dondji_tag_y_end, 0u);
                 yp = CH_after(yp, CH_SM_H);
                 i = 0;
                 while (i < len && lines > 0)
@@ -2561,7 +2774,7 @@ void UI_DisplayMenu(void)
     }
     if (top_right_badge[0] != '\0')
     {
-        UI_MENU_DrawTopRightRoundedBadge(top_right_badge, 1u, true, menu_value_x1, menu_item_x2);
+        UI_MENU_DrawTopRightRoundedBadge(top_right_badge, top_right_badge_line, true, menu_value_x1, menu_item_x2);
     }
 
     if ((UI_MENU_GetCurrentMenuId() == MENU_RESET    ||
