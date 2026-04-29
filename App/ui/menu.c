@@ -27,6 +27,7 @@
 #include "../driver/eeprom.h"
 #include "../driver/st7565.h"
 #include "../external/printf/printf.h"
+#include "../font.h"
 #include "../frequencies.h"
 #include "../helper/battery.h"
 #include "../misc.h"
@@ -1099,6 +1100,87 @@ static void UI_MENU_DrawLauncherPage(void)
     ST7565_BlitFullScreen();
 }
 
+static void UI_MENU_DrawTopRightRoundedBadge(const char *text,
+                                             const uint8_t line,
+                                             const bool center_in_area,
+                                             const uint8_t area_x1,
+                                             const uint8_t area_x2)
+{
+    const size_t text_length = strlen(text);
+    const size_t char_pitch = ARRAY_SIZE(gFontSmall[0]) + 1u;
+    const size_t text_width = text_length * char_pitch;
+    const size_t capsule_span = text_width + 1u;
+    uint8_t text_x;
+
+    if (text_length == 0u || line == 0u || line >= FRAME_LINES)
+    {
+        return;
+    }
+
+    if (center_in_area && area_x2 > area_x1 + 2u)
+    {
+        const uint8_t min_x = area_x1 + 1u;
+        const uint8_t area_width = area_x2 - area_x1 + 1u;
+        uint8_t max_x;
+
+        if (capsule_span >= area_width)
+        {
+            text_x = min_x;
+        }
+        else
+        {
+            text_x = (uint8_t)(area_x1 + ((area_width - capsule_span) / 2u));
+        }
+
+        if (area_x2 > capsule_span)
+        {
+            max_x = (uint8_t)(area_x2 - capsule_span);
+        }
+        else
+        {
+            max_x = min_x;
+        }
+
+        if (max_x < min_x)
+        {
+            max_x = min_x;
+        }
+        if (text_x < min_x)
+        {
+            text_x = min_x;
+        }
+        else if (text_x > max_x)
+        {
+            text_x = max_x;
+        }
+    }
+    else
+    {
+        if (capsule_span >= (LCD_WIDTH - 3u))
+        {
+            text_x = 1u;
+        }
+        else
+        {
+            const uint8_t global_shift_right = 1u;
+            const uint8_t base_text_x = (uint8_t)(LCD_WIDTH - capsule_span - 3u);
+            const uint8_t max_text_x  = (uint8_t)(LCD_WIDTH - capsule_span - 1u);
+            const uint16_t shifted_x = (uint16_t)base_text_x + global_shift_right;
+
+            if (shifted_x > max_text_x)
+            {
+                text_x = max_text_x;
+            }
+            else
+            {
+                text_x = (uint8_t)shifted_x;
+            }
+        }
+    }
+
+    UI_PrintStringSmallNormalInverse(text, text_x, 0u, line);
+}
+
 void UI_DisplayMenu(void)
 {
     const uint8_t menu_count = MENU_GetActiveMenuCount();
@@ -1119,6 +1201,7 @@ void UI_DisplayMenu(void)
     const unsigned int menu_item_x2    = LCD_WIDTH - 1;
     unsigned int       i;
     char               String[64];  // bigger cuz we can now do multi-line in one string (use '\n' char)
+    char               top_right_badge[16];
 
 #ifdef ENABLE_DTMF_CALLING
     char               Contact[16];
@@ -1145,6 +1228,7 @@ void UI_DisplayMenu(void)
     // **************
 
     memset(String, 0, sizeof(String));
+    memset(top_right_badge, 0, sizeof(top_right_badge));
 
     bool already_printed = false;
 
@@ -2363,8 +2447,36 @@ void UI_DisplayMenu(void)
         || UI_MENU_GetCurrentMenuId() == MENU_D_LIST
 #endif
     ) {
-        sprintf(String, "%03d", gSubMenuSelection);
-        UI_PrintStringSmallNormal(String, 107, 0, MENU_VALUE_ROW(0));
+        if (UI_MENU_GetCurrentMenuId() == MENU_R_CTCS ||
+            UI_MENU_GetCurrentMenuId() == MENU_T_CTCS)
+        {
+            uint8_t approved_index = 0xFF;
+            if (gSubMenuSelection > 0)
+            {
+                approved_index = DCS_GetCtcssApprovedIndex((uint8_t)(gSubMenuSelection - 1));
+            }
+
+            if (gSubMenuSelection == 0)
+            {
+                sprintf(top_right_badge, "00/00");
+            }
+            else if (approved_index != 0xFF)
+            {
+                sprintf(top_right_badge, "%02d/%02d", gSubMenuSelection, approved_index + 1);
+            }
+            else
+            {
+                sprintf(top_right_badge, "%02d/--", gSubMenuSelection);
+            }
+        }
+        else
+        {
+            sprintf(top_right_badge, "%03d", gSubMenuSelection);
+        }
+    }
+    if (top_right_badge[0] != '\0')
+    {
+        UI_MENU_DrawTopRightRoundedBadge(top_right_badge, 1u, true, menu_value_x1, menu_item_x2);
     }
 
     if ((UI_MENU_GetCurrentMenuId() == MENU_RESET    ||

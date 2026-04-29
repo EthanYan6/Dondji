@@ -615,7 +615,7 @@ void ACTION_Wn(void)
 
     if (pVfo->Modulation == MODULATION_AM)
     {
-        BK4819_SetFilterBandwidth(BK4819_FILTER_BW_AM, true);
+        BK4819_SetFilterBandwidth(RADIO_GetAMFilterBandwidth(pVfo), true);
         return;
     }
 
