@@ -97,6 +97,10 @@ SpectrumSettings settings = {.stepsCount = STEPS_64,
 uint32_t fMeasure = 0;
 uint32_t currentFreq, tempFreq;
 uint16_t rssiHistory[128];
+static uint8_t peakHoldY[128];
+static uint8_t peakHoldAge[64];
+#define PEAK_HOLD_DELAY 15
+#define PEAK_HOLD_INIT 0xFF
 int vfo;
 uint8_t freqInputIndex = 0;
 uint8_t freqInputDotIndex = 0;
@@ -124,6 +128,8 @@ const int8_t VGAOptions[] = {-33, -27, -21, -15, -9, -6, -3, 0};
 /* 顶栏信道名绘制区，清除宽度勿覆盖右侧与 MAIN ONLY 一致的电池与百分比 */
 #define SPECTRUM_STATUS_CH_NAME_X0    46u
 #define SPECTRUM_STATUS_CH_NAME_CLR_W 48u
+/* 与菜单顶栏一致：右上角电池+百分比区域从 x=96 起保留，不允许信道名覆盖 */
+#define SPECTRUM_STATUS_RIGHT_RESERVED_X 96u
 
 static void LoadSettings()
 {
@@ -232,17 +238,6 @@ static void PutPixelStatus(uint8_t x, uint8_t y, bool fill)
     UI_DrawPixelBuffer(&gStatusLine, x, y, fill);
 }
 #endif
-
-static void DrawVLine(int sy, int ey, int nx, bool fill)
-{
-    for (int i = sy; i <= ey; i++)
-    {
-        if (i < 56 && nx < 128)
-        {
-            PutPixel(nx, i, fill);
-        }
-    }
-}
 
 #ifndef ENABLE_FEAT_F4HWN
 static void GUI_DisplaySmallest(const char *pString, uint8_t x, uint8_t y,
@@ -572,6 +567,8 @@ static void RelaunchScan()
 #endif
     preventKeypress = true;
     scanInfo.rssiMin = RSSI_MAX_VALUE;
+    memset(peakHoldY, PEAK_HOLD_INIT, sizeof(peakHoldY));
+    memset(peakHoldAge, 0, sizeof(peakHoldAge));
 }
 
 static void UpdateScanInfo()
@@ -915,6 +912,30 @@ static bool IsBlacklisted(uint16_t idx)
 
 // Draw things
 
+static uint8_t iSqrt(uint16_t value)
+{
+    if (value == 0)
+    {
+        return 0;
+    }
+
+    uint16_t current = value;
+    uint16_t next = (current + 1) >> 1;
+
+    while (next < current)
+    {
+        current = next;
+        next = (current + value / current) >> 1;
+    }
+
+    return (uint8_t)current;
+}
+
+static bool IsRssiHistoryInvalid(uint16_t rssi)
+{
+    return rssi == 0 || rssi == RSSI_MAX_VALUE;
+}
+
 // applied x2 to prevent initial rounding
 uint8_t Rssi2PX(uint16_t rssi, uint8_t pxMin, uint8_t pxMax)
 {
@@ -926,76 +947,189 @@ uint8_t Rssi2PX(uint16_t rssi, uint8_t pxMin, uint8_t pxMax)
 
     int dbm = clamp(Rssi2DBm(rssi) << 1, DB_MIN, DB_MAX);
 
-    return ((dbm - DB_MIN) * PX_RANGE + DB_RANGE / 2) / DB_RANGE + pxMin;
+    uint8_t linear = (uint8_t)(((dbm - DB_MIN) * PX_RANGE + DB_RANGE / 2) / DB_RANGE);
+    uint8_t compressed = iSqrt((uint16_t)linear * PX_RANGE);
+    uint8_t blended = (uint8_t)(((uint16_t)linear + compressed) / 2);
+    uint8_t result = blended + pxMin;
+
+    return result;
 }
 
 uint8_t Rssi2Y(uint16_t rssi)
 {
-    return DrawingEndY - Rssi2PX(rssi, 0, DrawingEndY);
+    return DrawingEndY - Rssi2PX(rssi, 0, DrawingEndY - DrawingTopY);
 }
 
-#ifdef ENABLE_FEAT_F4HWN
-    static void DrawSpectrum()
-    {
-        uint16_t steps = GetStepsCount();
-        // max bars at 128 to correctly draw larger numbers of samples
-        uint8_t bars = (steps > 128) ? 128 : steps;
+static uint16_t InterpolateRssi(uint8_t bars, uint16_t pos256)
+{
+    uint8_t leftIndex = pos256 >> 8;
+    uint8_t fraction = pos256 & 0xFF;
 
-        uint8_t ox = 0;
-        for (uint8_t i = 0; i < bars; ++i)
+    if (leftIndex >= bars - 1)
+    {
+        leftIndex = bars - 1;
+        fraction = 0;
+    }
+
+    uint8_t rightIndex = (leftIndex + 1 < bars) ? (leftIndex + 1) : leftIndex;
+    uint16_t leftRssi = rssiHistory[leftIndex];
+    uint16_t rightRssi = rssiHistory[rightIndex];
+
+    if (IsRssiHistoryInvalid(leftRssi) && IsRssiHistoryInvalid(rightRssi))
+    {
+        return RSSI_MAX_VALUE;
+    }
+    if (IsRssiHistoryInvalid(leftRssi))
+    {
+        return rightRssi;
+    }
+    if (IsRssiHistoryInvalid(rightRssi))
+    {
+        return leftRssi;
+    }
+
+    return ((uint32_t)leftRssi * (256 - fraction) + (uint32_t)rightRssi * fraction) >> 8;
+}
+
+#define SPECTRUM_TOPY_SKIP 0xFF
+
+static void BuildSpectrumTopY(uint8_t *topY, uint8_t bars)
+{
+    if (bars <= 1)
+    {
+        uint16_t singleRssi = (bars == 0) ? RSSI_MAX_VALUE : rssiHistory[0];
+        uint8_t singleY = IsRssiHistoryInvalid(singleRssi) ? SPECTRUM_TOPY_SKIP : Rssi2Y(singleRssi);
+
+        for (uint8_t index = 0; index < 128; ++index)
         {
-            uint16_t rssi = rssiHistory[(bars>128) ? i >> settings.stepsCount : i];
-            
-#ifdef ENABLE_SCAN_RANGES
-            uint8_t x;
-            if (gScanRangeStart && bars > 1)
+            topY[index] = singleY;
+        }
+        return;
+    }
+
+    uint16_t step256 = ((uint16_t)(bars - 1) << 8) / 127;
+    for (uint8_t x = 0; x < 128; ++x)
+    {
+        uint16_t rssi = InterpolateRssi(bars, (uint16_t)x * step256);
+        if (rssi == RSSI_MAX_VALUE)
+        {
+            topY[x] = SPECTRUM_TOPY_SKIP;
+        }
+        else
+        {
+            topY[x] = Rssi2Y(rssi);
+        }
+    }
+}
+
+static void SmoothTopY(uint8_t *topY)
+{
+    uint8_t previousValue = topY[0];
+    for (uint8_t x = 1; x < 127; ++x)
+    {
+        uint8_t currentValue = topY[x];
+        uint8_t nextValue = topY[x + 1];
+
+        if (currentValue == SPECTRUM_TOPY_SKIP)
+        {
+            previousValue = currentValue;
+            continue;
+        }
+
+        uint16_t sum = currentValue;
+        uint8_t count = 1;
+
+        if (previousValue != SPECTRUM_TOPY_SKIP)
+        {
+            sum += previousValue;
+            count++;
+        }
+        if (nextValue != SPECTRUM_TOPY_SKIP)
+        {
+            sum += nextValue;
+            count++;
+        }
+
+        previousValue = currentValue;
+        topY[x] = (sum + count / 2) / count;
+    }
+}
+
+static void DrawSpectrum()
+{
+#ifdef ENABLE_FEAT_F4HWN
+    uint16_t stepsCount = GetStepsCount();
+    uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
+#else
+    uint8_t bars = 128 >> settings.stepsCount;
+#endif
+    uint8_t topY[128];
+    BuildSpectrumTopY(topY, bars);
+    SmoothTopY(topY);
+
+    for (uint8_t x = 0; x < 128; ++x)
+    {
+        uint8_t spectrumY = topY[x];
+        if (spectrumY == SPECTRUM_TOPY_SKIP || spectrumY > DrawingEndY)
+        {
+            peakHoldY[x] = PEAK_HOLD_INIT;
+            continue;
+        }
+
+        uint8_t previousPeakY = peakHoldY[x];
+        if (previousPeakY == PEAK_HOLD_INIT || spectrumY <= previousPeakY)
+        {
+            peakHoldY[x] = spectrumY;
+            peakHoldAge[x >> 1] = 0;
+        }
+        else
+        {
+            if (peakHoldAge[x >> 1] < PEAK_HOLD_DELAY)
             {
-                // Total width units = (bars - 1) full bars + 2 half bars = bars
-                // First bar: half width, middle bars: full width, last bar: half width
-                // Scale: 128 pixels / (bars - 1) = pixels per full bar
-                uint16_t fullWidth = (128 << 8) / (bars - 1);  // x256 for precision
-                
-                if (i == 0)
+                if ((x & 1) == 0)
                 {
-                    x = fullWidth / (2 << 8);  // half of /256 (because fullWidth is x256)
-                }
-                else
-                {
-                    // Position = half + (i-1) full bars + current bar
-                    x = fullWidth / (2 << 8) + (uint16_t)i * fullWidth / (1 << 8);
-                    if (i == bars - 1) x = 128;  // Last bar ends at screen edge
+                    peakHoldAge[x >> 1]++;
                 }
             }
             else
-#endif
             {
-                uint8_t shift_graph = 64 / steps + 1;
-                x = i * 128 / bars + shift_graph;
-            }
-
-            if (rssi != RSSI_MAX_VALUE)
-            {
-                for (uint8_t xx = ox; xx < x; xx++)
+                uint8_t droppedPeakY = previousPeakY + 2;
+                if (droppedPeakY <= DrawingEndY)
                 {
-                    DrawVLine(Rssi2Y(rssi), DrawingEndY, xx, true);
+                    peakHoldY[x] = droppedPeakY;
+                }
+                else
+                {
+                    peakHoldY[x] = PEAK_HOLD_INIT;
                 }
             }
-            ox = x;
         }
     }
-#else
-    static void DrawSpectrum()
+
+    for (uint8_t x = 0; x < 128; ++x)
     {
-        for (uint8_t x = 0; x < 128; ++x)
+        uint8_t spectrumY = topY[x];
+        if (spectrumY != SPECTRUM_TOPY_SKIP && spectrumY <= DrawingEndY)
         {
-            uint16_t rssi = rssiHistory[x >> settings.stepsCount];
-            if (rssi != RSSI_MAX_VALUE)
+            for (uint8_t y = spectrumY; y <= DrawingEndY; ++y)
             {
-                DrawVLine(Rssi2Y(rssi), DrawingEndY, x, true);
+                if (((x + y) & 1) == 0)
+                {
+                    PutPixel(x, y, true);
+                }
+            }
+        }
+
+        uint8_t peakY = peakHoldY[x];
+        if (peakY != PEAK_HOLD_INIT && peakY <= DrawingEndY)
+        {
+            if (((x + peakY) & 1) == 0)
+            {
+                PutPixel(x, peakY, true);
             }
         }
     }
-#endif
+}
 
 static void DrawStatus()
 {
@@ -1071,18 +1205,36 @@ static void ShowChannelName(uint32_t f)
             }
         }
         if (channelName[0] != 0) {
+            uint8_t right_limit_x = SPECTRUM_STATUS_RIGHT_RESERVED_X;
+            if (right_limit_x > LCD_WIDTH)
+                right_limit_x = LCD_WIDTH;
+
+            uint8_t clear_width_max = 0;
+            if (right_limit_x > SPECTRUM_STATUS_CH_NAME_X0)
+                clear_width_max = (uint8_t)(right_limit_x - SPECTRUM_STATUS_CH_NAME_X0);
+
             uint8_t clear_width = DualVfoU8g2_GetSmallTextWidth(channelName);
             if (clear_width < SPECTRUM_STATUS_CH_NAME_CLR_W)
                 clear_width = SPECTRUM_STATUS_CH_NAME_CLR_W;
-            if ((uint32_t)SPECTRUM_STATUS_CH_NAME_X0 + (uint32_t)clear_width > LCD_WIDTH)
-                clear_width = (uint8_t)(LCD_WIDTH - SPECTRUM_STATUS_CH_NAME_X0);
+
+            if (clear_width > clear_width_max)
+                clear_width = clear_width_max;
+
             memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, clear_width);
             DualVfoU8g2_DrawSmallTextStatus(channelName, SPECTRUM_STATUS_CH_NAME_X0, 2u, true);
         }
     }
     else
     {
-        memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, SPECTRUM_STATUS_CH_NAME_CLR_W);
+        uint8_t right_limit_x = SPECTRUM_STATUS_RIGHT_RESERVED_X;
+        if (right_limit_x > LCD_WIDTH)
+            right_limit_x = LCD_WIDTH;
+
+        uint8_t clear_width = 0;
+        if (right_limit_x > SPECTRUM_STATUS_CH_NAME_X0)
+            clear_width = (uint8_t)(right_limit_x - SPECTRUM_STATUS_CH_NAME_X0);
+
+        memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, clear_width);
     }
     ST7565_BlitStatusLine();
 }
@@ -1593,8 +1745,15 @@ static void RenderStatus()
 
 static void RenderSpectrum()
 {
+    uint16_t stepsCount = GetStepsCount();
+    uint8_t arrowX = 0;
+    if (stepsCount > 1)
+    {
+        arrowX = (uint8_t)(128u * peak.i / (stepsCount - 1));
+    }
+
     DrawTicks();
-    DrawArrow(128u * peak.i / (GetStepsCount() - 1));
+    DrawArrow(arrowX);
     DrawSpectrum();
     DrawRssiTriggerLevel();
     DrawF(peak.f);
