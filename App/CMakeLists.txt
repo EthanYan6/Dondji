@@ -80,6 +80,7 @@ endif()
 target_compile_definitions(App INTERFACE 
     "AUTHOR_STRING=\"${AUTHOR_STRING}\""
     "VERSION_STRING=\"${VERSION_STRING}\""
+    "BUILD_COMMIT=\"${BUILD_COMMIT}\""
 )
 
 if(NOT SQL_TONE)

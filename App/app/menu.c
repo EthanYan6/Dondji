@@ -615,6 +615,14 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             *pMax = ARRAY_SIZE(gSubMenu_W_N) - 1;
             break;
 
+        case MENU_VOL:
+#ifdef ENABLE_FEAT_F4HWN
+            *pMax = 2;
+#else
+            *pMax = 0;
+#endif
+            break;
+
         #ifdef ENABLE_ALARM
             case MENU_AL_MOD:
                 //*pMin = 0;
@@ -1538,6 +1546,10 @@ void MENU_ShowCurrentSetting(void)
 
         case MENU_W_N:
             gSubMenuSelection = gTxVfo->CHANNEL_BANDWIDTH;
+            break;
+
+        case MENU_VOL:
+            gSubMenuSelection = 0;
             break;
 
 #ifndef ENABLE_FEAT_F4HWN

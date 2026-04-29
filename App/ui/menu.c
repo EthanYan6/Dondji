@@ -97,6 +97,52 @@ static uint8_t VOL_line_band_height(const char *line)
 }
 #endif
 
+#ifdef ENABLE_FEAT_F4HWN
+extern uint32_t _eflash_used;
+extern uint32_t _sdata;
+extern uint32_t _ebss;
+
+static void UI_MENU_GetMemPercents(uint16_t *flash_percent_x10, uint16_t *sram_percent_x10)
+{
+    const uintptr_t flash_origin = 0x08002800u;
+    const uint32_t flash_size = 118u * 1024u;
+    const uintptr_t sram_origin = 0x20000000u;
+    const uint32_t sram_size = 16u * 1024u;
+
+    uintptr_t flash_used_addr = (uintptr_t)&_eflash_used;
+    uintptr_t sram_data_start = (uintptr_t)&_sdata;
+    uintptr_t sram_data_end = (uintptr_t)&_ebss;
+
+    uint32_t flash_used_bytes = 0u;
+    uint32_t sram_used_bytes = 0u;
+    uint16_t flash_result = 0u;
+    uint16_t sram_result = 0u;
+
+    if (flash_used_addr > flash_origin)
+    {
+        flash_used_bytes = (uint32_t)(flash_used_addr - flash_origin);
+    }
+    if (flash_used_bytes > flash_size)
+    {
+        flash_used_bytes = flash_size;
+    }
+    flash_result = (uint16_t)((flash_used_bytes * 1000u) / flash_size);
+
+    if (sram_data_end > sram_data_start && sram_data_start >= sram_origin)
+    {
+        sram_used_bytes = (uint32_t)(sram_data_end - sram_data_start);
+    }
+    if (sram_used_bytes > sram_size)
+    {
+        sram_used_bytes = sram_size;
+    }
+    sram_result = (uint16_t)((sram_used_bytes * 1000u) / sram_size);
+
+    *flash_percent_x10 = flash_result;
+    *sram_percent_x10 = sram_result;
+}
+#endif
+
 const t_menu_item MenuList[] =
 {
 //   text,          menu ID
@@ -1979,8 +2025,45 @@ void UI_DisplayMenu(void)
 
         case MENU_VOL:
 #ifdef ENABLE_FEAT_F4HWN
-            /* SysInf 右侧四行：电压(单独绘) + Dondji / 版本 / BD1AHN */
-            sprintf(String, "Dondji\n%s\nBD1AHN", VERSION_STRING_2);
+        {
+            uint8_t page = 0u;
+            if (gIsInSubMenu)
+            {
+                page = (uint8_t)gSubMenuSelection;
+            }
+
+            if (page == 0u)
+            {
+                sprintf(String, "Dondji\n%s\nBD1AHN", VERSION_STRING_2);
+                break;
+            }
+
+            if (page == 1u)
+            {
+                strcpy(top_right_badge, "BUILD");
+                UI_PrintStringSmallNormal(BuildDate, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(2));
+                UI_PrintStringSmallNormal(BuildTime, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(3));
+                UI_PrintStringSmallNormal(BuildCommit, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(5));
+                already_printed = true;
+                break;
+            }
+
+            if (page == 2u)
+            {
+                uint16_t flash_percent_x10 = 0u;
+                uint16_t sram_percent_x10 = 0u;
+
+                UI_MENU_GetMemPercents(&flash_percent_x10, &sram_percent_x10);
+
+                strcpy(top_right_badge, "MEMORY");
+                sprintf(String, "FLASH %u.%u%%", flash_percent_x10 / 10u, flash_percent_x10 % 10u);
+                UI_PrintStringSmallNormal(String, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(2));
+                sprintf(String, "SRAM  %u.%u%%", sram_percent_x10 / 10u, sram_percent_x10 % 10u);
+                UI_PrintStringSmallNormal(String, menu_value_x1, menu_item_x2, MENU_VALUE_ROW(4));
+                already_printed = true;
+                break;
+            }
+        }
 #else
             sprintf(String, "%u.%02uV\n%u%%",
                 gBatteryVoltageAverage / 100, gBatteryVoltageAverage % 100,
@@ -2219,7 +2302,8 @@ void UI_DisplayMenu(void)
 
             y = (small ? 3 : 2) - (lines / 2); 
 
-            // only for SysInf
+            // only for non-F4HWN SysInf voltage display
+#ifndef ENABLE_FEAT_F4HWN
             if(UI_MENU_GetCurrentMenuId() == MENU_VOL)
             {
                 sprintf(edit, "%u.%02uV %u%%",
@@ -2233,6 +2317,7 @@ void UI_DisplayMenu(void)
                 y = MENU_VALUE_ROW(2);
 #endif
             }
+#endif
 
             if (!gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
                 y += 1u;
