@@ -850,10 +850,42 @@ static void UI_MENU_DrawLauncherGear40(uint8_t x, uint8_t y)
 }
 
 #ifdef ENABLE_CHINESE
-static void UI_MENU_PrintSubmenuValueLine(const char *line, unsigned int x1, unsigned int x2, unsigned int y_row, bool small_font)
+static bool UI_MENU_IsToneMenu(const uint8_t menu_id)
+{
+    bool is_tone_menu = false;
+
+    if (menu_id == MENU_R_CTCS ||
+        menu_id == MENU_T_CTCS ||
+        menu_id == MENU_R_DCS  ||
+        menu_id == MENU_T_DCS)
+    {
+        is_tone_menu = true;
+    }
+
+    return is_tone_menu;
+}
+
+static uint8_t UI_MENU_GetToneValueYOffsetPx(const bool is_in_submenu)
+{
+    uint8_t value_y_offset_px = 15u;
+
+    if (is_in_submenu)
+    {
+        value_y_offset_px = 10u;
+    }
+
+    return value_y_offset_px;
+}
+
+static void UI_MENU_PrintSubmenuValueLine(const char *line,
+                                          unsigned int x1,
+                                          unsigned int x2,
+                                          unsigned int y_row,
+                                          bool small_font,
+                                          uint8_t y_offset_px)
 {
     /* Pixel renderer for CN and EN UI — same ccc value appearance (ASCII uses embedded small font) */
-    const uint8_t y0 = (uint8_t)(y_row * 8u);
+    const uint8_t y0 = (uint8_t)(y_row * 8u + y_offset_px);
     const uint8_t y1 = small_font ? (uint8_t)(y0 + 7u) : (uint8_t)(y0 + 11u);
     UI_PrintStringSmallAtPixel(line, x1, x2, y0, y1, 3u);
 }
@@ -1216,19 +1248,25 @@ static void UI_MENU_DrawLauncherPage(void)
     ST7565_BlitFullScreen();
 }
 
-static void UI_MENU_DrawTopRightRoundedBadge(const char *text,
-                                             const uint8_t line,
-                                             const bool center_in_area,
-                                             const uint8_t area_x1,
-                                             const uint8_t area_x2)
+static void UI_MENU_DrawTopRightBadgePlain(const char *text,
+                                           const uint8_t value_row,
+                                           const uint8_t value_y_offset_px,
+                                           const bool center_in_area,
+                                           const uint8_t area_x1,
+                                           const uint8_t area_x2)
 {
     const size_t text_length = strlen(text);
     const size_t char_pitch = ARRAY_SIZE(gFontSmall[0]) + 1u;
     const size_t text_width = text_length * char_pitch;
-    const size_t capsule_span = text_width + 1u;
+    const size_t text_span = text_width + 1u;
+    const uint8_t text_height = 8u;
+    const uint8_t value_y_start = (uint8_t)(value_row * 8u + value_y_offset_px);
+    const uint8_t min_gap_px = 3u;
     uint8_t text_x;
+    uint8_t text_y_start;
+    uint8_t text_y_end;
 
-    if (text_length == 0u || line == 0u || line >= FRAME_LINES)
+    if (text_length == 0u || value_row >= FRAME_LINES)
     {
         return;
     }
@@ -1239,18 +1277,18 @@ static void UI_MENU_DrawTopRightRoundedBadge(const char *text,
         const uint8_t area_width = area_x2 - area_x1 + 1u;
         uint8_t max_x;
 
-        if (capsule_span >= area_width)
+        if (text_span >= area_width)
         {
             text_x = min_x;
         }
         else
         {
-            text_x = (uint8_t)(area_x1 + ((area_width - capsule_span) / 2u));
+            text_x = (uint8_t)(area_x1 + ((area_width - text_span) / 2u));
         }
 
-        if (area_x2 > capsule_span)
+        if (area_x2 > text_span)
         {
-            max_x = (uint8_t)(area_x2 - capsule_span);
+            max_x = (uint8_t)(area_x2 - text_span);
         }
         else
         {
@@ -1272,15 +1310,15 @@ static void UI_MENU_DrawTopRightRoundedBadge(const char *text,
     }
     else
     {
-        if (capsule_span >= (LCD_WIDTH - 3u))
+        if (text_span >= (LCD_WIDTH - 3u))
         {
             text_x = 1u;
         }
         else
         {
             const uint8_t global_shift_right = 1u;
-            const uint8_t base_text_x = (uint8_t)(LCD_WIDTH - capsule_span - 3u);
-            const uint8_t max_text_x  = (uint8_t)(LCD_WIDTH - capsule_span - 1u);
+            const uint8_t base_text_x = (uint8_t)(LCD_WIDTH - text_span - 3u);
+            const uint8_t max_text_x  = (uint8_t)(LCD_WIDTH - text_span - 1u);
             const uint16_t shifted_x = (uint16_t)base_text_x + global_shift_right;
 
             if (shifted_x > max_text_x)
@@ -1294,7 +1332,17 @@ static void UI_MENU_DrawTopRightRoundedBadge(const char *text,
         }
     }
 
-    UI_PrintStringSmallNormalInverse(text, text_x, 0u, line);
+    if (value_y_start > (text_height + min_gap_px))
+    {
+        text_y_start = (uint8_t)(value_y_start - text_height - min_gap_px);
+    }
+    else
+    {
+        text_y_start = 0u;
+    }
+
+    text_y_end = (uint8_t)(text_y_start + text_height - 1u);
+    UI_PrintStringSmallAtPixel(text, text_x, text_x, text_y_start, text_y_end, 0u);
 }
 
 void UI_DisplayMenu(void)
@@ -1318,7 +1366,8 @@ void UI_DisplayMenu(void)
     unsigned int       i;
     char               String[64];  // bigger cuz we can now do multi-line in one string (use '\n' char)
     char               top_right_badge[16];
-    uint8_t            top_right_badge_line;
+    uint8_t            top_right_badge_value_row;
+    uint8_t            top_right_badge_value_y_offset_px;
 
 #ifdef ENABLE_DTMF_CALLING
     char               Contact[16];
@@ -1346,7 +1395,8 @@ void UI_DisplayMenu(void)
 
     memset(String, 0, sizeof(String));
     memset(top_right_badge, 0, sizeof(top_right_badge));
-    top_right_badge_line = 1u;
+    top_right_badge_value_row = 0xFFu;
+    top_right_badge_value_y_offset_px = 0u;
 
     bool already_printed = false;
 
@@ -2524,9 +2574,25 @@ void UI_DisplayMenu(void)
                 y += 1u;
             else if (gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
                 y += 2u;
+
+            if (UI_MENU_IsToneMenu(UI_MENU_GetCurrentMenuId()))
+            {
+                top_right_badge_value_row = (uint8_t)y;
+                top_right_badge_value_y_offset_px = UI_MENU_GetToneValueYOffsetPx(gIsInSubMenu);
+            }
             {
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
+                uint8_t submenu_value_y_offset_px = 0u;
+#ifndef ENABLE_CHINESE
+                uint8_t ascii_line_y_start = 0u;
+                uint8_t ascii_line_y_end = 0u;
+#endif
+
+                if (UI_MENU_IsToneMenu(UI_MENU_GetCurrentMenuId()))
+                {
+                    submenu_value_y_offset_px = UI_MENU_GetToneValueYOffsetPx(gIsInSubMenu);
+                }
 #ifdef ENABLE_CHINESE
                 if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu && menu_item_x1 == 0u)
                     sub_val_x1 = menu_value_x1 + 8u;
@@ -2701,9 +2767,18 @@ void UI_DisplayMenu(void)
             for (i = 0; i < len && lines > 0; lines--)
             {
 #ifdef ENABLE_CHINESE
-                UI_MENU_PrintSubmenuValueLine(String + i, sub_val_x1, sub_val_x2, y, small);
+                UI_MENU_PrintSubmenuValueLine(String + i, sub_val_x1, sub_val_x2, y, small, submenu_value_y_offset_px);
 #else
-                UI_PrintStringSmallNormal(String + i, menu_value_x1, menu_item_x2, y);
+                if (submenu_value_y_offset_px == 0u)
+                {
+                    UI_PrintStringSmallNormal(String + i, menu_value_x1, menu_item_x2, y);
+                }
+                else
+                {
+                    ascii_line_y_start = (uint8_t)(y * 8u + submenu_value_y_offset_px);
+                    ascii_line_y_end = (uint8_t)(ascii_line_y_start + 7u);
+                    UI_PrintStringSmallAtPixel(String + i, menu_value_x1, menu_item_x2, ascii_line_y_start, ascii_line_y_end, 0u);
+                }
 #endif
 
                 // look for start of next line
@@ -2772,9 +2847,14 @@ void UI_DisplayMenu(void)
             sprintf(top_right_badge, "%03d", gSubMenuSelection);
         }
     }
-    if (top_right_badge[0] != '\0')
+    if (top_right_badge[0] != '\0' && top_right_badge_value_row != 0xFFu)
     {
-        UI_MENU_DrawTopRightRoundedBadge(top_right_badge, top_right_badge_line, true, menu_value_x1, menu_item_x2);
+        UI_MENU_DrawTopRightBadgePlain(top_right_badge,
+                                       top_right_badge_value_row,
+                                       top_right_badge_value_y_offset_px,
+                                       true,
+                                       menu_value_x1,
+                                       menu_item_x2);
     }
 
     if ((UI_MENU_GetCurrentMenuId() == MENU_RESET    ||
