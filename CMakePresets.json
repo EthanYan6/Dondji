@@ -71,8 +71,8 @@
                 "ENABLE_AGC_SHOW_DATA": false,
                 "ENABLE_UART_RW_BK_REGS": false,
                 "ENABLE_SWD": false,
-                "VERSION_STRING_1": "v5.3.1",
-                "VERSION_STRING_2": "v4.4.1"
+                "VERSION_STRING_1": "v5.4.0",
+                "VERSION_STRING_2": "v4.4.2"
             }
         },
         {

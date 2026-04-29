@@ -584,6 +584,8 @@ static void UpdateScanInfo()
     {
         scanInfo.rssiMin = scanInfo.rssi;
         settings.dbMin = Rssi2DBm(scanInfo.rssiMin);
+        if (settings.dbMin > settings.dbMax - 10)
+            settings.dbMin = settings.dbMax - 10;
         redrawStatus = true;
     }
 }
@@ -611,19 +613,47 @@ static void UpdatePeakInfo()
         UpdatePeakInfoForce();
 }
 
-static void SetRssiHistory(uint16_t idx, uint16_t rssi)
+static uint8_t GetHistorySlot(uint16_t idx)
 {
 #ifdef ENABLE_SCAN_RANGES
-    if (scanInfo.measurementsCount > 128)
+    if (scanInfo.measurementsCount > ARRAY_SIZE(rssiHistory))
     {
-        uint8_t i = (uint32_t)ARRAY_SIZE(rssiHistory) * 1000 / scanInfo.measurementsCount * idx / 1000;
-        if (rssiHistory[i] < rssi || isListening)
-            rssiHistory[i] = rssi;
-        rssiHistory[(i + 1) % 128] = 0;
+        uint32_t slot = (uint32_t)idx * ARRAY_SIZE(rssiHistory) / scanInfo.measurementsCount;
+        if (slot >= ARRAY_SIZE(rssiHistory))
+            slot = ARRAY_SIZE(rssiHistory) - 1;
+        return (uint8_t)slot;
+    }
+#endif
+    return (uint8_t)idx;
+}
+
+static void SetRssiHistory(uint16_t idx, uint16_t rssi)
+{
+    uint8_t slot = GetHistorySlot(idx);
+
+    if (rssi == RSSI_MAX_VALUE)
+    {
+        rssiHistory[slot] = RSSI_MAX_VALUE;
+        return;
+    }
+
+#ifdef ENABLE_SCAN_RANGES
+    if (scanInfo.measurementsCount > ARRAY_SIZE(rssiHistory))
+    {
+        uint16_t previous_rssi = rssiHistory[slot];
+        if (previous_rssi == RSSI_MAX_VALUE)
+            return;
+
+        if (rssi >= previous_rssi)
+            rssiHistory[slot] = rssi;
+        else
+            rssiHistory[slot] = (uint16_t)((3u * previous_rssi + rssi) >> 2);
+
         return;
     }
 #endif
-    rssiHistory[idx] = rssi;
+
+    rssiHistory[slot] = rssi;
 }
 
 static void Measure()
@@ -1934,7 +1964,9 @@ static bool HandleUserInput()
 
 static void Scan()
 {
-    if (rssiHistory[scanInfo.i] != RSSI_MAX_VALUE
+    uint8_t slot = GetHistorySlot(scanInfo.i);
+
+    if (rssiHistory[slot] != RSSI_MAX_VALUE
 #ifdef ENABLE_SCAN_RANGES
         && !IsBlacklisted(scanInfo.i)
 #endif
