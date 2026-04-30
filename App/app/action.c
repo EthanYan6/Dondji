@@ -561,22 +561,41 @@ void ACTION_RxMode(void)
 
 void ACTION_MainOnly(void)
 {
-    static bool cycle = 0;
-    static uint8_t dw = 0;
-    static uint8_t cb = 0;
+    static uint8_t saved_dual_watch = DUAL_WATCH_OFF;
+    static uint8_t saved_cross_band = CROSS_BAND_OFF;
+    static bool has_saved_rx_mode = false;
 
-    if (cycle) {
-        gEeprom.DUAL_WATCH = dw;
-        gEeprom.CROSS_BAND_RX_TX = cb;
-    } else {
-        dw = gEeprom.DUAL_WATCH;
-        cb = gEeprom.CROSS_BAND_RX_TX;
+    const bool is_main_screen = (gScreenToDisplay == DISPLAY_MAIN);
+    const bool is_main_only_mode =
+        (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) &&
+        (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
 
-        gEeprom.DUAL_WATCH = 0;
-        gEeprom.CROSS_BAND_RX_TX = 0;
+    if (!is_main_screen) {
+        return;
     }
 
-    cycle = !cycle;
+    if (!is_main_only_mode) {
+        saved_dual_watch = gEeprom.DUAL_WATCH;
+        saved_cross_band = gEeprom.CROSS_BAND_RX_TX;
+        has_saved_rx_mode = true;
+
+        gEeprom.DUAL_WATCH = DUAL_WATCH_OFF;
+        gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
+    } else {
+        const bool saved_mode_is_valid =
+            has_saved_rx_mode &&
+            (saved_dual_watch != DUAL_WATCH_OFF ||
+             saved_cross_band != CROSS_BAND_OFF);
+
+        if (saved_mode_is_valid) {
+            gEeprom.DUAL_WATCH = saved_dual_watch;
+            gEeprom.CROSS_BAND_RX_TX = saved_cross_band;
+        } else {
+            gEeprom.DUAL_WATCH = gEeprom.TX_VFO + 1;
+            gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
+        }
+    }
+
     ACTION_Update();
     gDW = gEeprom.DUAL_WATCH;
     gCB = gEeprom.CROSS_BAND_RX_TX;

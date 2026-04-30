@@ -128,8 +128,8 @@ const int8_t VGAOptions[] = {-33, -27, -21, -15, -9, -6, -3, 0};
 /* 顶栏信道名绘制区，清除宽度勿覆盖右侧与 MAIN ONLY 一致的电池与百分比 */
 #define SPECTRUM_STATUS_CH_NAME_X0    46u
 #define SPECTRUM_STATUS_CH_NAME_CLR_W 48u
-/* 与菜单顶栏一致：右上角电池+百分比区域从 x=96 起保留，不允许信道名覆盖 */
-#define SPECTRUM_STATUS_RIGHT_RESERVED_X 96u
+/* 右上角电池+百分比区域保留。100% 时文本会更靠左，需保留到 x=94 避免把“1”擦掉 */
+#define SPECTRUM_STATUS_RIGHT_RESERVED_X 94u
 
 static void LoadSettings()
 {
