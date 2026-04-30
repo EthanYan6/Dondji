@@ -207,17 +207,130 @@ static void UI_MENU_FormatBuildTimeBeijing(char *time_output, const size_t outpu
 
     time_output[0] = 'B';
     time_output[1] = 'J';
-    time_output[2] = 'T';
-    time_output[3] = ' ';
-    time_output[4] = (char)('0' + (beijing_hour / 10));
-    time_output[5] = (char)('0' + (beijing_hour % 10));
-    time_output[6] = ':';
-    time_output[7] = (char)('0' + (beijing_minute / 10));
-    time_output[8] = (char)('0' + (beijing_minute % 10));
-    time_output[9] = ':';
-    time_output[10] = (char)('0' + (beijing_second / 10));
-    time_output[11] = (char)('0' + (beijing_second % 10));
-    time_output[12] = '\0';
+    time_output[2] = ' ';
+    time_output[3] = (char)('0' + (beijing_hour / 10));
+    time_output[4] = (char)('0' + (beijing_hour % 10));
+    time_output[5] = ':';
+    time_output[6] = (char)('0' + (beijing_minute / 10));
+    time_output[7] = (char)('0' + (beijing_minute % 10));
+    time_output[8] = ':';
+    time_output[9] = (char)('0' + (beijing_second / 10));
+    time_output[10] = (char)('0' + (beijing_second % 10));
+    time_output[11] = '\0';
+}
+
+static void UI_MENU_FormatBuildDateSlash(char *date_output, const size_t output_size)
+{
+    int month_number = 0;
+    int day_tens = 0;
+    int day_units = 0;
+    int year_thousands = 0;
+    int year_hundreds = 0;
+    int year_tens = 0;
+    int year_units = 0;
+    int day_number = 0;
+
+    if (date_output == NULL || output_size < 11u)
+    {
+        return;
+    }
+
+    if (strncmp(BuildDate + 0, "Jan", 3u) == 0)
+    {
+        month_number = 1;
+    }
+    else if (strncmp(BuildDate + 0, "Feb", 3u) == 0)
+    {
+        month_number = 2;
+    }
+    else if (strncmp(BuildDate + 0, "Mar", 3u) == 0)
+    {
+        month_number = 3;
+    }
+    else if (strncmp(BuildDate + 0, "Apr", 3u) == 0)
+    {
+        month_number = 4;
+    }
+    else if (strncmp(BuildDate + 0, "May", 3u) == 0)
+    {
+        month_number = 5;
+    }
+    else if (strncmp(BuildDate + 0, "Jun", 3u) == 0)
+    {
+        month_number = 6;
+    }
+    else if (strncmp(BuildDate + 0, "Jul", 3u) == 0)
+    {
+        month_number = 7;
+    }
+    else if (strncmp(BuildDate + 0, "Aug", 3u) == 0)
+    {
+        month_number = 8;
+    }
+    else if (strncmp(BuildDate + 0, "Sep", 3u) == 0)
+    {
+        month_number = 9;
+    }
+    else if (strncmp(BuildDate + 0, "Oct", 3u) == 0)
+    {
+        month_number = 10;
+    }
+    else if (strncmp(BuildDate + 0, "Nov", 3u) == 0)
+    {
+        month_number = 11;
+    }
+    else if (strncmp(BuildDate + 0, "Dec", 3u) == 0)
+    {
+        month_number = 12;
+    }
+    else
+    {
+        strcpy(date_output, BuildDate);
+        return;
+    }
+
+    if (BuildDate[4] == ' ')
+    {
+        day_tens = 0;
+    }
+    else
+    {
+        if (BuildDate[4] < '0' || BuildDate[4] > '9')
+        {
+            strcpy(date_output, BuildDate);
+            return;
+        }
+        day_tens = BuildDate[4] - '0';
+    }
+
+    if (BuildDate[5] < '0' || BuildDate[5] > '9' ||
+        BuildDate[7] < '0' || BuildDate[7] > '9' ||
+        BuildDate[8] < '0' || BuildDate[8] > '9' ||
+        BuildDate[9] < '0' || BuildDate[9] > '9' ||
+        BuildDate[10] < '0' || BuildDate[10] > '9')
+    {
+        strcpy(date_output, BuildDate);
+        return;
+    }
+
+    day_units = BuildDate[5] - '0';
+    year_thousands = BuildDate[7] - '0';
+    year_hundreds = BuildDate[8] - '0';
+    year_tens = BuildDate[9] - '0';
+    year_units = BuildDate[10] - '0';
+    day_number = day_tens * 10 + day_units;
+
+    date_output[0] = (char)('0' + year_thousands);
+    date_output[1] = (char)('0' + year_hundreds);
+    date_output[2] = (char)('0' + year_tens);
+    date_output[3] = (char)('0' + year_units);
+    date_output[4] = '/';
+    date_output[5] = (char)('0' + (month_number / 10));
+    date_output[6] = (char)('0' + (month_number % 10));
+    date_output[7] = '/';
+    date_output[8] = (char)('0' + (day_number / 10));
+    date_output[9] = (char)('0' + (day_number % 10));
+    date_output[10] = '\0';
 }
 #endif
 
@@ -2224,17 +2337,23 @@ void UI_DisplayMenu(void)
             if (page == 1u)
             {
                 const uint8_t info_label_up_offset_pixels = 5u;
+                const uint8_t info_label_safe_top_pixels_in_submenu = 20u;
                 const uint8_t info_line_gap_pixels = 3u;
                 const uint8_t info_line_height_pixels = 8u;
+                const uint8_t info_label_cn_extra_up_offset_pixels = 3u;
                 uint8_t info_label_y_start = 0u;
                 uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_line3_y_start = 0u;
                 uint8_t info_line3_y_end = 0u;
+                uint8_t info_label_print_y_start = 0u;
+                uint8_t info_label_print_y_end = 0u;
                 char beijing_build_time[16];
+                char build_date_slash[16];
 
                 UI_MENU_FormatBuildTimeBeijing(beijing_build_time, sizeof(beijing_build_time));
+                UI_MENU_FormatBuildDateSlash(build_date_slash, sizeof(build_date_slash));
 
                 info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
                 if (info_label_y_start >= info_label_up_offset_pixels)
@@ -2250,13 +2369,33 @@ void UI_DisplayMenu(void)
                 info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
                 info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
                 info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
+                if (gIsInSubMenu && info_label_y_start < info_label_safe_top_pixels_in_submenu)
+                {
+                    info_label_y_start = info_label_safe_top_pixels_in_submenu;
+                    info_label_y_end = (uint8_t)(info_label_y_start + info_line_height_pixels - 1u);
+                }
                 info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
                 info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
                 info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
                 info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
+                info_label_print_y_start = info_label_y_start;
+                info_label_print_y_end = info_label_y_end;
 
-                UI_PrintStringSmallAtPixel("BUILD", menu_value_x1, menu_item_x2, info_label_y_start, info_label_y_end, 0u);
-                UI_PrintStringSmallAtPixel(BuildDate, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
+                if (gUiLanguage == UI_LANGUAGE_CN)
+                {
+                    if (info_label_print_y_start >= info_label_cn_extra_up_offset_pixels)
+                    {
+                        info_label_print_y_start = (uint8_t)(info_label_print_y_start - info_label_cn_extra_up_offset_pixels);
+                    }
+                    else
+                    {
+                        info_label_print_y_start = 0u;
+                    }
+                    info_label_print_y_end = (uint8_t)(info_label_print_y_start + info_line_height_pixels - 1u);
+                }
+
+                UI_PrintStringSmallAtPixel(SUBV("BUILD", "打包时间"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
+                UI_PrintStringSmallAtPixel(build_date_slash, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
                 UI_PrintStringSmallAtPixel(beijing_build_time, menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
                 if (level2_value_down_offset_pixels > 0u)
                 {
@@ -2285,14 +2424,18 @@ void UI_DisplayMenu(void)
             if (page == 2u)
             {
                 const uint8_t info_label_up_offset_pixels = 5u;
+                const uint8_t info_label_safe_top_pixels_in_submenu = 20u;
                 const uint8_t info_line_gap_pixels = 3u;
                 const uint8_t info_line_height_pixels = 8u;
+                const uint8_t info_label_cn_extra_up_offset_pixels = 3u;
                 uint8_t info_label_y_start = 0u;
                 uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_line3_y_start = 0u;
                 uint8_t info_line3_y_end = 0u;
+                uint8_t info_label_print_y_start = 0u;
+                uint8_t info_label_print_y_end = 0u;
                 uint16_t flash_percent_x10 = 0u;
                 uint16_t sram_percent_x10 = 0u;
 
@@ -2312,12 +2455,32 @@ void UI_DisplayMenu(void)
                 info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
                 info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
                 info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
+                if (gIsInSubMenu && info_label_y_start < info_label_safe_top_pixels_in_submenu)
+                {
+                    info_label_y_start = info_label_safe_top_pixels_in_submenu;
+                    info_label_y_end = (uint8_t)(info_label_y_start + info_line_height_pixels - 1u);
+                }
                 info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
                 info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
                 info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
                 info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
+                info_label_print_y_start = info_label_y_start;
+                info_label_print_y_end = info_label_y_end;
 
-                UI_PrintStringSmallAtPixel("MEMORY", menu_value_x1, menu_item_x2, info_label_y_start, info_label_y_end, 0u);
+                if (gUiLanguage == UI_LANGUAGE_CN)
+                {
+                    if (info_label_print_y_start >= info_label_cn_extra_up_offset_pixels)
+                    {
+                        info_label_print_y_start = (uint8_t)(info_label_print_y_start - info_label_cn_extra_up_offset_pixels);
+                    }
+                    else
+                    {
+                        info_label_print_y_start = 0u;
+                    }
+                    info_label_print_y_end = (uint8_t)(info_label_print_y_start + info_line_height_pixels - 1u);
+                }
+
+                UI_PrintStringSmallAtPixel(SUBV("MEMORY", "存储占比"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
                 sprintf(String, "FLASH %u.%u%%", flash_percent_x10 / 10u, flash_percent_x10 % 10u);
                 UI_PrintStringSmallAtPixel(String, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
                 sprintf(String, "SRAM  %u.%u%%", sram_percent_x10 / 10u, sram_percent_x10 % 10u);

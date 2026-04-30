@@ -10,7 +10,7 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "ENABLE_CHINESE": true,
-                "ENABLE_LTO": false,
+                "ENABLE_LTO": true,
                 "ENABLE_FMRADIO": false,
                 "ENABLE_UART": true,
                 "ENABLE_USB": true,
