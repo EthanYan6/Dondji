@@ -58,7 +58,25 @@ center_line_t center_line = CENTER_LINE_NONE;
 
     static bool isMainOnly()
     {
-        return (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) && (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+        const bool dual_watch_is_off = (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF);
+        const bool cross_band_is_off = (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+        const bool is_main_only_mode = dual_watch_is_off && cross_band_is_off;
+
+        if (!is_main_only_mode) {
+            return false;
+        }
+
+        const bool is_main_screen = (gScreenToDisplay == DISPLAY_MAIN);
+        const bool is_channel_scan_running = (gScanStateDir != SCAN_OFF);
+        const bool has_cross_band_backup = (gBackup_CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+        const bool keep_dual_layout_on_scan =
+            is_main_screen && is_channel_scan_running && has_cross_band_backup;
+
+        if (keep_dual_layout_on_scan) {
+            return false;
+        }
+
+        return true;
     }
 #endif
 
@@ -633,8 +651,17 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
 static const char *DualVfoRxModeShortLabel(void)
 {
     static const char *const abbrev[4] = {"MAIN", "A/B", "CROSS", "A"};
-    unsigned                 idx =
-        (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF ? 1u : 0u) + (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF ? 2u : 0u);
+    const bool channel_scan_running = (gScanStateDir != SCAN_OFF);
+
+    if (channel_scan_running) {
+        return abbrev[0];
+    }
+
+    const bool cross_band_enabled_for_label = (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+    const bool dual_watch_enabled_for_label = (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF);
+
+    unsigned idx =
+        (dual_watch_enabled_for_label ? 1u : 0u) + (cross_band_enabled_for_label ? 2u : 0u);
     if (idx >= 4u)
         idx = 0u;
     return abbrev[idx];

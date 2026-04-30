@@ -63,8 +63,17 @@ static void convertTime(uint8_t *line, uint8_t type)
 #ifdef ENABLE_FEAT_F4HWN
 bool UI_IsDualVfoMainScreen(void)
 {
-    return gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
-           (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+    const bool is_main_screen = (gScreenToDisplay == DISPLAY_MAIN);
+    const bool is_aircopy_mode = gAirCopyBootMode;
+    const bool dual_watch_enabled = (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF);
+    const bool cross_band_enabled = (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+    const bool channel_scan_running = (gScanStateDir != SCAN_OFF);
+    const bool has_cross_band_backup = (gBackup_CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+    const bool keep_dual_context_for_scan = channel_scan_running && has_cross_band_backup;
+    const bool dual_vfo_context = dual_watch_enabled || cross_band_enabled || keep_dual_context_for_scan;
+    const bool dual_vfo_main_screen = is_main_screen && !is_aircopy_mode && dual_vfo_context;
+
+    return dual_vfo_main_screen;
 }
 #endif
 
@@ -238,8 +247,17 @@ void UI_DisplayStatus()
     }
 
     // 主页面 (MAIN ONLY): 定制顶部菜单栏
-    if (gScreenToDisplay == DISPLAY_MAIN && !gAirCopyBootMode &&
-        gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+    const bool is_main_screen = (gScreenToDisplay == DISPLAY_MAIN);
+    const bool is_aircopy_mode = gAirCopyBootMode;
+    const bool dual_watch_is_off = (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF);
+    const bool cross_band_is_off = (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
+    const bool channel_scan_running = (gScanStateDir != SCAN_OFF);
+    const bool has_cross_band_backup = (gBackup_CROSS_BAND_RX_TX != CROSS_BAND_OFF);
+    const bool keep_dual_context_for_scan = channel_scan_running && has_cross_band_backup;
+    const bool should_show_main_only_status =
+        is_main_screen && !is_aircopy_mode && dual_watch_is_off && cross_band_is_off && !keep_dual_context_for_scan;
+
+    if (should_show_main_only_status) {
         UI_DisplayMainOnlyStatusBar();
         return;
     }

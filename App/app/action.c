@@ -261,6 +261,7 @@ void ACTION_Scan(bool bRestart)
         }
         SETTINGS_WriteCurrentState();
         #endif
+        gBackup_CROSS_BAND_RX_TX = gEeprom.CROSS_BAND_RX_TX;
         // start scanning
         CHFRSCANNER_Start(true, SCAN_FWD);
 

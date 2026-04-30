@@ -206,6 +206,7 @@ void CHFRSCANNER_Stop(void)
         gEeprom.CROSS_BAND_RX_TX = initialCROSS_BAND_RX_TX;
         initialCROSS_BAND_RX_TX = CROSS_BAND_OFF;
     }
+    gBackup_CROSS_BAND_RX_TX = CROSS_BAND_OFF;
     
     gScanStateDir = SCAN_OFF;
 

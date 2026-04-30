@@ -859,9 +859,18 @@ static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
     const bool star_key_is_pressed = bKeyPressed;
     const bool star_key_is_held = bKeyHeld;
     const bool f_shortcut_active = gWasFKeyPressed;
+    const bool trigger_scan_by_long_press = star_key_is_pressed && star_key_is_held;
+    const bool trigger_scan_by_f_star = f_shortcut_active && star_key_is_pressed && !star_key_is_held;
+    const bool should_trigger_scan = trigger_scan_by_long_press || trigger_scan_by_f_star;
 
-    if (f_shortcut_active) {
-        gWasFKeyPressed = false;
+    if (should_trigger_scan) {
+        if (f_shortcut_active) {
+            gWasFKeyPressed = false;
+        }
+
+        gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+        ACTION_Scan(true);
+        return;
     }
 
     if (star_key_is_pressed || star_key_is_held) {
