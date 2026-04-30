@@ -66,19 +66,26 @@ static uint8_t SF_after_2px(uint8_t y, unsigned h) { return (uint8_t)((unsigned)
 static uint8_t CH_mem_blk_y0(void)
 {
     const unsigned block_h = CH_MEM_BLOCK_H;
+    uint8_t block_y_start = 0u;
     if (gIsInSubMenu)
     {
         const unsigned top = 20u;
         const unsigned bot = 63u;
         const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
         const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
-        return (uint8_t)(top + pad);
+        block_y_start = (uint8_t)(top + pad);
     }
-    const unsigned top = 8u;
-    const unsigned bot = 55u;
-    const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
-    const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
-    return (uint8_t)(top + pad);
+    else
+    {
+        const unsigned top = 8u;
+        const unsigned bot = 55u;
+        const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
+        const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
+        block_y_start = (uint8_t)(top + pad);
+        block_y_start = (uint8_t)(block_y_start + 7u);
+    }
+
+    return block_y_start;
 }
 /* SysInf (MENU_VOL): line height for stacking — Han uses 12px band, ASCII small 7px */
 static uint8_t VOL_line_band_height(const char *line)
@@ -867,7 +874,7 @@ static bool UI_MENU_IsToneMenu(const uint8_t menu_id)
 
 static uint8_t UI_MENU_GetToneValueYOffsetPx(const bool is_in_submenu)
 {
-    uint8_t value_y_offset_px = 15u;
+    uint8_t value_y_offset_px = 10u;
 
     if (is_in_submenu)
     {
@@ -1475,6 +1482,10 @@ void UI_DisplayMenu(void)
                         else if (gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
                             y_line += 2u;
                         uint8_t yp_tier = (uint8_t)(y_line * 8u);
+                        if (!gIsInSubMenu)
+                        {
+                            yp_tier = (uint8_t)(yp_tier + 7u);
+                        }
                         const uint8_t h_tier = VOL_line_band_height(tier);
                         const uint8_t yp_pwr = SF_after_2px(yp_tier, h_tier);
                         const uint8_t h_pwr  = VOL_line_band_height(pwrbuf);
@@ -2158,7 +2169,7 @@ void UI_DisplayMenu(void)
             }
             else
             {
-                level2_value_down_offset_pixels = 15u;
+                level2_value_down_offset_pixels = 12u;
             }
 
             if (page == 0u)
@@ -2584,14 +2595,24 @@ void UI_DisplayMenu(void)
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
                 uint8_t submenu_value_y_offset_px = 0u;
+                bool is_tone_menu_current = false;
 #ifndef ENABLE_CHINESE
                 uint8_t ascii_line_y_start = 0u;
                 uint8_t ascii_line_y_end = 0u;
 #endif
 
-                if (UI_MENU_IsToneMenu(UI_MENU_GetCurrentMenuId()))
+                is_tone_menu_current = UI_MENU_IsToneMenu(UI_MENU_GetCurrentMenuId());
+                if (is_tone_menu_current)
                 {
                     submenu_value_y_offset_px = UI_MENU_GetToneValueYOffsetPx(gIsInSubMenu);
+                }
+                if (UI_MENU_GetCurrentMenuId() == MENU_TXP ||
+                    UI_MENU_GetCurrentMenuId() == MENU_SET_PWR)
+                {
+                    if (!gIsInSubMenu)
+                    {
+                        submenu_value_y_offset_px = (uint8_t)(submenu_value_y_offset_px + 7u);
+                    }
                 }
 #ifdef ENABLE_CHINESE
                 if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu && menu_item_x1 == 0u)
@@ -2600,6 +2621,11 @@ void UI_DisplayMenu(void)
                     sub_val_x1 = sub_val_x1 + 2u;
                 if (gUiLanguage == UI_LANGUAGE_CN && !gIsInSubMenu && sub_val_x1 >= 50u)
                     sub_val_x1 = sub_val_x1 + 2u;
+                if (is_tone_menu_current && gIsInSubMenu)
+                {
+                    sub_val_x1 = menu_value_x1;
+                    sub_val_x2 = menu_item_x2;
+                }
 #endif
             // draw the text lines
 #ifdef ENABLE_CHINESE
@@ -2646,6 +2672,7 @@ void UI_DisplayMenu(void)
                 const uint8_t line_draw_mode = 3u;
                 const char *first_line_text = String;
                 const char *second_line_text = String;
+                const uint8_t boot_hint_two_line_down_offset_px = 3u;
                 uint8_t first_line_y_start = (uint8_t)(y * 8u);
                 uint8_t first_line_y_end = (uint8_t)(first_line_y_start + 11u);
                 uint8_t second_line_y_start = first_line_y_start;
@@ -2657,6 +2684,10 @@ void UI_DisplayMenu(void)
                 second_line_text = String + second_line_offset;
                 second_line_y_start = SF_after_2px(first_line_y_start, CH_CN_H);
                 second_line_y_start = (uint8_t)(second_line_y_start + 5u);
+                second_line_y_end = (uint8_t)(second_line_y_start + 11u);
+                first_line_y_start = (uint8_t)(first_line_y_start + boot_hint_two_line_down_offset_px);
+                first_line_y_end = (uint8_t)(first_line_y_start + 11u);
+                second_line_y_start = (uint8_t)(second_line_y_start + boot_hint_two_line_down_offset_px);
                 second_line_y_end = (uint8_t)(second_line_y_start + 11u);
 
                 UI_PrintStringSmallAtPixel(first_line_text, sub_val_x1, sub_val_x2, first_line_y_start, first_line_y_end, line_draw_mode);
