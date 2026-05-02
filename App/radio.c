@@ -700,8 +700,6 @@ void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo)
     }
     */
 
-    //static const uint8_t dividers[6] = { 25, 19, 13, 10, 7, 4}; // For UV-K5 V1
-
     static const uint8_t dividers_band2[6] = { 20, 15, 10, 8, 6, 4 };
     static const uint8_t dividers_band5[6] = { 25, 19, 13, 9, 6, 4 }; // Need to improve measure...
 
@@ -720,7 +718,6 @@ void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo)
         }
         else // case 6
         {
-            // Txp[p] += 30; // For UV-K5 V1
             Txp[p] += 24;
         }
     }

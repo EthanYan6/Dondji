@@ -988,12 +988,6 @@ void MENU_AcceptSetting(void)
 #ifndef ENABLE_FEAT_F4HWN
         case MENU_SCR:
             gTxVfo->SCRAMBLING_TYPE = gSubMenuSelection;
-            #if 0
-                if (gSubMenuSelection > 0 && gSetting_ScrambleEnable)
-                    BK4819_EnableScramble(gSubMenuSelection - 1);
-                else
-                    BK4819_DisableScramble();
-            #endif
             gRequestSaveChannel     = 1;
             return;
 #endif
@@ -1005,11 +999,7 @@ void MENU_AcceptSetting(void)
 
         case MENU_MEM_CH:
             gTxVfo->CHANNEL_SAVE = gSubMenuSelection;
-            #if 0
-                gEeprom.MrChannel[0] = gSubMenuSelection;
-            #else
                 gEeprom.MrChannel[gEeprom.TX_VFO] = gSubMenuSelection;
-            #endif
             gRequestSaveChannel = 2;
             gVfoConfigureMode   = VFO_CONFIGURE_RELOAD;
             gFlagResetVfos      = true;
@@ -1563,11 +1553,7 @@ void MENU_ShowCurrentSetting(void)
             break;
 
         case MENU_MEM_CH:
-            #if 0
-                gSubMenuSelection = gEeprom.MrChannel[0];
-            #else
                 gSubMenuSelection = gEeprom.MrChannel[gEeprom.TX_VFO];
-            #endif
             break;
 
         case MENU_MEM_NAME:
@@ -1766,11 +1752,7 @@ void MENU_ShowCurrentSetting(void)
         #endif
 
         case MENU_DEL_CH:
-            #if 0
-                gSubMenuSelection = RADIO_FindNextChannel(gEeprom.MrChannel[0], 1, false, 1);
-            #else
                 gSubMenuSelection = RADIO_FindNextChannel(gEeprom.MrChannel[gEeprom.TX_VFO], 1, false, 1);
-            #endif
             break;
 
 #ifndef ENABLE_FEAT_F4HWN

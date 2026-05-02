@@ -34,9 +34,6 @@
 
 static const uint16_t FSK_RogerTable[7] = {0xF1A2, 0x7446, 0x61A4, 0x6544, 0x4E8A, 0xE044, 0xEA84};
 
-//static const uint8_t DTMF_TONE1_GAIN = 65;
-//static const uint8_t DTMF_TONE2_GAIN = 93;
-
 static uint16_t gBK4819_GpioOutState;
 
 bool gRxIdleMode;
@@ -1745,14 +1742,9 @@ void BK4819_PrepareFSKReceive(void)
 
 static void BK4819_PlayRogerNormal(void)
 {
-    #if 0
-        const uint32_t tone1_Hz = 500;
-        const uint32_t tone2_Hz = 700;
-    #else
-        // motorola type
-        const uint32_t tone1_Hz = 1540;
-        const uint32_t tone2_Hz = 1310;
-    #endif
+    // motorola type
+    const uint32_t tone1_Hz = 1540;
+    const uint32_t tone2_Hz = 1310;
 
 
     BK4819_EnterTxMute();
