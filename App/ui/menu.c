@@ -1008,7 +1008,7 @@ static void UI_MENU_PrintSubmenuValueLine(const char *line,
     /* Pixel renderer for CN and EN UI — same ccc value appearance (ASCII uses embedded small font) */
     const uint8_t y0 = (uint8_t)(y_row * 8u + y_offset_px);
     const uint8_t y1 = small_font ? (uint8_t)(y0 + 7u) : (uint8_t)(y0 + 11u);
-    UI_PrintStringSmallAtPixel(line, x1, x2, y0, y1, 3u);
+    UI_PrintStringSmallAtPixel(line, x1, x2, y0, y1, 0u);
 }
 #endif
 
@@ -1104,22 +1104,22 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_F1SHRT)
         {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
             UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_F1LONG)
         {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
             UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_F2SHRT)
         {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
             UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_F2LONG)
         {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
             UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_MLONG)
@@ -1135,7 +1135,7 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         else if (UI_MENU_GetCurrentMenuId() == MENU_TDR)
         {
             UI_PrintStringSmallAtPixel("\xe6\x8e\xa5\xe6\x94\xb6\xe6\xa8\xa1\xe5\xbc\x8f", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("<\xe8\xae\xbe\xe4\xb8\xbb\xe9\xa1\xb5>", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_PrintStringSmallAtPixel("<\xe8\xae\xbe\xe4\xb8\xbb\xe9\xa1\xb5>", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
         {
@@ -1154,7 +1154,7 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         else
         {
             /* Upper-middle of left pane; keep y_end < ~40 so rows 5+ stay for values on the right */
-            UI_PrintStringSmallAtPixel(t, 0, left_end, 10, 36, 3u);
+            UI_PrintStringSmallAtPixel(t, 0, left_end, 10, 36, 0u);
         }
     }
     else
@@ -1185,7 +1185,7 @@ static void UI_MENU_DrawCccMenuChrome(const t_menu_item *item)
         title = "\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>";
     }
     /* Title band +3px down vs previous 8..15 */
-    UI_PrintStringSmallAtPixel(title, 2, 2, 11, 18, 3u);
+    UI_PrintStringSmallAtPixel(title, 2, 2, 11, 18, 0u);
 #else
     /* Left align (End==Start); +3px down when F4HWN VOffset available */
     #ifdef ENABLE_FEAT_F4HWN
@@ -3078,7 +3078,7 @@ void UI_DisplayMenu(void)
                     const char *pline = String + i;
                     const uint8_t band = VOL_line_band_height(pline);
                     if (band == CH_CN_H)
-                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 11u), (uint8_t)(gUiLanguage == UI_LANGUAGE_CN ? 3u : 0u));
+                        UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 11u), 0u);
                     else
                         UI_PrintStringSmallAtPixel(pline, sub_val_x1, sub_val_x2, yp, (uint8_t)(yp + 7u), 0u);
                     yp = CH_after(yp, band);
@@ -3125,7 +3125,7 @@ void UI_DisplayMenu(void)
                       UI_MENU_GetCurrentMenuId() == MENU_F2LONG ||
                       UI_MENU_GetCurrentMenuId() == MENU_MLONG))
             {
-                const uint8_t ld_mix = (uint8_t)(gUiLanguage == UI_LANGUAGE_CN ? 3u : 0u);
+                const uint8_t ld_mix = 0u;
                 uint8_t yp = (uint8_t)(y * 8u);
                 i = 0;
                 unsigned int rem = lines;
@@ -3149,7 +3149,7 @@ void UI_DisplayMenu(void)
             else if (len > 0u && lines == 3u &&
                      UI_MENU_GetCurrentMenuId() == MENU_TX_LOCK)
             {   /* 段外发射锁「频段内」三行值：行间 2px（与 SF_after_2px / 侧键两行一致） */
-                const uint8_t ld_mix = (uint8_t)(gUiLanguage == UI_LANGUAGE_CN ? 3u : 0u);
+                const uint8_t ld_mix = 0u;
                 uint8_t yp = (uint8_t)(y * 8u);
                 i = 0;
                 unsigned int rem = lines;
@@ -3174,7 +3174,7 @@ void UI_DisplayMenu(void)
                      UI_MENU_GetCurrentMenuId() == MENU_SET_NAV &&
                      gUiLanguage == UI_LANGUAGE_CN)
             {   /* 导航键三行值：行间 2px（与侧键两行 / TX_LOCK 一致） */
-                const uint8_t ld_mix = 3u;
+                const uint8_t ld_mix = 0u;
                 uint8_t yp = (uint8_t)(y * 8u);
                 i = 0;
                 unsigned int rem = lines;
@@ -3198,7 +3198,7 @@ void UI_DisplayMenu(void)
                      UI_MENU_GetCurrentMenuId() == MENU_F_LOCK &&
                      gUiLanguage == UI_LANGUAGE_CN)
             {   /* 频段锁 2～3 行值：行间 2px */
-                const uint8_t ld_mix = 3u;
+                const uint8_t ld_mix = 0u;
                 uint8_t yp = (uint8_t)(y * 8u);
                 i = 0;
                 unsigned int rem = lines;
