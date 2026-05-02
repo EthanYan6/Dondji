@@ -2450,6 +2450,14 @@ void UI_DisplayMain(void)
                         }
 
                         if (gEeprom.CHANNEL_DISPLAY_MODE == MDF_NAME) {
+                        #ifdef ENABLE_CHINESE
+                            if (gUiLanguage == UI_LANGUAGE_CN) {
+                                char cn[16];
+                                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
+                                if (cn[0] != 0)
+                                    memcpy(String, cn, sizeof(cn));
+                            }
+                        #endif
                             String[10] = 0;
                             UI_PrintString(String, 33, 0, line, 8);
                         }
@@ -2457,6 +2465,14 @@ void UI_DisplayMain(void)
 #ifdef ENABLE_FEAT_F4HWN
                             if (isMainOnly())
                             {
+                            #ifdef ENABLE_CHINESE
+                                if (gUiLanguage == UI_LANGUAGE_CN) {
+                                    char cn[16];
+                                    SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
+                                    if (cn[0] != 0)
+                                        memcpy(String, cn, sizeof(cn));
+                                }
+                            #endif
                                 String[10] = 0;
                                 UI_PrintString(String, 33, 0, line, 8);
                             }

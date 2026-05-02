@@ -217,7 +217,7 @@ if(ENABLE_FEAT_F4HWN)
 endif()
 
 enable_feature(ENABLE_FEAT_F4HWN)
-enable_feature(ENABLE_FEAT_F4HWN_GAME 
+enable_feature(ENABLE_FEAT_F4HWN_GAME
     app/breakout.c
 )
 enable_feature(ENABLE_FEAT_F4HWN_SCREENSHOT 

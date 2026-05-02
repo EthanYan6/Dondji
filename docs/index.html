@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Dondji - UV-K1 / UV-K5(K6) V3 Web Tool</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1 class="h1">Dondji UV-K1 / UV-K5(K6) V3</h1>
+    </header>
+    <p class="subtitle">固件刷入 & 字库刷入 via Web Serial API</p>
+
+    <!-- TABS -->
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="flash" id="tabFlash">刷固件</button>
+      <button class="tab" data-tab="font" id="tabFont">刷字库</button>
+      <button class="tab" data-tab="dump" id="tabDump">备份校准</button>
+      <button class="tab" data-tab="restore" id="tabRestore">恢复校准</button>
+    </div>
+
+    <!-- FLASH FIRMWARE TAB -->
+    <div class="tab-content active" id="flash-content">
+      <section class="section">
+        <button class="btn-fetch" id="fetchLatestBtn">从 GitHub 拉取最新固件</button>
+        <div id="fwReleaseInfo" class="fw-info" style="display:none"></div>
+      </section>
+
+      <section class="section">
+        <label>或选择本地固件文件 (.bin)</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="firmwareFile" accept=".bin">
+          <div class="file-input-label" id="fileLabel">
+            <span class="file-name" id="fileName">未选择文件</span>
+            <span class="file-button">选择文件</span>
+          </div>
+        </div>
+      </section>
+
+      <button id="flashBtn" disabled>刷入固件</button>
+    </div>
+
+    <!-- FONT FLASH TAB -->
+    <div class="tab-content" id="font-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          将中文字库刷入 SPI Flash，支持 648 个中文字符（省份、城市、姓氏、常用字等）。
+          首次刷入字库后，固件启动时会自动检测并跳过重复写入。
+        </p>
+        <button class="btn-fetch" id="fetchFontBtn">从仓库加载字库</button>
+        <div id="fontInfo" class="fw-info" style="display:none"></div>
+      </section>
+
+      <section class="section">
+        <label>或选择本地字库文件 (.bin)</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="fontFile" accept=".bin">
+          <div class="file-input-label" id="fontFileLabel">
+            <span class="file-name" id="fontFileName">未选择文件</span>
+            <span class="file-button">选择文件</span>
+          </div>
+        </div>
+      </section>
+
+      <button id="fontFlashBtn" disabled>刷入字库</button>
+    </div>
+
+    <!-- DUMP CALIBRATION TAB -->
+    <div class="tab-content" id="dump-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          从设备导出校准数据备份
+        </p>
+        <button id="dumpBtn">导出校准数据</button>
+      </section>
+      <div class="download-link" id="dumpDownload">
+        <a href="#" id="dumpLink" download="calibration.dat">下载 calibration.dat</a>
+      </div>
+    </div>
+
+    <!-- RESTORE CALIBRATION TAB -->
+    <div class="tab-content" id="restore-content">
+      <section class="section">
+        <label>选择校准备份文件 (.dat)</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="calibFile" accept=".dat">
+          <div class="file-input-label" id="calibFileLabel">
+            <span class="file-name" id="calibFileName">未选择文件</span>
+            <span class="file-button">选择文件</span>
+          </div>
+        </div>
+      </section>
+      <button id="restoreBtn" disabled>恢复校准数据</button>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <section class="progress-container" id="progressContainer">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+        <div class="progress-label" id="progressLabel">0%</div>
+      </div>
+    </section>
+
+    <!-- CONSOLE LOG -->
+    <section class="log-container">
+      <button class="log-toggle" id="logToggle">显示日志</button>
+      <div class="log" id="log"></div>
+    </section>
+
+    <aside class="info-box">
+      <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。刷固件前请进入 BOOT 模式（按住 PTT 开机）。
+    </aside>
+
+    <footer class="footer">
+      Based on <a href="https://github.com/armel/uv-k1-k5v3-firmware-custom" target="_blank">UVTools2</a>
+      &middot; <a href="https://github.com/EthanYan6/Dondji" target="_blank">GitHub</a>
+    </footer>
+  </main>
+
+  <script src="js/flash.js"></script>
+</body>
+</html>

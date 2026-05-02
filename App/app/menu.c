@@ -58,6 +58,43 @@ uint8_t gMemNameCandidateCount;
 char gMemNameCandidates[5];
 uint8_t gMemNameSymbolPage;
 
+#ifdef ENABLE_CHINESE
+char     gPinyinBuffer[PINYIN_MAX_LEN + 1];
+uint8_t  gPinyinLen;
+uint8_t  gPinyinKeyIndex[PINYIN_MAX_LEN];
+uint16_t gCNCandidates[CN_CANDIDATE_MAX];
+uint8_t  gCNCandidateCount;
+
+static void MENU_PinyinSearch(void)
+{
+    if (gPinyinLen == 0)
+    {
+        gCNCandidateCount = 0;
+        return;
+    }
+    gCNCandidateCount = (uint8_t)SETTINGS_CNGetPinyinCandidates(
+        gPinyinBuffer, gCNCandidates, CN_CANDIDATE_MAX);
+}
+
+static void MENU_PinyinReset(void)
+{
+    gPinyinLen = 0;
+    gPinyinBuffer[0] = 0;
+    gCNCandidateCount = 0;
+    memset(gPinyinKeyIndex, 0, sizeof(gPinyinKeyIndex));
+}
+
+static void MENU_CNNameAdvanceAfterInput(void)
+{
+    if (edit_index < 10)
+        edit_index++;
+    gPinyinLen = 0;
+    gPinyinBuffer[0] = 0;
+    gCNCandidateCount = 0;
+    memset(gPinyinKeyIndex, 0, sizeof(gPinyinKeyIndex));
+}
+#endif
+
 static const char *MENU_GetMemNameLettersByKey(const KEY_Code_t key)
 {
     static const char *const map[] = {
@@ -143,6 +180,10 @@ bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 #endif
 #if !defined(ENABLE_FEAT_F4HWN)
     if (menu_id == MENU_BAT_TXT)
+        return true;
+#endif
+#ifdef ENABLE_CHINESE
+    if (menu_id == MENU_CN_MEM_NAME && gUiLanguage != UI_LANGUAGE_CN)
         return true;
 #endif
     return menu_id == MENU_PONMSG ||
@@ -710,6 +751,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         case MENU_1_CALL:
         case MENU_DEL_CH:
         case MENU_MEM_NAME:
+        case MENU_CN_MEM_NAME:
             //*pMin = 0;
             *pMax = MR_CHANNEL_LAST;
             break;
@@ -1014,6 +1056,21 @@ void MENU_AcceptSetting(void)
 
             SETTINGS_SaveChannelName(gSubMenuSelection, edit);
             return;
+
+#ifdef ENABLE_CHINESE
+        case MENU_CN_MEM_NAME:
+        {
+            // Trim trailing padding
+            for (int i = 9; i >= 0; i--) {
+                uint8_t c = (uint8_t)edit[i];
+                if (c != ' ' && c != '_' && c != 0x00 && c != 0xff)
+                    break;
+                edit[i] = ' ';
+            }
+            SETTINGS_SaveCNChannelName(gSubMenuSelection, edit);
+            return;
+        }
+#endif
 
         case MENU_S_PRI_CH_1:
             gEeprom.SCANLIST_PRIORITY_CH[0] = gSubMenuSelection;
@@ -1557,6 +1614,7 @@ void MENU_ShowCurrentSetting(void)
             break;
 
         case MENU_MEM_NAME:
+        case MENU_CN_MEM_NAME:
             gSubMenuSelection = gEeprom.MrChannel[gEeprom.TX_VFO];
             break;
 
@@ -1997,6 +2055,84 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         return;
     }
 
+#ifdef ENABLE_CHINESE
+    if (UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME && edit_index >= 0)
+    {
+        if (edit_index < 10)
+        {
+            // Select candidate: keys 1-6 when candidates are shown
+            if (Key >= KEY_1 && Key <= KEY_6 && gCNCandidateCount > 0)
+            {
+                const uint8_t idx = (uint8_t)(Key - KEY_1);
+                if (idx < gCNCandidateCount)
+                {
+                    // gCNCandidates[idx] is already a Unicode codepoint
+                    uint16_t unicode = gCNCandidates[idx];
+
+                    // Write UTF-8 to edit buffer (3 bytes per Chinese char)
+                    edit[edit_index]     = (char)(0xE0 | (unicode >> 12));
+                    edit[edit_index + 1] = (char)(0x80 | ((unicode >> 6) & 0x3F));
+                    edit[edit_index + 2] = (char)(0x80 | (unicode & 0x3F));
+                    // Advance by 3 bytes (one Chinese char)
+                    edit_index += 3;
+                    if (edit_index > 10)
+                        edit_index = 10;
+                    MENU_CNNameAdvanceAfterInput();
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+            }
+
+            // Pinyin input: keys 2-9 add letters
+            if (Key >= KEY_2 && Key <= KEY_9 && gPinyinLen < PINYIN_MAX_LEN)
+            {
+                static const char *const key_letters[] = {
+                    NULL, NULL, "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"
+                };
+                const char *letters = key_letters[Key];
+                if (letters)
+                {
+                    // Multi-tap: cycle through letters on same key
+                    uint8_t letter_count = (uint8_t)strlen(letters);
+                    uint8_t tap_idx = 0;
+
+                    // Check if same key as previous
+                    if (gPinyinLen > 0 && gPinyinKeyIndex[gPinyinLen - 1] == (uint8_t)(Key - KEY_0))
+                    {
+                        // Same key: cycle the last letter
+                        tap_idx = 0;
+                        for (uint8_t i = 0; i < letter_count; i++)
+                        {
+                            if (gPinyinBuffer[gPinyinLen - 1] == letters[i])
+                            {
+                                tap_idx = (uint8_t)((i + 1) % letter_count);
+                                break;
+                            }
+                        }
+                        gPinyinBuffer[gPinyinLen - 1] = letters[tap_idx];
+                    }
+                    else
+                    {
+                        // New key: add new letter
+                        gPinyinBuffer[gPinyinLen] = letters[0];
+                        gPinyinKeyIndex[gPinyinLen] = (uint8_t)(Key - KEY_0);
+                        gPinyinLen++;
+                        gPinyinBuffer[gPinyinLen] = 0;
+                    }
+
+                    // Search for matching pinyin syllables
+                    MENU_PinyinSearch();
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+            }
+
+            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        }
+        return;
+    }
+#endif
+
     INPUTBOX_Append(Key);
 
     gRequestDisplayScreen = DISPLAY_MENU;
@@ -2186,7 +2322,52 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                     return;
                 }
             }
-            
+
+#ifdef ENABLE_CHINESE
+            // CN channel name editing: backspace
+            if (UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME && edit_index >= 0)
+            {
+                // If pinyin is being typed, clear pinyin first
+                if (gPinyinLen > 0)
+                {
+                    MENU_PinyinReset();
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+
+                // Delete the last Chinese character (3 bytes) or single byte
+                if (edit_index > 0)
+                {
+                    // Check if previous char is a Chinese char (3 bytes)
+                    if (edit_index >= 3 &&
+                        (uint8_t)edit[edit_index - 3] >= 0xE4 &&
+                        (uint8_t)edit[edit_index - 3] <= 0xEF)
+                    {
+                        edit_index -= 3;
+                        edit[edit_index]     = '_';
+                        edit[edit_index + 1] = '_';
+                        edit[edit_index + 2] = '_';
+                    }
+                    else
+                    {
+                        edit_index--;
+                        edit[edit_index] = '_';
+                    }
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+                else
+                {   // At first position - exit editing mode
+                    edit_index = -1;
+                    gIsInSubMenu = false;
+                    gInputBoxIndex = 0;
+                    gFlagRefreshSetting = true;
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+            }
+#endif
+
             if (gInputBoxIndex == 0 || UI_MENU_GetCurrentMenuId() != MENU_OFFSET)
             {
                 gAskForConfirmation = 0;
@@ -2298,7 +2479,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             )
             return;
         #if 1
-            if (m == MENU_DEL_CH || m == MENU_MEM_NAME)
+            if (m == MENU_DEL_CH || m == MENU_MEM_NAME || m == MENU_CN_MEM_NAME)
                 if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
                     return;  // invalid channel
         #endif
@@ -2357,6 +2538,70 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
         }
     }
 
+#ifdef ENABLE_CHINESE
+    if (UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME)
+    {
+        if (edit_index < 0)
+        {   // enter CN channel name edit mode
+            if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))
+                return;
+
+            SETTINGS_FetchCNChannelName(edit, gSubMenuSelection);
+
+            // pad with '_' up to 10 bytes (max 3 Chinese chars = 9 bytes + 1 for alignment)
+            edit_index = strlen(edit);
+            while (edit_index < 10)
+                edit[edit_index++] = '_';
+            edit[edit_index] = 0;
+            edit_index = 0;
+
+            memcpy(edit_original, edit, sizeof(edit_original));
+            gMemNameInputMode = MEM_NAME_INPUT_PINYIN;
+            gCNCandidateCount = 0;
+            MENU_PinyinReset();
+
+            return;
+        }
+        else if (edit_index >= 0)
+        {
+            if (gPinyinLen > 0 && gCNCandidateCount == 0)
+            {
+                // No candidates found for this pinyin, reset pinyin
+                MENU_PinyinReset();
+                gRequestDisplayScreen = DISPLAY_MENU;
+            }
+            else if (gPinyinLen == 0 && gCNCandidateCount == 0)
+            {
+                // Pinyin empty, no candidates: advance cursor like MEM_NAME
+                // Advance by 3 bytes (one Chinese char) or 1 byte (ASCII)
+                if (edit_index < 10)
+                {
+                    uint8_t c = (uint8_t)edit[edit_index];
+                    if (c >= 0xE4 && c <= 0xEF)
+                        edit_index += 3;
+                    else
+                        edit_index += 1;
+                }
+
+                if (edit_index >= 10)
+                {
+                    // At end - exit editing
+                    edit_index = 10;
+                    gFlagAcceptSetting  = false;
+                    gAskForConfirmation = 0;
+                    if (memcmp(edit_original, edit, sizeof(edit_original)) == 0) {
+                        gIsInSubMenu = false;
+                    }
+                }
+                else
+                {
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                }
+            }
+        }
+    }
+#endif
+
     // exiting the sub menu
 
     if (gIsInSubMenu)
@@ -2366,7 +2611,8 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
         if (m == MENU_RESET  ||
             m == MENU_MEM_CH ||
             m == MENU_DEL_CH ||
-            m == MENU_MEM_NAME)
+            m == MENU_MEM_NAME ||
+            m == MENU_CN_MEM_NAME)
         {
             switch (gAskForConfirmation)
             {
@@ -2581,8 +2827,9 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
         case MENU_DEL_CH:
         case MENU_1_CALL:
         case MENU_S_PRI_CH_1:
-        case MENU_S_PRI_CH_2:            
+        case MENU_S_PRI_CH_2:
         case MENU_MEM_NAME:
+        case MENU_CN_MEM_NAME:
             bCheckScanList = false;
             break;
 
@@ -2672,6 +2919,27 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 }
                 break;
             }
+
+#ifdef ENABLE_CHINESE
+            if (UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME && edit_index >= 0)
+            {   // currently editing CN channel name - switch mode
+                if (!bKeyHeld && bKeyPressed)
+                {
+                    gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+                    if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN)
+                    {
+                        gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
+                        MENU_PinyinReset();
+                    }
+                    else
+                    {
+                        gMemNameInputMode = MEM_NAME_INPUT_PINYIN;
+                    }
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                }
+                break;
+            }
+#endif
 
             GENERIC_Key_F(bKeyPressed, bKeyHeld);
             break;

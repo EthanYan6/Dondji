@@ -31,6 +31,7 @@
 #include "driver/crc.h"
 #include "driver/eeprom.h"
 #include "driver/gpio.h"
+#include "driver/py25q16.h"
 
 #if defined(ENABLE_UART)
 #include "driver/uart.h"
@@ -112,6 +113,44 @@ typedef struct {
     uint32_t Timestamp;
     uint8_t  Data[0];
 } CMD_051D_t;
+
+// SPI Flash Read (0x051F)
+#define SPI_FLASH_READ_SIZE 120
+typedef struct {
+    Header_t Header;
+    uint32_t Address;
+    uint16_t Size;
+    uint16_t Padding;
+    uint32_t Timestamp;
+} CMD_051F_t;
+typedef struct {
+    Header_t Header;
+    struct {
+        uint32_t Address;
+        uint16_t Size;
+        uint16_t Padding;
+        uint8_t  Data[SPI_FLASH_READ_SIZE];
+    } Data;
+} REPLY_051F_t;
+
+// SPI Flash Write (0x0521)
+#define SPI_FLASH_WRITE_SIZE 120
+typedef struct {
+    Header_t Header;
+    uint32_t Address;
+    uint16_t Size;
+    uint16_t Padding;
+    uint32_t Timestamp;
+    uint8_t  Data[SPI_FLASH_WRITE_SIZE];
+} CMD_0521_t;
+typedef struct {
+    Header_t Header;
+    struct {
+        uint32_t Address;
+        uint16_t Status;
+        uint16_t Padding;
+    } Data;
+} REPLY_0521_t;
 
 typedef struct {
     Header_t Header;
@@ -476,6 +515,79 @@ static void CMD_051D(uint32_t Port, const uint8_t *pBuffer)
     SendReply(Port, &Reply, sizeof(Reply));
 }
 
+// SPI Flash Read (0x051F)
+static void CMD_051F(uint32_t Port, const uint8_t *pBuffer)
+{
+    const CMD_051F_t *pCmd = (const CMD_051F_t *)pBuffer;
+    REPLY_051F_t Reply;
+    uint32_t Timestamp = 0;
+    uint16_t readSize;
+
+    if (0) {}
+#if defined(ENABLE_UART)
+    else if (Port == UART_PORT_UART) { Timestamp = UART_Timestamp; }
+#endif
+#if defined(ENABLE_USB)
+    else if (Port == UART_PORT_VCP)  { Timestamp = VCP_Timestamp; }
+#endif
+    else return;
+
+    if (pCmd->Timestamp != Timestamp)
+        return;
+
+    gSerialConfigCountDown_500ms = 12;
+
+    readSize = pCmd->Size;
+    if (readSize > SPI_FLASH_READ_SIZE)
+        readSize = SPI_FLASH_READ_SIZE;
+
+    memset(&Reply, 0, sizeof(Reply));
+    Reply.Header.ID   = 0x0520;
+    Reply.Header.Size = readSize + 8;
+    Reply.Data.Address = pCmd->Address;
+    Reply.Data.Size    = readSize;
+
+    PY25Q16_ReadBuffer(pCmd->Address, Reply.Data.Data, readSize);
+
+    SendReply(Port, &Reply, readSize + 12);
+}
+
+// SPI Flash Write (0x0521)
+static void CMD_0521(uint32_t Port, const uint8_t *pBuffer)
+{
+    const CMD_0521_t *pCmd = (const CMD_0521_t *)pBuffer;
+    REPLY_0521_t Reply;
+    uint32_t Timestamp = 0;
+    uint16_t writeSize;
+
+    if (0) {}
+#if defined(ENABLE_UART)
+    else if (Port == UART_PORT_UART) { Timestamp = UART_Timestamp; }
+#endif
+#if defined(ENABLE_USB)
+    else if (Port == UART_PORT_VCP)  { Timestamp = VCP_Timestamp; }
+#endif
+    else return;
+
+    if (pCmd->Timestamp != Timestamp)
+        return;
+
+    gSerialConfigCountDown_500ms = 12;
+
+    writeSize = pCmd->Size;
+    if (writeSize > SPI_FLASH_WRITE_SIZE)
+        writeSize = SPI_FLASH_WRITE_SIZE;
+
+    PY25Q16_WriteBuffer(pCmd->Address, pCmd->Data, writeSize, false);
+
+    Reply.Header.ID   = 0x0522;
+    Reply.Header.Size = sizeof(Reply.Data);
+    Reply.Data.Address = pCmd->Address;
+    Reply.Data.Status  = 0;
+
+    SendReply(Port, &Reply, sizeof(Reply));
+}
+
 #ifdef ENABLE_EXTRA_UART_CMD
 // read RSSI
 static void CMD_0527(uint32_t Port)
@@ -818,10 +930,12 @@ void UART_HandleCommand(uint32_t Port)
             CMD_051D(Port, pUART_Command->Buffer);
             break;
 
-        case 0x051F:    // Not implementing non-authentic command
+        case 0x051F:
+            CMD_051F(Port, pUART_Command->Buffer);
             break;
 
-        case 0x0521:    // Not implementing non-authentic command
+        case 0x0521:
+            CMD_0521(Port, pUART_Command->Buffer);
             break;
 
 #ifdef ENABLE_EXTRA_UART_CMD

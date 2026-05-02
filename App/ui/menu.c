@@ -359,6 +359,7 @@ const t_menu_item MenuList[] =
     {"ChSave",      MENU_MEM_CH        }, // was "MEM-CH"
     {"ChDele",      MENU_DEL_CH        }, // was "DEL-CH"
     {"ChName",      MENU_MEM_NAME      },
+    {"CNName",      MENU_CN_MEM_NAME   },
     {"ChDisp",      MENU_MDF           }, // was "MDF"
 
     {"ScList",       MENU_S_LIST       },
@@ -2099,6 +2100,108 @@ void UI_DisplayMenu(void)
             already_printed = true;
             break;
         }
+
+#ifdef ENABLE_CHINESE
+        case MENU_CN_MEM_NAME:
+        {
+            const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 0);
+            if (gIsInSubMenu && edit_index >= 0)
+            {
+                // Edit mode: show CN name + pinyin + candidates
+                const uint8_t y0 = CH_mem_blk_y0();
+                const uint8_t y1 = CH_after(y0, CH_SM_H);
+                const uint8_t y2 = CH_after(y1, CH_CN_H);
+                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x2 = menu_item_x2;
+                if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
+                    sub_val_x1 += 2u;
+
+                // Line 1: edit buffer (CN channel name, Chinese font)
+                UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y0, (uint8_t)(y0 + 11u), 0u);
+
+                // Line 2: pinyin buffer
+                if (gPinyinLen > 0)
+                {
+                    char pinyin_display[PINYIN_MAX_LEN + 2];
+                    memcpy(pinyin_display, gPinyinBuffer, gPinyinLen);
+                    pinyin_display[gPinyinLen] = '_';
+                    pinyin_display[gPinyinLen + 1] = 0;
+                    UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y1, (uint8_t)(y1 + 7u), 0u);
+                }
+
+                // Line 3: candidates (gCNCandidates stores Unicode codepoints)
+                if (gCNCandidateCount > 0)
+                {
+                    uint8_t cand_y = y2;
+                    for (uint8_t i = 0; i < gCNCandidateCount; i++)
+                    {
+                        char num[2];
+                        num[0] = (char)('1' + i);
+                        num[1] = 0;
+                        uint8_t cx = (uint8_t)(sub_val_x1 + i * 20);
+                        UI_PrintStringSmallAtPixel(num, cx, cx, cand_y, (uint8_t)(cand_y + 7u), 0u);
+
+                        uint16_t unicode = gCNCandidates[i];
+                        char utf8[4];
+                        utf8[0] = (char)(0xE0 | (unicode >> 12));
+                        utf8[1] = (char)(0x80 | ((unicode >> 6) & 0x3F));
+                        utf8[2] = (char)(0x80 | (unicode & 0x3F));
+                        utf8[3] = 0;
+                        UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8), (uint8_t)(cx + 8), cand_y, (uint8_t)(cand_y + 11u), 0u);
+                    }
+                }
+
+                // Mode hint
+                if (gPinyinLen == 0 && gCNCandidateCount == 0 && edit_index < 10)
+                {
+                    const uint8_t hint_y = CH_after(y2, CH_CN_H);
+                    UI_PrintStringSmallAtPixel(
+                        (gUiLanguage == UI_LANGUAGE_CN) ? "#模式 0退格" : "#mode 0del",
+                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, hint_y, (uint8_t)(hint_y + 7u), 0u);
+                }
+
+                already_printed = true;
+                break;
+            }
+
+            // Non-edit mode: show channel info
+            {
+                const uint8_t y1 = CH_mem_blk_y0();
+                const uint8_t y2 = CH_after(y1, CH_SM_H);
+
+                UI_GenerateChannelStringEx(String, valid, gSubMenuSelection);
+                UI_PrintStringSmallAtPixel(String, menu_value_x1, menu_item_x2, y1, (uint8_t)(y1 + 7u), 0u);
+
+                if (valid)
+                {
+                    if (!gIsInSubMenu)
+                    {
+                        edit_index = -1;
+                        SETTINGS_FetchCNChannelName(edit, gSubMenuSelection);
+                    }
+                    if (edit_index < 0)
+                    {
+                        SETTINGS_FetchCNChannelName(String, gSubMenuSelection);
+                        if (String[0] == 0)
+                            SETTINGS_FetchChannelName(String, gSubMenuSelection);
+                        char *pPrintStr = String[0] ? String : "--";
+                        UI_PrintStringSmallAtPixel(pPrintStr, menu_value_x1, menu_item_x2, y2, (uint8_t)(y2 + 11u), 0u);
+
+                        if (!gAskForConfirmation)
+                        {
+                            const uint32_t frequency = SETTINGS_FetchChannelFrequency(gSubMenuSelection);
+                            sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
+                            const uint8_t yf = CH_after(y2, CH_CN_H);
+                            UI_PrintStringSmallAtPixel(String, menu_value_x1, menu_item_x2, yf, (uint8_t)(yf + 7u), 0u);
+                        }
+                    }
+                }
+            }
+
+            already_printed = true;
+            break;
+        }
+#endif
 
         case MENU_SAVE:
             sprintf(String, gSubMenuSelection == 0 ? SUBV(gSubMenu_OFF_ON[0], gSubMenu_OFF_ON_CN[0]) : "1:%u", gSubMenuSelection);

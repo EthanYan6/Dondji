@@ -51,6 +51,7 @@ enum
     MENU_MEM_CH,
     MENU_DEL_CH,
     MENU_MEM_NAME,
+    MENU_CN_MEM_NAME,
     MENU_MDF,
     MENU_SAVE,
     MENU_VOX,
@@ -242,12 +243,24 @@ enum {
     MEM_NAME_INPUT_LOWER = 0,
     MEM_NAME_INPUT_UPPER,
     MEM_NAME_INPUT_DIGIT,
-    MEM_NAME_INPUT_SYMBOL
+    MEM_NAME_INPUT_SYMBOL,
+    MEM_NAME_INPUT_PINYIN
 };
 extern uint8_t           gMemNameInputMode;
 extern uint8_t           gMemNameCandidateCount;
 extern char              gMemNameCandidates[5];
 extern uint8_t           gMemNameSymbolPage;
+
+#ifdef ENABLE_CHINESE
+// Pinyin input state for CN channel name
+#define PINYIN_MAX_LEN      8
+#define CN_CANDIDATE_MAX    6
+extern char              gPinyinBuffer[PINYIN_MAX_LEN + 1];
+extern uint8_t           gPinyinLen;
+extern uint8_t           gPinyinKeyIndex[PINYIN_MAX_LEN]; // which letter on the key
+extern uint16_t          gCNCandidates[CN_CANDIDATE_MAX];
+extern uint8_t           gCNCandidateCount;
+#endif
 
 void UI_DisplayMenu(void);
 const char *UI_MENU_GetMenuTitle(const t_menu_item *item);

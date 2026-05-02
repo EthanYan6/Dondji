@@ -26,7 +26,7 @@
 #include "bitmaps.h"
 
 #ifdef ENABLE_CHINESE
-#include "font_chinese.h"
+
 #endif
 
 void UI_GenerateChannelString(char *pString, const uint16_t Channel)
@@ -759,9 +759,10 @@ static uint16_t Utf8ToUnicode(const char *pStr)
 
 static void DrawChineseChar(uint16_t unicode, uint8_t x, uint8_t y_pixel, uint8_t y_pixel_end)
 {
-    int16_t index = ChineseCharToIndex(unicode);
-    if (index < 0)
+    int16_t spi_index = SETTINGS_CNCharToIndex(unicode);
+    if (spi_index < 0)
         return;
+
     const uint8_t char_height = 12;
     const uint8_t char_width = 12;
     const uint16_t y_range = (uint16_t)y_pixel_end - (uint16_t)y_pixel + 1u;
@@ -771,8 +772,12 @@ static void DrawChineseChar(uint16_t unicode, uint8_t x, uint8_t y_pixel, uint8_
     uint8_t y = y_pixel + y_offset;
     if (y < 8)
         y = 8;
+
+    uint16_t spi_bitmap[12];
+    SETTINGS_ReadCNFontBitmap((uint16_t)spi_index, spi_bitmap);
+
     for (uint8_t row = 0; row < char_height; row++) {
-        uint16_t row_data = gFontChinese[index + row];
+        uint16_t row_data = spi_bitmap[row];
         uint8_t current_y = y + row;
         uint8_t line = (current_y - 8) / 8;
         uint8_t bit_offset = (current_y - 8) % 8;
@@ -909,14 +914,17 @@ void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uin
     i = 0;
     while (pString[i]) {
         if (IsChineseChar(&pString[i])) {
-            int16_t idx = ChineseCharToIndex(Utf8ToUnicode(&pString[i]));
-            if (idx >= 0) {
+            uint16_t unicode = Utf8ToUnicode(&pString[i]);
+            int16_t spi_idx = SETTINGS_CNCharToIndex(unicode);
+            if (spi_idx >= 0) {
+                uint16_t spi_bitmap[12];
+                SETTINGS_ReadCNFontBitmap((uint16_t)spi_idx, spi_bitmap);
                 const uint16_t y_range_inv = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
                 const uint8_t chn_top = (y_range_inv >= 12u)
                     ? (uint8_t)(y_pixel_start + (uint8_t)((y_range_inv - 12u) / 2u))
                     : y_pixel_start;
                 for (uint8_t row = 0; row < 12; row++) {
-                    uint16_t row_data = gFontChinese[idx + row];
+                    uint16_t row_data = spi_bitmap[row];
                     uint8_t y = chn_top + row;
                     if (y < 8)
                         y = 8;
