@@ -417,24 +417,36 @@ $('fontFlashBtn').addEventListener('click', async () => {
     for (let i = 0; i < fontData.length; i += SPI_CHUNK_SIZE) {
       const chunkLen = Math.min(SPI_CHUNK_SIZE, fontData.length - i);
       const addr = CN_FONT_FLASH_BASE + i;
+      let ok = false;
 
-      const msg = createMessage(MSG_SPI_FLASH_WRITE, 12 + chunkLen);
-      const v = new DataView(msg.buffer);
-      v.setUint32(4, addr, true);
-      v.setUint16(8, chunkLen, true);
-      v.setUint16(10, 0, true); // padding
-      v.setUint32(12, ts, true);
-      for (let j = 0; j < chunkLen; j++) msg[16+j] = fontData[i+j];
+      for (let retry = 0; retry < 3 && !ok; retry++) {
+        if (retry > 0) {
+          log('重试 @ 0x' + addr.toString(16) + ' (' + retry + ')', 'info');
+          await sleep(200);
+        }
 
-      await sendMessage(msg);
+        const msg = createMessage(MSG_SPI_FLASH_WRITE, 12 + chunkLen);
+        const v = new DataView(msg.buffer);
+        v.setUint32(4, addr, true);
+        v.setUint16(8, chunkLen, true);
+        v.setUint16(10, 0, true); // padding
+        v.setUint32(12, ts, true);
+        for (let j = 0; j < chunkLen; j++) msg[16+j] = fontData[i+j];
 
-      const resp = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 300);
-      if (!resp) throw new Error('写入超时 @ 0x' + addr.toString(16));
+        await sendMessage(msg);
+        const resp = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 500);
+        if (resp) ok = true;
+      }
+
+      if (!ok) throw new Error('写入超时 @ 0x' + addr.toString(16));
 
       written += chunkLen;
       updateProgress((written / fontData.length) * 100);
       if ((i / SPI_CHUNK_SIZE) % 10 === 0)
         log('已写入 ' + written + '/' + fontData.length + ' bytes', 'info');
+
+      // Small delay to avoid overwhelming the firmware during SPI Flash erase
+      await sleep(10);
     }
 
     // Write version marker

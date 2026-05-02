@@ -63,6 +63,28 @@ Menu → Display → Lang → 中文 / English
 
 ---
 
+## 🌐 Web Flash Tool
+
+Flash firmware and font data directly from your browser — no software installation needed.
+
+👉 **https://ethanyan6.github.io/Dondji/**
+
+| Feature | Description |
+|---------|-------------|
+| Flash Firmware | Pull latest from GitHub Releases, or select a local .bin file |
+| Flash Font | Write 648 Chinese characters to SPI Flash for channel naming |
+| Dump Calibration | Export device calibration data |
+| Restore Calibration | Restore calibration from backup |
+
+**Steps:**
+1. Open [flash page](https://ethanyan6.github.io/Dondji/) in Chrome / Edge
+2. **Flash firmware**: Hold PTT while powering on → USB connect → Click "Flash"
+3. **Flash font**: After firmware boots (no PTT needed) → USB connect → Click "Flash Font"
+
+> Font flashing requires this custom firmware to be installed first. Font data is written to SPI Flash via USB; the firmware auto-skips re-writing on subsequent boots.
+
+---
+
 ## ⚠️ Disclaimer
 
 * Flash at your own risk
