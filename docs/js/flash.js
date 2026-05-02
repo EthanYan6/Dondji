@@ -3,6 +3,11 @@
 // ========== CONSTANTS ==========
 const BAUDRATE = 38400;
 const GITHUB_REPO = 'EthanYan6/uv-k1-k5v3-firmware-custom';
+const CORS_PROXIES = [
+  url => url,
+  url => 'https://corsproxy.io/?' + encodeURIComponent(url),
+  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+];
 
 const MSG_DEV_INFO_REQ     = 0x0514;
 const MSG_DEV_INFO_RESP    = 0x0515;
@@ -315,8 +320,19 @@ $('fetchLatestBtn').addEventListener('click', async () => {
       `<span class="fw-size">${(binAsset.size/1024).toFixed(1)} KB</span> &middot; ` +
       `<span class="fw-date">${new Date(release.published_at).toLocaleDateString()}</span>`;
     log('正在下载: ' + binAsset.name, 'info');
-    const binRes = await fetch(binAsset.browser_download_url);
-    if (!binRes.ok) throw new Error('下载失败: ' + binRes.status);
+    let binRes;
+    let lastErr;
+    for (const proxy of CORS_PROXIES) {
+      try {
+        binRes = await fetch(proxy(binAsset.browser_download_url));
+        if (binRes.ok) break;
+        lastErr = new Error('下载失败: HTTP ' + binRes.status);
+      } catch(e) {
+        lastErr = e;
+        binRes = null;
+      }
+    }
+    if (!binRes || !binRes.ok) throw lastErr || new Error('下载失败');
     const buf = await binRes.arrayBuffer();
     firmwareData = new Uint8Array(buf);
     $('fileName').textContent = '✓ ' + binAsset.name + ' (' + firmwareData.length + ' bytes)';
@@ -326,7 +342,7 @@ $('fetchLatestBtn').addEventListener('click', async () => {
     $('flashBtn').disabled = false;
     $('flashBtn').textContent = '刷入固件';
   } catch(e) {
-    log('获取失败: ' + e.message, 'error');
+    log('获取失败: ' + e.message + '（请检查网络，可能需要开启代理/VPN）', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '从 GitHub 拉取最新固件';
