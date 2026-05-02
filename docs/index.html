@@ -8,7 +8,16 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <main class="container">
+  <div class="page-layout">
+    <!-- VERSION TIMELINE SIDEBAR -->
+    <aside class="timeline-sidebar" id="timelineSidebar">
+      <h2 class="timeline-title">版本历史</h2>
+      <div class="timeline" id="timeline">
+        <div class="timeline-loading">加载中...</div>
+      </div>
+    </aside>
+
+    <main class="container">
     <header class="header">
       <h1 class="h1">Dondji UV-K1 / UV-K5(K6) V3</h1>
     </header>
@@ -117,20 +126,13 @@
       <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。刷固件前请进入 BOOT 模式（按住 PTT 开机）。
     </aside>
 
-    <!-- VERSION TIMELINE -->
-    <section class="timeline-section">
-      <h2 class="timeline-title">版本历史</h2>
-      <div class="timeline" id="timeline">
-        <div class="timeline-loading">加载中...</div>
-      </div>
-    </section>
-
     <footer class="footer">
       固件 & 工具由 BD1AHN 开发
       &middot; Based on <a href="https://github.com/armel/uv-k1-k5v3-firmware-custom" target="_blank">UVTools2</a>
       &middot; <a href="https://github.com/EthanYan6/Dondji" target="_blank">GitHub</a>
     </footer>
   </main>
+  </div>
 
   <script src="js/flash.js"></script>
 </body>
