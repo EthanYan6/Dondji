@@ -642,7 +642,7 @@ if (!('serial' in navigator)) {
 
     container.innerHTML = releases.map(r => {
       const date = new Date(r.published_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-      const body = (r.body || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+      const body = (r.body || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>');
       const pre = r.prerelease ? '<span class="timeline-prerelease">Pre-release</span>' : '';
       return `<div class="timeline-item">
         <div class="timeline-dot"></div>
