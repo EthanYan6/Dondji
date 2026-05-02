@@ -71,6 +71,25 @@ button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; bord
 .fw-info .fw-size { color: #8b949e; }
 .fw-info .fw-date { color: #8b949e; font-size: 0.85em; }
 
+/* Version Timeline */
+.timeline-section { margin-top: 32px; }
+.timeline-title { font-size: 1.1em; color: #c9d1d9; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
+.timeline { position: relative; padding-left: 28px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #30363d; }
+.timeline-loading { color: #484f58; font-size: 0.85em; padding: 8px 0; }
+.timeline-item { position: relative; padding-bottom: 24px; }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot { position: absolute; left: -24px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #30363d; border: 2px solid #0d1117; z-index: 1; }
+.timeline-item:first-child .timeline-dot { background: #58a6ff; box-shadow: 0 0 6px rgba(88,166,255,0.4); }
+.timeline-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.timeline-tag { color: #58a6ff; font-weight: 600; font-size: 0.95em; text-decoration: none; }
+.timeline-tag:hover { text-decoration: underline; }
+.timeline-name { color: #c9d1d9; font-size: 0.9em; }
+.timeline-date { color: #484f58; font-size: 0.75em; }
+.timeline-body { color: #8b949e; font-size: 0.8em; line-height: 1.5; margin-top: 4px; }
+.timeline-body p { margin-bottom: 4px; }
+.timeline-prerelease { display: inline-block; background: #9e6a03; color: #fff; font-size: 0.65em; padding: 1px 6px; border-radius: 10px; vertical-align: middle; }
+
 /* Footer */
 .footer { text-align: center; margin-top: 24px; font-size: 0.8em; color: #484f58; }
 .footer a { color: #58a6ff; text-decoration: none; }

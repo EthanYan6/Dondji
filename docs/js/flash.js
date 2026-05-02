@@ -630,3 +630,32 @@ if (!('serial' in navigator)) {
   $('dumpBtn').disabled = true;
   $('restoreBtn').disabled = true;
 }
+
+// ========== VERSION TIMELINE ==========
+(async function loadTimeline() {
+  const container = $('timeline');
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const releases = await resp.json();
+    if (!releases.length) { container.innerHTML = '<div class="timeline-loading">暂无发布版本</div>'; return; }
+
+    container.innerHTML = releases.map(r => {
+      const date = new Date(r.published_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      const body = (r.body || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+      const pre = r.prerelease ? '<span class="timeline-prerelease">Pre-release</span>' : '';
+      return `<div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-header">
+          <a class="timeline-tag" href="${r.html_url}" target="_blank">${r.tag_name}</a>
+          ${pre}
+          <span class="timeline-date">${date}</span>
+        </div>
+        ${r.name ? `<div class="timeline-name">${r.name}</div>` : ''}
+        ${body ? `<div class="timeline-body">${body}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<div class="timeline-loading">加载失败: ${e.message}</div>`;
+  }
+})();
