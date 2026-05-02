@@ -28,7 +28,7 @@ const OBFUS_TBL = new Uint8Array([
 const CN_FONT_FLASH_BASE  = 0x010200;
 const CN_FONT_VERSION_OFFSET = 20825;
 const CN_FONT_VERSION     = 2;
-const SPI_CHUNK_SIZE      = 120;
+const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
 const CALIB_CHUNK         = 16;
 
@@ -319,11 +319,12 @@ $('fetchLatestBtn').addEventListener('click', async () => {
     if (!binRes.ok) throw new Error('下载失败: ' + binRes.status);
     const buf = await binRes.arrayBuffer();
     firmwareData = new Uint8Array(buf);
-    $('fileName').textContent = binAsset.name + ' (' + firmwareData.length + ' bytes)';
+    $('fileName').textContent = '✓ ' + binAsset.name + ' (' + firmwareData.length + ' bytes)';
     $('fileName').classList.add('has-file');
     $('fileLabel').classList.add('has-file');
     log('固件已下载: ' + binAsset.name + ' (' + firmwareData.length + ' bytes)', 'success');
     $('flashBtn').disabled = false;
+    $('flashBtn').textContent = '刷入固件';
   } catch(e) {
     log('获取失败: ' + e.message, 'error');
   } finally {
@@ -434,7 +435,7 @@ $('fontFlashBtn').addEventListener('click', async () => {
         for (let j = 0; j < chunkLen; j++) msg[16+j] = fontData[i+j];
 
         await sendMessage(msg);
-        const resp = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 500);
+        const resp = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 800);
         if (resp) ok = true;
       }
 
@@ -445,8 +446,8 @@ $('fontFlashBtn').addEventListener('click', async () => {
       if ((i / SPI_CHUNK_SIZE) % 10 === 0)
         log('已写入 ' + written + '/' + fontData.length + ' bytes', 'info');
 
-      // Small delay to avoid overwhelming the firmware during SPI Flash erase
-      await sleep(10);
+      // Delay to avoid overwhelming the firmware during SPI Flash erase
+      await sleep(50);
     }
 
     // Write version marker
