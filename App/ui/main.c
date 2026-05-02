@@ -605,7 +605,10 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
                     if (x0 < 44u) x0 = 44u;
                     DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, (uint8_t)(x0 - 4u), (uint8_t)(DV_Y_TOP_CH + 3u));
                 }
-                UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
+                if (rxHere)
+                    UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127, 9, 20);
+                else
+                    UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
                 DualVfoFillRectBlack(2u, DV_Y_TOP_HDR, 60u, (uint8_t)(DV_Y_TOP_HDR + 6u));
                 char fs[16];
                 sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
@@ -647,27 +650,60 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
     const bool txHere =
         (bool)(gCurrentFunction == FUNCTION_TRANSMIT && activeTxVFO == vfoIdx);
 
-    /* 框右缘 innerR=1+abW-1 后留 2px 再画信道号；接收只画 RX、不画信道号 */
-    {
-        char            chId[14];
-        const uint8_t besideX0 = (uint8_t)(1u + DUAL_VFO_AB_BOT_W + 2u); /* innerR + 1 + 2px 间隔 */
-        if (rxHere)
-            DualVfoU8g2_DrawSmallText("RX", besideX0, DV_Y_BOT_BESIDE_AB, true);
-        else
-        {
-            DualVfoFmtChId(vfoIdx, chId, sizeof(chId));
-            uint8_t xch = besideX0;
-            if (txHere)
-                xch = (uint8_t)(xch + 9u);
-            DualVfoU8g2_DrawSmallText(chId, xch, DV_Y_BOT_BESIDE_AB, true);
-        }
-    }
-
     {
         uint32_t frequency = gEeprom.VfoInfo[vfoIdx].pRX->Frequency;
         if (txHere)
             frequency = gEeprom.VfoInfo[vfoIdx].pTX->Frequency;
-        DualVfoDrawSubFreqSmallest(DV_Y_BOT_FREQ_LINE, frequency, rxHere || txHere);
+
+        /* 框右缘 innerR=1+abW-1 后留 2px 再画信道号；接收只画 RX、不画信道号 */
+        {
+            char            chId[14];
+            const uint8_t besideX0 = (uint8_t)(1u + DUAL_VFO_AB_BOT_W + 2u); /* innerR + 1 + 2px 间隔 */
+            if (rxHere)
+                DualVfoU8g2_DrawSmallText("RX", besideX0, DV_Y_BOT_BESIDE_AB, true);
+            else
+            {
+                DualVfoFmtChId(vfoIdx, chId, sizeof(chId));
+                uint8_t xch = besideX0;
+                if (txHere)
+                    xch = (uint8_t)(xch + 9u);
+                DualVfoU8g2_DrawSmallText(chId, xch, DV_Y_BOT_BESIDE_AB, true);
+            }
+        }
+
+        {
+            bool cnSwap = false;
+#ifdef ENABLE_CHINESE
+            if (gUiLanguage == UI_LANGUAGE_CN && IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
+                char cn[16];
+                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
+                if (cn[0] != 0) {
+                    cnSwap = true;
+                    /* 条左侧信道名 → 频率 */
+                    {
+                        char fs[16];
+                        sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
+                        DualVfoFillRectBlack(2u, DV_Y_BOT_HDR, 60u, (uint8_t)(DV_Y_BOT_HDR + 6u));
+                        DualVfoU8g2_DrawSmallText(fs, 2u, (uint8_t)(DV_Y_BOT_HDR + 1u), false);
+                    }
+                    /* 中文信道名 → 频率位置（接收时反色） */
+                    {
+                        const uint8_t cn_y = (uint8_t)(DV_Y_BOT_FREQ_LINE + 6u);
+                        if (rxHere) {
+                            const uint8_t cn_y_rx = (uint8_t)(cn_y - 9u);
+                            UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127,
+                                                                cn_y_rx, (uint8_t)(cn_y_rx + 11u));
+                        } else {
+                            UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127,
+                                                       cn_y, (uint8_t)(cn_y + 11u), 0);
+                        }
+                    }
+                }
+            }
+#endif
+            if (!cnSwap)
+                DualVfoDrawSubFreqSmallest(DV_Y_BOT_FREQ_LINE, frequency, rxHere || txHere);
+        }
     }
 }
 
