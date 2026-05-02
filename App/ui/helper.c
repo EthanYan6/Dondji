@@ -851,18 +851,11 @@ void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_
                     y_offset = max_off;
             }
             uint8_t y_pixel = y_pixel_start + (uint8_t)y_offset;
-            /* Mixed CJK + Latin: move Latin up 4px to align with Han (was +2px down) */
+            /* Mixed CJK + Latin: move Latin down to align baseline with Han */
             if (has_chinese) {
-                if (y_pixel >= y_pixel_start + 4u)
-                    y_pixel -= 4u;
-                else if (y_pixel > y_pixel_start)
-                    y_pixel = y_pixel_start;
-                /* Level-2 menu: optional extra nudge for Latin (e.g. +3px down) */
-                if (latin_down_when_mixed > 0u) {
-                    const unsigned add = (unsigned)latin_down_when_mixed;
-                    if (y_pixel <= (uint8_t)(255u - add))
-                        y_pixel = (uint8_t)(y_pixel + add);
-                }
+                const unsigned add = (unsigned)(latin_down_when_mixed + 1u);
+                if (y_pixel <= (uint8_t)(255u - add))
+                    y_pixel = (uint8_t)(y_pixel + add);
             }
             if (y_pixel < 8)
                 y_pixel = 8;

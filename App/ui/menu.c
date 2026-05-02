@@ -2125,9 +2125,9 @@ void UI_DisplayMenu(void)
                 //   y3:   hint text
                 const uint8_t y_mode = 20u;
                 const uint8_t y_name = 28u;
-                const uint8_t y_pinyin = (uint8_t)(y_name + 14u);  // 12px char + 2px gap
-                const uint8_t y_cand = (uint8_t)(y_pinyin + 10u);  // 7px text + 3px gap
-                const uint8_t y_hint = (uint8_t)(y_cand + 14u);    // 12px char + 2px gap
+                const uint8_t y_pinyin = (uint8_t)(y_name + 4u);   // same line as channel name, down 4px
+                const uint8_t y_cand = (uint8_t)(y_name + 23u);    // same as hint
+                const uint8_t y_hint = (uint8_t)(y_name + 23u);    // hint line
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
                 if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
@@ -2149,50 +2149,119 @@ void UI_DisplayMenu(void)
                         break;
                 }
 
-                // Channel name: Chinese chars + underlines + cursor lines
+                // Channel name: Chinese chars + underlines for remaining slots + cursor
                 {
                     const uint8_t eng_cw = 6;
                     const uint8_t chn_cw = 12;
+                    const uint8_t ul_spacing = 1;
                     uint8_t x = (uint8_t)sub_val_x1;
                     size_t bi = 0;
-                    uint8_t ul_x = 0, ul_w = 0;
-                    bool ul_chinese = false;
-                    while (edit[bi] && x < sub_val_x2)
+                    uint8_t slot_x[10];
+                    uint8_t slot_w[10];
+                    uint8_t slot_count = 0;
+                    int8_t cursor_slot = -1;  // slot index that matches edit_index
+
+                    // Pass 1: render existing characters and record slot positions
+                    while (bi < 10 && x < sub_val_x2 && slot_count < 10)
                     {
+                        slot_x[slot_count] = x;
                         if ((uint8_t)edit[bi] >= 0xE4 && (uint8_t)edit[bi] <= 0xEF)
                         {
                             char ch[4] = {edit[bi], edit[bi+1], edit[bi+2], 0};
                             UI_PrintStringSmallAtPixel(ch, x, (uint8_t)(x + chn_cw), y_name, (uint8_t)(y_name + 11u), 0u);
-                            ul_x = x; ul_w = chn_cw; ul_chinese = true;
-                            x += chn_cw + 1;
+                            slot_w[slot_count] = chn_cw;
+                            if (edit_index >= 0 && (size_t)edit_index == bi)
+                                cursor_slot = (int8_t)slot_count;
+                            x += chn_cw + ul_spacing;
                             bi += 3;
                         }
-                        else if (edit[bi] == '_')
+                        else if (edit[bi] == '_' || edit[bi] == 0)
                         {
-                            ul_x = x; ul_w = eng_cw; ul_chinese = false;
-                            x += eng_cw + 1;
-                            bi++;
+                            if (edit[bi] == '_' && bi + 2 < 10 &&
+                                edit[bi + 1] == '_' && edit[bi + 2] == '_')
+                            {
+                                slot_w[slot_count] = chn_cw;
+                                if (edit_index >= 0 && ((size_t)edit_index == bi ||
+                                    (size_t)edit_index == bi + 1 || (size_t)edit_index == bi + 2))
+                                    cursor_slot = (int8_t)slot_count;
+                                x += chn_cw + ul_spacing;
+                                bi += 3;
+                            }
+                            else
+                            {
+                                slot_w[slot_count] = eng_cw;
+                                if (edit_index >= 0 && (size_t)edit_index == bi)
+                                    cursor_slot = (int8_t)slot_count;
+                                x += eng_cw + ul_spacing;
+                                bi++;
+                            }
                         }
                         else
                         {
                             char ch[2] = {edit[bi], 0};
-                            UI_PrintStringSmallAtPixel(ch, x, (uint8_t)(x + eng_cw), y_name, (uint8_t)(y_name + 7u), 0u);
-                            ul_x = x; ul_w = eng_cw; ul_chinese = false;
-                            x += eng_cw + 1;
+                            UI_PrintStringSmallAtPixel(ch, x, (uint8_t)(x + eng_cw), y_name, (uint8_t)(y_name + 11u), 0u);
+                            slot_w[slot_count] = eng_cw;
+                            if (edit_index >= 0 && (size_t)edit_index == bi)
+                                cursor_slot = (int8_t)slot_count;
+                            x += eng_cw + ul_spacing;
                             bi++;
                         }
+                        slot_count++;
                     }
-                    if (ul_w > 0)
+                    // Pass 2: add empty slots for remaining capacity
+                    while (bi < 10 && slot_count < 10 && x + eng_cw <= sub_val_x2)
                     {
-                        const uint8_t ul_y = ul_chinese ? (y_name + 12u) : (y_name + 7u);
+                        slot_x[slot_count] = x;
+                        if (edit[bi] == '_' && bi + 2 < 10 &&
+                            edit[bi + 1] == '_' && edit[bi + 2] == '_')
+                        {
+                            slot_w[slot_count] = chn_cw;
+                            if (edit_index >= 0 && ((size_t)edit_index == bi ||
+                                (size_t)edit_index == bi + 1 || (size_t)edit_index == bi + 2))
+                                cursor_slot = (int8_t)slot_count;
+                            bi += 3;
+                            x += chn_cw + ul_spacing;
+                        }
+                        else
+                        {
+                            slot_w[slot_count] = eng_cw;
+                            if (edit_index >= 0 && (size_t)edit_index == bi)
+                                cursor_slot = (int8_t)slot_count;
+                            bi++;
+                            x += eng_cw + ul_spacing;
+                        }
+                        slot_count++;
+                    }
+                    // Cursor at position 10 (past end): show as empty slot
+                    if (edit_index >= 0 && (size_t)edit_index == 10 && slot_count < 10 && x + eng_cw <= sub_val_x2)
+                    {
+                        slot_x[slot_count] = x;
+                        slot_w[slot_count] = eng_cw;
+                        cursor_slot = (int8_t)slot_count;
+                        slot_count++;
+                    }
+
+                    // Pass 3: draw underlines — static for all slots, "^" at cursor
+                    if (slot_count > 0)
+                    {
+                        const uint8_t ul_y = (uint8_t)(y_name + 8u);
                         const uint8_t ul_fb_row = (uint8_t)(ul_y / 8u);
                         const uint8_t ul_fb_bit = (uint8_t)(1u << (ul_y % 8u));
                         if (ul_fb_row < FRAME_LINES)
-                            for (uint8_t c = 1; c < ul_w; c++)
-                                gFrameBuffer[ul_fb_row][ul_x + c] |= ul_fb_bit;
-                        if (edit_index >= 0 && (gBlinkCounter & 0x20u) == 0)
-                            for (uint8_t c = 1; c < ul_w; c++)
-                                gFrameBuffer[ul_fb_row][ul_x + c] ^= ul_fb_bit;
+                        {
+                            for (uint8_t s = 0; s < slot_count; s++)
+                            {
+                                if (cursor_slot >= 0 && (int8_t)s == cursor_slot)
+                                {
+                                    UI_PrintStringSmallAtPixel("^", slot_x[s], (uint8_t)(slot_x[s] + slot_w[s]), (uint8_t)(ul_y + 5u), (uint8_t)(ul_y + 12u), 0u);
+                                }
+                                else
+                                {
+                                    for (uint8_t c = 0; c < slot_w[s]; c++)
+                                        gFrameBuffer[ul_fb_row][slot_x[s] + c] |= ul_fb_bit;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -2203,7 +2272,7 @@ void UI_DisplayMenu(void)
                     memcpy(pinyin_display, gPinyinBuffer, gPinyinLen);
                     pinyin_display[gPinyinLen] = '_';
                     pinyin_display[gPinyinLen + 1] = 0;
-                    UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_pinyin, (uint8_t)(y_pinyin + 7u), 0u);
+                    UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)(sub_val_x2 - (gPinyinLen + 1) * 6u), (uint8_t)sub_val_x2, y_pinyin, (uint8_t)(y_pinyin + 7u), 0u);
                 }
 
                 // Chinese candidates (numbered 1-6)
@@ -2244,7 +2313,7 @@ void UI_DisplayMenu(void)
                 }
 
                 // Hint text
-                if (gPinyinLen == 0 && gCNCandidateCount == 0 && edit_index < 10)
+                if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0 && edit_index < 10)
                 {
                     UI_PrintStringSmallAtPixel(
                         (gUiLanguage == UI_LANGUAGE_CN) ? "#切换 EXIT退" : "#switch EXIT del",
@@ -3244,9 +3313,10 @@ void UI_DisplayMenu(void)
                                        menu_item_x2);
     }
 
-    if ((UI_MENU_GetCurrentMenuId() == MENU_RESET    ||
-         UI_MENU_GetCurrentMenuId() == MENU_MEM_CH   ||
-         UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME ||
+    if ((UI_MENU_GetCurrentMenuId() == MENU_RESET      ||
+         UI_MENU_GetCurrentMenuId() == MENU_MEM_CH     ||
+         UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME   ||
+         UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME ||
          UI_MENU_GetCurrentMenuId() == MENU_DEL_CH) && gAskForConfirmation)
     {
         const char *pPrintStr;

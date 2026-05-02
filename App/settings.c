@@ -1447,13 +1447,14 @@ void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap)
                        (uint8_t *)bitmap, 24);
 }
 
-int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount)
+int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount, int startOffset)
 {
     // Search pinyin table in SPI Flash
     // Format per entry: [str_len:1][ascii:str_len][char_count:1][indices:char_count*2]
-    // Returns Unicode codepoints (not font indices)
+    // Returns total matching candidate count; fills unicodeOut with up to maxCount entries from startOffset
     uint16_t offset = 0;
     int count = 0;
+    int total = 0;
     size_t pinyin_len = strlen(pinyin);
 
     for (uint16_t i = 0; i < CN_FONT_PY_COUNT && offset < CN_FONT_PY_TOTAL_SIZE; i++)
@@ -1477,23 +1478,26 @@ int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int
                 PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
                                    &char_count, 1);
                 offset++;
+                total = char_count;
 
-                for (uint8_t j = 0; j < char_count && count < maxCount; j++)
+                for (uint8_t j = 0; j < char_count; j++)
                 {
                     uint8_t idx_bytes[2];
                     PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
                                        idx_bytes, 2);
                     uint16_t font_idx = (uint16_t)((idx_bytes[0] << 8) | idx_bytes[1]);
 
-                    // Look up Unicode from index table
-                    uint32_t entry;
-                    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (font_idx * 4),
-                                       (uint8_t *)&entry, 4);
-                    unicodeOut[count++] = (uint16_t)(entry >> 16);
+                    if (j >= startOffset && count < maxCount)
+                    {
+                        uint32_t entry;
+                        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (font_idx * 4),
+                                           (uint8_t *)&entry, 4);
+                        unicodeOut[count++] = (uint16_t)(entry >> 16);
+                    }
 
                     offset += 2;
                 }
-                return count;
+                return total;
             }
         }
 
@@ -1505,7 +1509,7 @@ int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int
         offset += char_count * 2;
     }
 
-    return count;
+    return 0;
 }
 
 #endif /* ENABLE_CHINESE */

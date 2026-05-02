@@ -260,6 +260,8 @@ extern uint8_t           gPinyinLen;
 extern uint8_t           gPinyinKeyIndex[PINYIN_MAX_LEN]; // which key was pressed
 extern uint16_t          gCNCandidates[CN_CANDIDATE_MAX];
 extern uint8_t           gCNCandidateCount;
+extern uint8_t           gCNCandidateOffset;
+extern uint8_t           gCNCandidateTotal;
 extern uint8_t           gPinyinTimeout_500ms; // multi-tap timeout counter
 #endif
 

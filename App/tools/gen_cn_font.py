@@ -7,6 +7,7 @@ Reads BDF font file and outputs cn_font_data.h for SPI Flash storage.
 
 import os
 import sys
+from pypinyin import pinyin, Style
 
 # ── 500 common Chinese characters for channel naming ──
 CN_CHARS_500 = (
@@ -48,12 +49,14 @@ CN_CHARS_500 = (
     "春夏秋冬晨昏早晚日夜朝夕阴晴风雨雪霜露雾雷电云霞虹"
     "赤橙黄绿青蓝紫黑白灰褐粉金银彩色深浅浓淡亮暗"
     # 用户补充
-    "巅昌平协战斗班陵蔚县"
+    "巅昌平协战斗班陵蔚县苑儋"
     # gFontChinese UI字符 (111)
     "业临于仅仪作侧候储全其典准分切列制力包占即厂压双反叮名命克咚"
     "响噪回型复它完定导射尾差带度式待忙念恢息户手打扫描持按控描拟"
     "提文最条校模止步比版现画益监盘直码禁称端等简精系繁纪经统继"
     "置联自航背节英表视觉解语言设试调请跨部铃锁键限除静页魅默字数方用省"
+    # UV段模拟中继信道名称补充字符
+    "七万三丘东丰丹为丽义之乌乐九乡乾二云互亓井交亭亳什仁介从仓仔仙令任伊伍休会佛佳依修俱偃傲元兄充兆兖公六兰兴兵冀内冈冕农冠冶冷凉凌凤刊刘利剑副务劲劳勇勒匀化区十升华协南博卡卢卫原厦县及友口古句台叶合吉同后吕吴吾周和咸哈哥唐商喀善嘉嘴四团园固国圆圈土圣地圳坊坛坡坦坪坻垣垦垫垭城埗埠基堂堡堰塔塘塞墨墩壁士壶备夏多大天太头夷奇奉奎好如姑姚姜威娄嫂子孔孝孟学宁安宏宜宝实审宣宫家容宾宿富寨寮寺寿封尉小少尔尖尚尤尧居展屯山屿岑岗岛岩岭岳岸峙峡峪峰崂崇崎崖嵊嵩川州巢工巨巩巴市布师帕帮常帽干平年幸广庄庆庐库底店庙府康廊延建弓弟张强当彭征徐徒微德徽心志忠忻怀急恩悟悦惠感愿慈我战房扎托扬扶承技抚抢拉拍拔招括挑振授掖援搜摩攀故救敦整斗斯新施族旗日旧旺昆昌明易昔昝星春昭晋普景暨曲曹月朐朔朗望朝木未本术朵权李村杜杞来杨杭松极林枝枣柱柳柴标栏树株格栾桂桃桐桑桓桥桦梁梅梓梧梨椒楚楼榄榆榕榜樟横樵歌武毛氏民水永汇汉汕汝江汤汨汾沁沂沅沈沙沛沟沧沪沭河油治沽沾泉泊法泗波泮泰泸泽泾洈洋洛洞津洪洱洲流济浏浙浦浩浪浮海涉涞涟涡润涿淄淡淮深淼清渑渝渠温渭港湄湖湘湛湾溆源溧溪滁滋滑滔滕滦滨滩演漠漯漳潍潘潜潢潭潮潼澜澧澳濮瀣灌火灯灵炬点烟热烽焦煌照熙熟燕爱牛牟牡特狐独狮狼猛猫献玉王玛环珠班球理琼瑞瓶甘甪田由甸界番疆白皇皋皖盐盖盛盟盱相眉眙眼睢石矿砀砂碑碧磐社祁神祥禅福禹禺秀私秋科租秦稷空章竹符米粤綦纵线绍绛绥绵绿网罗美群羽老考者耳聊聚肃肇肥胜胶能脚腊腿至致舞舟艇良色艺芒芜芦芬花芳芷苍苏英茂茶荆草荔荣荷莆莎莒莘莞莱莲获菁菏菜萝营萧落葛葫蒙蒲蓝蓥蓬薛藏虎虞蚌蜀蜂蟠街衡衢褒襄西要覆观览角讯许诸谷豫贝贡贤贵贺资赣赤赫超越路车转轿辉辛边辽达迁运远连逊通速遂遵邑邓邡邢邯邱邳邵邹郁郊郎郏郑郓郡郫郯郴郸都鄂鄄鄱酒醴里重野金钟钢钦铁铜银链锡锦镇门闵闽闾阁阆阜队阡防阳阴阿陀陂际陆陉陕陵陶隆随障雄雅集雨雪零雷雾霆霍霞霸青靖鞍韩韶顶项顺颍飞饶馆首香马驰驳驻驾骅验骑魏鱼鲁鲅鲍鸟鸿鹤鹰鹿麓麻黄黎黑黔鼓齐龙眼球"
 )
 
 def parse_bdf(filename):
@@ -240,7 +243,7 @@ PINYIN_MAP = {
     # 用户补充
     '巅': 'dian', '昌': 'chang4', '平': 'ping2', '协': 'xie2',
     '战': 'zhan', '斗': 'dou2', '班': 'ban3', '陵': 'ling3',
-    '蔚': 'wei7', '县': 'xian',
+    '蔚': 'wei7,yu', '县': 'xian', '苑': 'yuan', '儋': 'dan',
     # gFontChinese UI字符
     '业': 'ye3', '临': 'lin2', '于': 'yu7', '仪': 'yi8', '作': 'zuo4',
     '侧': 'ce2', '候': 'hou3', '储': 'chu2', '全': 'quan2', '典': 'dian3',
@@ -269,26 +272,43 @@ PINYIN_MAP = {
     '字': 'zi', '数': 'shu', '方': 'fang', '用': 'yong', '省': 'sheng',
 }
 
-# Remove duplicate keys (keep first occurrence)
+# Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
 _seen = {}
 PINYIN_MAP_CLEAN = {}
 for ch, py in PINYIN_MAP.items():
     if ch not in _seen:
         _seen[ch] = True
-        # Strip numeric suffix for grouping
-        base_py = ''.join(c for c in py if not c.isdigit())
-        PINYIN_MAP_CLEAN[ch] = base_py
+        # Strip numeric suffix for grouping, support comma-separated pinyin
+        base_pys = []
+        for part in py.split(','):
+            base_py = ''.join(c for c in part.strip() if not c.isdigit())
+            if base_py:
+                base_pys.append(base_py)
+        PINYIN_MAP_CLEAN[ch] = base_pys
+
+def get_pinyin(ch):
+    """Get pinyin for a character using pypinyin library"""
+    try:
+        py_list = pinyin(ch, style=Style.NORMAL)
+        if py_list and py_list[0]:
+            return py_list[0][0]
+    except:
+        pass
+    return None
 
 def build_pinyin_table(char_list):
     """Build pinyin syllable → character indices mapping"""
     syllable_to_indices = {}
     for i, ch in enumerate(char_list):
-        py = PINYIN_MAP_CLEAN.get(ch)
-        if py is None:
-            py = 'zz'  # unknown
-        if py not in syllable_to_indices:
-            syllable_to_indices[py] = []
-        syllable_to_indices[py].append(i)
+        # First try PINYIN_MAP_CLEAN (list of pinyin), then try pypinyin
+        pys = PINYIN_MAP_CLEAN.get(ch)
+        if pys is None:
+            py = get_pinyin(ch)
+            pys = [py] if py else ['zz']
+        for py in pys:
+            if py not in syllable_to_indices:
+                syllable_to_indices[py] = []
+            syllable_to_indices[py].append(i)
     return syllable_to_indices
 
 def generate_header(char_list, bdf_chars, output_file):

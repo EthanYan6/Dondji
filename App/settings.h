@@ -338,21 +338,22 @@ void SETTINGS_FetchCNChannelName(char *s, uint16_t channel);
 void SETTINGS_SaveCNChannelName(uint16_t channel, const char *name);
 
 // CN font SPI Flash layout (data written via web tool)
+// NOTE: these must match the output of gen_cn_font.py / cn_font_data.h
 #define CN_FONT_FLASH_BASE      0x010200u
-#define CN_FONT_CHAR_COUNT      648u
-#define CN_FONT_BITMAP_SIZE     15552u
-#define CN_FONT_INDEX_SIZE      2592u
-#define CN_FONT_PY_OFFSET       18144u
-#define CN_FONT_PY_COUNT        265u
+#define CN_FONT_CHAR_COUNT      1229u
+#define CN_FONT_BITMAP_SIZE     29496u
+#define CN_FONT_INDEX_SIZE      4916u
+#define CN_FONT_PY_OFFSET       34412u
+#define CN_FONT_PY_COUNT        326u
 #define CN_FONT_VERSION         2u
-#define CN_FONT_VERSION_OFFSET  20825u
-#define CN_FONT_PY_TOTAL_SIZE   2681u
+#define CN_FONT_VERSION_OFFSET  38577u
+#define CN_FONT_PY_TOTAL_SIZE   4165u
 
 // CN font SPI Flash functions
 void SETTINGS_InitCNFont(void);
 int16_t SETTINGS_CNCharToIndex(uint16_t unicode);
 void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap);
-int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount);
+int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount, int startOffset);
 #endif
 void SETTINGS_SaveBatteryCalibration(const uint16_t * batteryCalibration);
 void SETTINGS_UpdateChannel(uint16_t channel, const VFO_Info_t *pVFO, bool keep, bool check, bool save);
