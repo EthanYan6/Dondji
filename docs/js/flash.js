@@ -312,8 +312,8 @@ $('fetchLatestBtn').addEventListener('click', async () => {
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
     if (!res.ok) throw new Error('GitHub API: ' + res.status);
     const release = await res.json();
-    const binAsset = release.assets.find(a => a.name.endsWith('.bin'));
-    if (!binAsset) throw new Error('未找到 .bin 文件');
+    const binAsset = release.assets.find(a => a.name === 'Dondji.fusion.bin');
+    if (!binAsset) throw new Error('未找到 Dondji.fusion.bin 文件');
     $('fwReleaseInfo').style.display = 'block';
     $('fwReleaseInfo').innerHTML =
       `<span class="fw-name">${release.tag_name}</span> &middot; ` +
