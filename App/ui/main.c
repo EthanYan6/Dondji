@@ -590,7 +590,31 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
         uint32_t   frequency = gEeprom.VfoInfo[vfoIdx].pRX->Frequency;
         if (txHere)
             frequency = gEeprom.VfoInfo[vfoIdx].pTX->Frequency;
-        DualVfoDrawMainFreq2x(vfoIdx, frequency, rxHere || txHere);
+        bool cnSwap = false;
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN && IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
+            char cn[16];
+            SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
+            if (cn[0] != 0) {
+                cnSwap = true;
+                {
+                    char fstr[16];
+                    sprintf(fstr, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
+                    const unsigned int fw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(fstr);
+                    uint8_t x0 = (fw < LCD_WIDTH - 4u) ? (uint8_t)(LCD_WIDTH - 2u - fw) : 2u;
+                    if (x0 < 44u) x0 = 44u;
+                    DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, (uint8_t)(x0 - 4u), (uint8_t)(DV_Y_TOP_CH + 3u));
+                }
+                UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
+                DualVfoFillRectBlack(2u, DV_Y_TOP_HDR, 60u, (uint8_t)(DV_Y_TOP_HDR + 6u));
+                char fs[16];
+                sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
+                DualVfoU8g2_DrawSmallText(fs, 2u, (uint8_t)(DV_Y_TOP_HDR + 1u), false);
+            }
+        }
+#endif
+        if (!cnSwap)
+            DualVfoDrawMainFreq2x(vfoIdx, frequency, rxHere || txHere);
     }
 
     DualVfoDrawTopDetailRowPx(vfoIdx, DV_Y_TOP_DET);
