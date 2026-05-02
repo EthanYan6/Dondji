@@ -188,7 +188,7 @@ void UI_DisplayFM(void)
 
 #ifdef ENABLE_CHINESE
     if (gUiLanguage == UI_LANGUAGE_CN)
-        UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 36u, 52u, 3u);
+        UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 35u, 52u, 0u);
     else
 #endif
         UI_PrintString(pPrintStr, 0, 127, 3, 10); /* memory, vfo, scan */
