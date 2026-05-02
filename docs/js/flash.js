@@ -383,13 +383,34 @@ $('fontFlashBtn').addEventListener('click', async () => {
     readBuffer = [];
     await sleep(1000);
 
-    // Authenticate
-    const dev = await waitForDeviceInfo();
-    await handshake(dev.blVersion);
-    log('开始刷入字库到 SPI Flash (0x0' + CN_FONT_FLASH_BASE.toString(16) + ')...', 'info');
+    // Detect device mode: send MSG_DEV_INFO_REQ and check response
+    log('检测设备模式...', 'info');
+    const ts = Date.now() & 0xffffffff;
+    const reqMsg = createMessage(MSG_DEV_INFO_REQ, 4);
+    new DataView(reqMsg.buffer).setUint32(4, ts, true);
+    await sendMessage(reqMsg);
+
+    let isFirmwareMode = false;
+    for (let i = 0; i < 100; i++) {
+      await sleep(10);
+      const msg = fetchMessage(readBuffer);
+      if (!msg) continue;
+      if (msg.msgType === MSG_DEV_INFO_RESP) {
+        isFirmwareMode = true;
+        break;
+      }
+      if (msg.msgType === MSG_NOTIFY_DEV_INFO) {
+        // Bootloader mode - keep waiting for possible DEV_INFO_RESP
+      }
+    }
+
+    if (!isFirmwareMode) {
+      throw new Error('设备处于 BOOT 模式，请先刷入固件并启动后再刷字库');
+    }
+
+    log('设备已运行自定义固件，开始刷入字库...', 'success');
 
     // Write font data in chunks via SPI Flash Write (0x0521)
-    const ts = Date.now() & 0xffffffff;
     const totalChunks = Math.ceil(fontData.length / SPI_CHUNK_SIZE);
     let written = 0;
 
