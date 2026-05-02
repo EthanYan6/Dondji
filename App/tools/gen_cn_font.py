@@ -60,7 +60,7 @@ CN_CHARS_500 = (
 )
 
 def parse_bdf(filename):
-    """Parse BDF font file and extract character bitmaps"""
+    """Parse BDF font file and extract character bitmaps as uint16_t rows"""
     chars = {}
     with open(filename, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -70,17 +70,27 @@ def parse_bdf(filename):
         line = lines[i].strip()
         if line.startswith('STARTCHAR'):
             encoding = None
+            bbx_width = 0
             bitmap = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith('ENDCHAR'):
                 line = lines[i].strip()
                 if line.startswith('ENCODING'):
                     encoding = int(line.split()[1])
+                elif line.startswith('BBX'):
+                    parts = line.split()
+                    bbx_width = int(parts[1])
                 elif line.startswith('BITMAP'):
                     i += 1
                     while i < len(lines) and not lines[i].strip().startswith('ENDCHAR'):
                         hex_line = lines[i].strip()
                         if hex_line and all(c in '0123456789ABCDEFabcdef' for c in hex_line):
+                            # BDF rows are byte-aligned. Pad hex to full row width
+                            # so int() produces the correct uint16_t value.
+                            row_bytes = (bbx_width + 7) // 8
+                            expected_digits = row_bytes * 2
+                            if len(hex_line) < expected_digits:
+                                hex_line = hex_line.zfill(expected_digits)
                             bitmap.append(int(hex_line, 16))
                         i += 1
                     break
@@ -91,13 +101,9 @@ def parse_bdf(filename):
     return chars
 
 def bitmap_to_uint16(bitmap, rows=12):
-    """Convert bitmap rows to uint16_t array (left-aligned to bit 15)"""
-    result = []
-    for row in bitmap:
-        if row <= 0xFF:
-            result.append(row << 8)
-        else:
-            result.append(row)
+    """Pad/truncate bitmap rows to fixed row count.
+    Values are already proper uint16_t from parse_bdf."""
+    result = list(bitmap)
     while len(result) < rows:
         result.append(0)
     return result[:rows]
