@@ -1575,6 +1575,13 @@ void APP_TimeSlice500ms(void)
         if (--gMenuCountdown == 0)
             exit_menu = (gScreenToDisplay == DISPLAY_MENU); // exit menu mode
 
+#ifdef ENABLE_CHINESE
+    if (gPinyinTimeout_500ms > 0)
+        gPinyinTimeout_500ms--;
+    if (gScreenToDisplay == DISPLAY_MENU && gIsInSubMenu && edit_index >= 0)
+        gUpdateDisplay = true;
+#endif
+
 #ifdef ENABLE_DTMF_CALLING
     if (gDTMF_RX_timeout > 0)
         if (--gDTMF_RX_timeout == 0)

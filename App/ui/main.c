@@ -1842,29 +1842,32 @@ void UI_DisplayMain(void)
             /* 频率模式且未接收：右上角不显示 */
         }
 
-        // 信道名与频率整体上移 3 像素：按行上移一行(约 8px)，整字不拆
+        // 先画频率（DualVfoU8g2_DrawMainFreqStrip 会清除较大区域），
+        // 再画信道名覆盖被误清的部分。
+        {
+            uint32_t f = (gCurrentFunction == FUNCTION_TRANSMIT) ? pVfo->pTX->Frequency : pVfo->pRX->Frequency;
+            DualVfoU8g2_DrawMainFreqStrip(f, contentX, 30);
+        }
+
         if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo])) {
             char chName[16];
             SETTINGS_FetchChannelName(chName, gEeprom.ScreenChannel[vfo]);
+#ifdef ENABLE_CHINESE
+            if (gUiLanguage == UI_LANGUAGE_CN) {
+                char cn[16];
+                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo]);
+                if (cn[0] != 0) {
+                    memcpy(chName, cn, sizeof(cn));
+                    chName[10] = 0;
+                    UI_PrintStringSmallAtPixel(chName, contentX, contentX, 1 * 8 + 4, 1 * 8 + 15 + 4, 0);
+                } else if (chName[0]) {
+                    UI_PrintStringSmallNormal(chName, contentX, contentX, 1);
+                }
+            } else
+#endif
             if (chName[0]) UI_PrintStringSmallNormal(chName, contentX, contentX, 1);
         } else {
             UI_PrintStringSmallNormal("VFO", contentX, contentX, 1);
-        }
-
-        {
-            uint32_t f = (gCurrentFunction == FUNCTION_TRANSMIT) ? pVfo->pTX->Frequency : pVfo->pRX->Frequency;
-            sprintf(String, "%3u.%05u", f / 100000, f % 100000);
-            char lastTwo[3];
-            lastTwo[0] = String[7];
-            lastTwo[1] = String[8];
-            lastTwo[2] = '\0';
-            String[7] = '\0';
-            const int freqMainPixels = 6 * 8;
-            UI_PrintString(String, contentX, contentX, 2, 8);
-            /* 后两位与主频率同一行：用最小字体 3x5 画在主频率右侧，后画以免被挡 */
-            const int lastTwoX = contentX + freqMainPixels + 8;
-            const int lastTwoY = 23;  /* 向下 2 像素 */
-            GUI_DisplaySmallest(lastTwo, (uint8_t)lastTwoX, lastTwoY, false, true);
         }
 
         // 方框底边：与上边/右边同样用 1 像素线画
@@ -2454,8 +2457,15 @@ void UI_DisplayMain(void)
                             if (gUiLanguage == UI_LANGUAGE_CN) {
                                 char cn[16];
                                 SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                if (cn[0] != 0)
+                                if (cn[0] != 0) {
                                     memcpy(String, cn, sizeof(cn));
+                                    String[10] = 0;
+                                    UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
+                                    break;
+                                }
+                                if (String[0] == 0) {
+                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+                                }
                             }
                         #endif
                             String[10] = 0;
@@ -2469,8 +2479,15 @@ void UI_DisplayMain(void)
                                 if (gUiLanguage == UI_LANGUAGE_CN) {
                                     char cn[16];
                                     SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                    if (cn[0] != 0)
+                                    if (cn[0] != 0) {
                                         memcpy(String, cn, sizeof(cn));
+                                        String[10] = 0;
+                                        UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
+                                        break;
+                                    }
+                                    if (String[0] == 0) {
+                                        sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+                                    }
                                 }
                             #endif
                                 String[10] = 0;
@@ -2478,15 +2495,41 @@ void UI_DisplayMain(void)
                             }
                             else
                             {
+                            #ifdef ENABLE_CHINESE
+                                if (gUiLanguage == UI_LANGUAGE_CN) {
+                                    char cn[16];
+                                    SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
+                                    if (cn[0] != 0) {
+                                        memcpy(String, cn, sizeof(cn));
+                                        String[10] = 0;
+                                    }
+                                    else if (String[0] == 0) {
+                                        sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+                                    }
+                                }
+                            #endif
                                 if(activeTxVFO == vfo_num) {
                                     UI_PrintStringSmallBold(String, 32 + 4, 0, line);
                                 }
                                 else
                                 {
-                                    UI_PrintStringSmallNormal(String, 32 + 4, 0, line);     
+                                    UI_PrintStringSmallNormal(String, 32 + 4, 0, line);
                                 }
                             }
 #else
+                        #ifdef ENABLE_CHINESE
+                            if (gUiLanguage == UI_LANGUAGE_CN) {
+                                char cn[16];
+                                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
+                                if (cn[0] != 0) {
+                                    memcpy(String, cn, sizeof(cn));
+                                    String[10] = 0;
+                                }
+                                else if (String[0] == 0) {
+                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+                                }
+                            }
+                        #endif
                             UI_PrintStringSmallBold(String, 32 + 4, 0, line);
 #endif
 

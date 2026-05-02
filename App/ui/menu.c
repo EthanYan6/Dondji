@@ -358,7 +358,7 @@ const t_menu_item MenuList[] =
     {"ChList",      MENU_LIST_CH       },
     {"ChSave",      MENU_MEM_CH        }, // was "MEM-CH"
     {"ChDele",      MENU_DEL_CH        }, // was "DEL-CH"
-    {"ChName",      MENU_MEM_NAME      },
+    {"ENName",      MENU_MEM_NAME      },
     {"CNName",      MENU_CN_MEM_NAME   },
     {"ChDisp",      MENU_MDF           }, // was "MDF"
 
@@ -650,11 +650,11 @@ const char gSubMenu_LANGUAGE[][8] =
     "\xE4\xB8\xAD\xE6\x96\x87"
 };
 
-const char gSubMenu_BOOT_HINT[][12] =
+const char gSubMenu_BOOT_HINT[][14] =
 {
-    "DingDJ",
-    "MeiliBJ",
-    "55th"
+    "Dondji",
+    "Beautiful BJ",
+    "happy 55th"
 };
 
 const char gSubMenu_BATTYP[][12] =
@@ -1140,6 +1140,16 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
         {
             UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, 10u, 36u, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_CN_MEM_NAME)
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xb8\xad\xe6\x96\x87", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbf\xa1\xe9\x81\x93\xe5\x90\x8d", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME)
+        {
+            UI_PrintStringSmallAtPixel("\xe8\x8b\xb1\xe6\x96\x87", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+            UI_PrintStringSmallAtPixel("\xe4\xbf\xa1\xe9\x81\x93\xe5\x90\x8d", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
         else
         {
@@ -2107,39 +2117,105 @@ void UI_DisplayMenu(void)
             const bool valid = RADIO_CheckValidChannel(gSubMenuSelection, false, 0);
             if (gIsInSubMenu && edit_index >= 0)
             {
-                // Edit mode: show CN name + pinyin + candidates
-                const uint8_t y0 = CH_mem_blk_y0();
-                const uint8_t y1 = CH_after(y0, CH_SM_H);
-                const uint8_t y2 = CH_after(y1, CH_CN_H);
+                // Edit mode layout:
+                //   y=20: mode indicator "1"/"PY" at top-right
+                //   y=28: channel name edit buffer + cursor lines
+                //   y1:   pinyin buffer + cursor
+                //   y2:   candidates (numbered)
+                //   y3:   hint text
+                const uint8_t y_mode = 20u;
+                const uint8_t y_name = 28u;
+                const uint8_t y_pinyin = (uint8_t)(y_name + 14u);  // 12px char + 2px gap
+                const uint8_t y_cand = (uint8_t)(y_pinyin + 10u);  // 7px text + 3px gap
+                const uint8_t y_hint = (uint8_t)(y_cand + 14u);    // 12px char + 2px gap
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
                 if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
                     sub_val_x1 += 2u;
 
-                // Line 1: edit buffer (CN channel name, Chinese font)
-                UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y0, (uint8_t)(y0 + 11u), 0u);
+                // Mode indicator at top-right
+                switch (gMemNameInputMode) {
+                    case MEM_NAME_INPUT_DIGIT:
+                        UI_PrintStringSmallAtPixel("1", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        break;
+                    case MEM_NAME_INPUT_LOWER:
+                        UI_PrintStringSmallAtPixel("a", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        break;
+                    case MEM_NAME_INPUT_UPPER:
+                        UI_PrintStringSmallAtPixel("A", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        break;
+                    default:
+                        UI_PrintStringSmallAtPixel("PY", (uint8_t)(sub_val_x2 - 12), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        break;
+                }
 
-                // Line 2: pinyin buffer
+                // Channel name: Chinese chars + underlines + cursor lines
+                {
+                    const uint8_t eng_cw = 6;
+                    const uint8_t chn_cw = 12;
+                    uint8_t x = (uint8_t)sub_val_x1;
+                    size_t bi = 0;
+                    uint8_t ul_x = 0, ul_w = 0;
+                    bool ul_chinese = false;
+                    while (edit[bi] && x < sub_val_x2)
+                    {
+                        if ((uint8_t)edit[bi] >= 0xE4 && (uint8_t)edit[bi] <= 0xEF)
+                        {
+                            char ch[4] = {edit[bi], edit[bi+1], edit[bi+2], 0};
+                            UI_PrintStringSmallAtPixel(ch, x, (uint8_t)(x + chn_cw), y_name, (uint8_t)(y_name + 11u), 0u);
+                            ul_x = x; ul_w = chn_cw; ul_chinese = true;
+                            x += chn_cw + 1;
+                            bi += 3;
+                        }
+                        else if (edit[bi] == '_')
+                        {
+                            ul_x = x; ul_w = eng_cw; ul_chinese = false;
+                            x += eng_cw + 1;
+                            bi++;
+                        }
+                        else
+                        {
+                            char ch[2] = {edit[bi], 0};
+                            UI_PrintStringSmallAtPixel(ch, x, (uint8_t)(x + eng_cw), y_name, (uint8_t)(y_name + 7u), 0u);
+                            ul_x = x; ul_w = eng_cw; ul_chinese = false;
+                            x += eng_cw + 1;
+                            bi++;
+                        }
+                    }
+                    if (ul_w > 0)
+                    {
+                        const uint8_t ul_y = ul_chinese ? (y_name + 12u) : (y_name + 7u);
+                        const uint8_t ul_fb_row = (uint8_t)(ul_y / 8u);
+                        const uint8_t ul_fb_bit = (uint8_t)(1u << (ul_y % 8u));
+                        if (ul_fb_row < FRAME_LINES)
+                            for (uint8_t c = 1; c < ul_w; c++)
+                                gFrameBuffer[ul_fb_row][ul_x + c] |= ul_fb_bit;
+                        if (edit_index >= 0 && (gBlinkCounter & 0x20u) == 0)
+                            for (uint8_t c = 1; c < ul_w; c++)
+                                gFrameBuffer[ul_fb_row][ul_x + c] ^= ul_fb_bit;
+                    }
+                }
+
+                // Pinyin buffer + cursor
                 if (gPinyinLen > 0)
                 {
                     char pinyin_display[PINYIN_MAX_LEN + 2];
                     memcpy(pinyin_display, gPinyinBuffer, gPinyinLen);
                     pinyin_display[gPinyinLen] = '_';
                     pinyin_display[gPinyinLen + 1] = 0;
-                    UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y1, (uint8_t)(y1 + 7u), 0u);
+                    UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_pinyin, (uint8_t)(y_pinyin + 7u), 0u);
                 }
 
-                // Line 3: candidates (gCNCandidates stores Unicode codepoints)
+                // Chinese candidates (numbered 1-6)
                 if (gCNCandidateCount > 0)
                 {
-                    uint8_t cand_y = y2;
                     for (uint8_t i = 0; i < gCNCandidateCount; i++)
                     {
                         char num[2];
                         num[0] = (char)('1' + i);
                         num[1] = 0;
                         uint8_t cx = (uint8_t)(sub_val_x1 + i * 20);
-                        UI_PrintStringSmallAtPixel(num, cx, cx, cand_y, (uint8_t)(cand_y + 7u), 0u);
+                        UI_PrintStringSmallAtPixel(num, cx, cx, y_cand, (uint8_t)(y_cand + 7u), 0u);
 
                         uint16_t unicode = gCNCandidates[i];
                         char utf8[4];
@@ -2147,17 +2223,32 @@ void UI_DisplayMenu(void)
                         utf8[1] = (char)(0x80 | ((unicode >> 6) & 0x3F));
                         utf8[2] = (char)(0x80 | (unicode & 0x3F));
                         utf8[3] = 0;
-                        UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8), (uint8_t)(cx + 8), cand_y, (uint8_t)(cand_y + 11u), 0u);
+                        UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8), (uint8_t)(cx + 8), y_cand, (uint8_t)(y_cand + 11u), 0u);
                     }
                 }
 
-                // Mode hint
+                // Letter candidates (numbered 1-4, for lowercase/uppercase modes)
+                if (gMemNameCandidateCount > 0)
+                {
+                    for (uint8_t i = 0; i < gMemNameCandidateCount; i++)
+                    {
+                        char num[2];
+                        num[0] = (char)('1' + i);
+                        num[1] = 0;
+                        uint8_t cx = (uint8_t)(sub_val_x1 + i * 16);
+                        UI_PrintStringSmallAtPixel(num, cx, cx, y_cand, (uint8_t)(y_cand + 7u), 0u);
+
+                        char ch[2] = {gMemNameCandidates[i], 0};
+                        UI_PrintStringSmallAtPixel(ch, (uint8_t)(cx + 8), (uint8_t)(cx + 8), y_cand, (uint8_t)(y_cand + 7u), 0u);
+                    }
+                }
+
+                // Hint text
                 if (gPinyinLen == 0 && gCNCandidateCount == 0 && edit_index < 10)
                 {
-                    const uint8_t hint_y = CH_after(y2, CH_CN_H);
                     UI_PrintStringSmallAtPixel(
-                        (gUiLanguage == UI_LANGUAGE_CN) ? "#模式 0退格" : "#mode 0del",
-                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, hint_y, (uint8_t)(hint_y + 7u), 0u);
+                        (gUiLanguage == UI_LANGUAGE_CN) ? "#切换 EXIT退" : "#switch EXIT del",
+                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_hint, (uint8_t)(y_hint + 7u), 0u);
                 }
 
                 already_printed = true;
@@ -2336,30 +2427,30 @@ void UI_DisplayMenu(void)
             break;
 
         case MENU_BOOT_HINT:
-            if (gSubMenuSelection == 2)
+            if (gSubMenuSelection == 1 && !gIsInSubMenu)
             {
-                bool is_level2_menu = false;
-                if (!gIsInSubMenu)
-                {
-                    is_level2_menu = true;
-                }
-
-                if (is_level2_menu)
-                {
 #ifdef ENABLE_CHINESE
-                    if (gUiLanguage == UI_LANGUAGE_CN)
-                    {
-                        strcpy(String, "\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\n\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88");
-                    }
-                    else
-#endif
-                    {
-                        strcpy(String, "55th\nEdition");
-                    }
+                if (gUiLanguage == UI_LANGUAGE_CN)
+                {
+                    strcpy(String, "\xe9\xad\x85\xe5\x8a\x9b\n\xe5\x8c\x97\xe4\xba\xac");
                 }
                 else
+#endif
                 {
-                    strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
+                    strcpy(String, "Beautiful\nBJ");
+                }
+            }
+            else if (gSubMenuSelection == 2 && !gIsInSubMenu)
+            {
+#ifdef ENABLE_CHINESE
+                if (gUiLanguage == UI_LANGUAGE_CN)
+                {
+                    strcpy(String, "\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\n\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88");
+                }
+                else
+#endif
+                {
+                    strcpy(String, "happy\n55th");
                 }
             }
             else
@@ -2932,10 +3023,9 @@ void UI_DisplayMenu(void)
             else if (len > 0u && lines == 2u &&
                      UI_MENU_GetCurrentMenuId() == MENU_BOOT_HINT &&
                      !gIsInSubMenu &&
-                     gSubMenuSelection == 2 &&
-                     gUiLanguage == UI_LANGUAGE_CN)
+                     (gSubMenuSelection == 1 || gSubMenuSelection == 2))
             {
-                const uint8_t line_draw_mode = 3u;
+                const uint8_t line_draw_mode = (uint8_t)(gUiLanguage == UI_LANGUAGE_CN ? 3u : 0u);
                 const char *first_line_text = String;
                 const char *second_line_text = String;
                 const uint8_t boot_hint_two_line_down_offset_px = 3u;

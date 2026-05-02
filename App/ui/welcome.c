@@ -197,22 +197,24 @@ void UI_DisplayWelcome(void)
 
         /* 开机首行：菜单「开机提示」可选「叮咚鸡」/「魅力北京」/「五五节纪念版」；第二行仍为电压/EEPROM（WelcomeString1） */
 #ifdef ENABLE_CHINESE
-        if (gSetting_boot_hint == 0) {
-            /* 「叮」须为 U+53EE 的 UTF-8：E5 8F AE */
-            UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, 4u, 15u, 3u);
-        } else if (gSetting_boot_hint == 1) {
-            UI_PrintStringSmallAtPixel("\xe9\xad\x85\xe5\x8a\x9b\xe5\x8c\x97\xe4\xba\xac", 0, 127, 4u, 15u, 3u);
-        } else {
-            UI_PrintStringSmallAtPixel("\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88", 0, 127, 4u, 15u, 3u);
-        }
-#else
-        if (gSetting_boot_hint == 0)
-            UI_PrintString("DingDongJi", 0, 127, 0, 10);
-        else if (gSetting_boot_hint == 1)
-            UI_PrintString("MeiliBJ", 0, 127, 0, 10);
-        else
-            UI_PrintString("55th", 0, 127, 0, 10);
+        if (gUiLanguage == UI_LANGUAGE_CN) {
+            if (gSetting_boot_hint == 0) {
+                UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, 4u, 15u, 3u);
+            } else if (gSetting_boot_hint == 1) {
+                UI_PrintStringSmallAtPixel("\xe9\xad\x85\xe5\x8a\x9b\xe5\x8c\x97\xe4\xba\xac", 0, 127, 4u, 15u, 3u);
+            } else {
+                UI_PrintStringSmallAtPixel("\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88", 0, 127, 4u, 15u, 3u);
+            }
+        } else
 #endif
+        {
+            if (gSetting_boot_hint == 0)
+                UI_PrintString("Dondji", 0, 127, 0, 10);
+            else if (gSetting_boot_hint == 1)
+                UI_PrintString("Beautiful BJ", 0, 127, 0, 10);
+            else
+                UI_PrintString("happy 55th", 0, 127, 0, 10);
+        }
         UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 
 #ifdef ENABLE_FEAT_F4HWN

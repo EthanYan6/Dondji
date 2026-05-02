@@ -72,7 +72,7 @@
                 "ENABLE_UART_RW_BK_REGS": false,
                 "ENABLE_SWD": false,
                 "VERSION_STRING_1": "v5.4.0",
-                "VERSION_STRING_2": "v4.5.4"
+                "VERSION_STRING_2": "v4.6.0"
             }
         },
         {
@@ -184,7 +184,7 @@
                 "ENABLE_FMRADIO": true,
                 "ENABLE_VOX": false,
                 "ENABLE_FEAT_F4HWN_SCREENSHOT": true,
-                "ENABLE_FEAT_F4HWN_GAME": false,
+                "ENABLE_FEAT_F4HWN_GAME": true,
                 "ENABLE_FEAT_F4HWN_SPECTRUM": true,
                 "ENABLE_FEAT_F4HWN_PMR": true,
                 "ENABLE_FEAT_F4HWN_GMRS_FRS_MURS": true,

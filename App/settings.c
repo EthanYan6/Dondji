@@ -1441,8 +1441,9 @@ int16_t SETTINGS_CNCharToIndex(uint16_t unicode)
 
 void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap)
 {
-    // Each character: 12 rows x uint16_t = 24 bytes
-    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + (charIndex * 24),
+    // charIndex is the uint16_t array offset from the index table (0, 12, 24, ...)
+    // Each uint16_t is 2 bytes, so byte offset = charIndex * 2
+    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + (charIndex * 2u),
                        (uint8_t *)bitmap, 24);
 }
 

@@ -218,7 +218,7 @@ extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char        gSubMenu_LANGUAGE[2][8];
-extern const char        gSubMenu_BOOT_HINT[3][12];
+extern const char        gSubMenu_BOOT_HINT[3][14];
 extern const char        gSubMenu_BATTYP[5][12];
 
 #ifndef ENABLE_FEAT_F4HWN
@@ -257,9 +257,10 @@ extern uint8_t           gMemNameSymbolPage;
 #define CN_CANDIDATE_MAX    6
 extern char              gPinyinBuffer[PINYIN_MAX_LEN + 1];
 extern uint8_t           gPinyinLen;
-extern uint8_t           gPinyinKeyIndex[PINYIN_MAX_LEN]; // which letter on the key
+extern uint8_t           gPinyinKeyIndex[PINYIN_MAX_LEN]; // which key was pressed
 extern uint16_t          gCNCandidates[CN_CANDIDATE_MAX];
 extern uint8_t           gCNCandidateCount;
+extern uint8_t           gPinyinTimeout_500ms; // multi-tap timeout counter
 #endif
 
 void UI_DisplayMenu(void);
