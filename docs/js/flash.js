@@ -58,6 +58,9 @@ const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
 const CALIB_CHUNK         = 16;
 
+/** 校准区在 EEPROM 中的起始地址：与 UVTools2 一致，v5.0.0 起为 0xB000，更早固件为 0x1E00（由导出/恢复时请求设备信息解析） */
+let calibEepromBase = 0x1E00;
+
 // ========== STATE ==========
 let port = null, reader = null, writer = null;
 let firmwareData = null, fontData = null, calibData = null;
@@ -249,6 +252,72 @@ async function handshake(blVersion) {
   }
   await sleep(200);
   readBuffer = [];
+}
+
+/** 根据 MSG_DEV_INFO_RESP 中的 ASCII 设备字符串解析固件主版本，设置全局 calibEepromBase（对齐 armel UVTools2） */
+function applyCalibBaseFromDeviceInfo(deviceInfoPayload) {
+  let asciiLine = '';
+  let idx = 0;
+  for (; idx < deviceInfoPayload.length; idx++) {
+    const b = deviceInfoPayload[idx];
+    if (b === 0x00 || b === 0xff) {
+      break;
+    }
+    if (b >= 32 && b < 127) {
+      asciiLine += String.fromCharCode(b);
+    }
+  }
+  if (asciiLine.length > 0) {
+    log('设备信息: ' + asciiLine, 'success');
+    const versionMatch = asciiLine.match(/v(\d+\.\d+\.\d+)/);
+    if (versionMatch) {
+      const verStr = versionMatch[1];
+      const parts = verStr.split('.');
+      const major = parseInt(parts[0], 10);
+      if (major >= 5) {
+        calibEepromBase = 0xB000;
+        log('固件 v' + verStr + '：校准区基址 0xB000', 'info');
+      } else {
+        calibEepromBase = 0x1E00;
+        log('固件 v' + verStr + '：校准区基址 0x1E00', 'info');
+      }
+    }
+    return;
+  }
+  let hexLine = '';
+  let hi = 0;
+  const hexLimit = Math.min(deviceInfoPayload.length, 40);
+  for (; hi < hexLimit; hi++) {
+    hexLine += deviceInfoPayload[hi].toString(16).padStart(2, '0').toUpperCase() + ' ';
+  }
+  log('设备信息(hex): ' + hexLine, 'info');
+}
+
+/** 导出/恢复校准用：发 DEV_INFO_REQ，等设备应答（运行中的固件协议），不使用 Bootloader 的 NOTIFY 检测 */
+async function requestDeviceInfoForCalib() {
+  calibEepromBase = 0x1E00;
+  log('正在请求设备信息（校准）...', 'info');
+  const sessionTimestamp = Date.now() & 0xffffffff;
+  const req = createMessage(MSG_DEV_INFO_REQ, 4);
+  const reqView = new DataView(req.buffer);
+  reqView.setUint32(4, sessionTimestamp, true);
+  await sendMessage(req);
+  let tick = 0;
+  for (; tick < 500; tick++) {
+    await sleep(10);
+    const resp = fetchMessage(readBuffer);
+    if (!resp) {
+      continue;
+    }
+    log('收到消息: 0x' + resp.msgType.toString(16).padStart(4, '0'), 'info');
+    if (resp.msgType === MSG_DEV_INFO_RESP) {
+      applyCalibBaseFromDeviceInfo(resp.data);
+      log('设备已就绪（校准会话）', 'success');
+      const out = { timestamp: sessionTimestamp };
+      return out;
+    }
+  }
+  throw new Error('超时：未收到设备信息（请开机进入正常工作界面再试，勿停在纯 Bootloader 刷机界面）');
 }
 
 // ========== FIRMWARE FLASH ==========
@@ -551,12 +620,11 @@ $('dumpBtn').addEventListener('click', async () => {
     if (!port) await connect();
     readBuffer = [];
     await sleep(1000);
-    const dev = await waitForDeviceInfo();
-    await handshake(dev.blVersion);
+    const calibSession = await requestDeviceInfoForCalib();
     log('导出校准数据...', 'info');
     const data = new Uint8Array(CALIB_SIZE);
-    const ts = Date.now() & 0xffffffff;
-    let offset = 0x1E00;
+    const ts = calibSession.timestamp;
+    let offset = calibEepromBase;
     for (let i = 0; i < CALIB_SIZE; i += CALIB_CHUNK) {
       updateProgress((i / CALIB_SIZE) * 100);
       const msg = createMessage(MSG_READ_EEPROM, 8);
@@ -624,11 +692,10 @@ $('restoreBtn').addEventListener('click', async () => {
     if (!port) await connect();
     readBuffer = [];
     await sleep(1000);
-    const dev = await waitForDeviceInfo();
-    await handshake(dev.blVersion);
+    const calibSession = await requestDeviceInfoForCalib();
     log('恢复校准数据...', 'info');
-    const ts = Date.now() & 0xffffffff;
-    let offset = 0x1E00;
+    const ts = calibSession.timestamp;
+    let offset = calibEepromBase;
     for (let i = 0; i < CALIB_SIZE; i += CALIB_CHUNK) {
       updateProgress((i / CALIB_SIZE) * 100);
       const msg = createMessage(MSG_WRITE_EEPROM, 24);

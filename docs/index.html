@@ -62,6 +62,9 @@
         <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
           ⚠️ 仅 V4.5.3 及以后支持中文信道的固件需要刷入字库。
         </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 请先<strong>正常开机进入使用界面</strong>后再连接 USB 刷字库（与备份/恢复校准相同，无需 BOOT 模式）。
+        </p>
         <button class="btn-fetch" id="fetchFontBtn">从 GitHub 拉取最新字库</button>
         <div id="fontInfo" class="fw-info" style="display:none"></div>
       </section>
@@ -86,6 +89,12 @@
         <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
           从设备导出校准数据备份
         </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 请先<strong>正常开机进入使用界面</strong>（能显示信道、菜单），再连接 USB 并导出。勿停在仅 Bootloader / 刷机黑屏界面——该模式下无法应答校准协议。
+        </p>
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          固件 v5.0.0 及以上校准区在 EEPROM 其它地址，工具会根据设备信息自动选择基址；备份文件仍为 512 字节的 calibration.dat。
+        </p>
         <button id="dumpBtn">导出校准数据</button>
       </section>
       <div class="download-link" id="dumpDownload">
@@ -96,6 +105,9 @@
     <!-- RESTORE CALIBRATION TAB -->
     <div class="tab-content" id="restore-content">
       <section class="section">
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 恢复前同样需<strong>正常开机进入使用界面</strong>后再连接 USB；写入完成后设备会自动重启。请使用与本机固件版本匹配的备份文件（512 字节）。
+        </p>
         <label>选择校准备份文件 (.dat)</label>
         <div class="file-input-wrapper">
           <input type="file" id="calibFile" accept=".dat">
@@ -123,7 +135,7 @@
     </section>
 
     <aside class="info-box">
-      <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。刷固件前请进入 BOOT 模式（按住 PTT 开机）。
+      <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。<strong>仅刷固件</strong>需进入 BOOT 模式（按住 PTT 开机）。<strong>刷字库、备份校准、恢复校准</strong>均在<strong>正常开机使用界面</strong>下连接 USB 操作。
     </aside>
 
     <footer class="footer">
