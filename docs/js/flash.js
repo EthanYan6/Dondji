@@ -2,7 +2,7 @@
 
 // ========== CONSTANTS ==========
 const BAUDRATE = 38400;
-const GITHUB_REPO = 'EthanYan6/uv-k1-k5v3-firmware-custom';
+const GITHUB_REPO = 'EthanYan6/Dondji';
 const CORS_PROXIES = [
   url => url,
   url => 'https://corsproxy.io/?' + encodeURIComponent(url),
