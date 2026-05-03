@@ -3,11 +3,32 @@
 // ========== CONSTANTS ==========
 const BAUDRATE = 38400;
 const GITHUB_REPO = 'EthanYan6/Dondji';
+
+/** 若把 Dondji.fusion.bin 放在与页面同源的路径（如 gh-pages 的 firmware/Dondji.fusion.bin），可优先从此加载；留空则仅用下方代理拉取 GitHub */
+const FIRMWARE_SAME_ORIGIN_REL = '';
+
+/** GitHub releases/download 响应不带 Access-Control-Allow-Origin，浏览器不能直接 fetch 原始链接，只能走代理或同源文件 */
 const CORS_PROXIES = [
-  url => url,
   url => 'https://corsproxy.io/?' + encodeURIComponent(url),
   url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+  url => 'https://ghproxy.net/https://' + url.replace(/^https?:\/\//, ''),
 ];
+
+function buildFirmwareDownloadCandidates(browserDownloadUrl) {
+  const candidates = [];
+  const trimmedLocal = typeof FIRMWARE_SAME_ORIGIN_REL === 'string' ? FIRMWARE_SAME_ORIGIN_REL.trim() : '';
+  if (trimmedLocal.length > 0) {
+    const sameOriginAbsoluteUrl = new URL(trimmedLocal, window.location.href).href;
+    candidates.push(sameOriginAbsoluteUrl);
+  }
+  let proxyIndex = 0;
+  for (; proxyIndex < CORS_PROXIES.length; proxyIndex++) {
+    const proxyTransform = CORS_PROXIES[proxyIndex];
+    const proxiedUrl = proxyTransform(browserDownloadUrl);
+    candidates.push(proxiedUrl);
+  }
+  return candidates;
+}
 
 const MSG_DEV_INFO_REQ     = 0x0514;
 const MSG_DEV_INFO_RESP    = 0x0515;
@@ -320,19 +341,25 @@ $('fetchLatestBtn').addEventListener('click', async () => {
       `<span class="fw-size">${(binAsset.size/1024).toFixed(1)} KB</span> &middot; ` +
       `<span class="fw-date">${new Date(release.published_at).toLocaleDateString()}</span>`;
     log('正在下载: ' + binAsset.name, 'info');
-    let binRes;
-    let lastErr;
-    for (const proxy of CORS_PROXIES) {
+    const candidateUrls = buildFirmwareDownloadCandidates(binAsset.browser_download_url);
+    let binRes = null;
+    let lastErr = null;
+    let attemptIndex = 0;
+    for (; attemptIndex < candidateUrls.length; attemptIndex++) {
+      const tryUrl = candidateUrls[attemptIndex];
       try {
-        binRes = await fetch(proxy(binAsset.browser_download_url));
-        if (binRes.ok) break;
-        lastErr = new Error('下载失败: HTTP ' + binRes.status);
-      } catch(e) {
-        lastErr = e;
+        const responseTry = await fetch(tryUrl);
+        if (responseTry.ok) {
+          binRes = responseTry;
+          break;
+        }
+        lastErr = new Error('下载失败: HTTP ' + responseTry.status);
+      } catch (fetchErr) {
+        lastErr = fetchErr;
         binRes = null;
       }
     }
-    if (!binRes || !binRes.ok) throw lastErr || new Error('下载失败');
+    if (!binRes || !binRes.ok) throw lastErr || new Error('下载失败（GitHub 发布文件需经代理或同源镜像拉取）');
     const buf = await binRes.arrayBuffer();
     firmwareData = new Uint8Array(buf);
     $('fileName').textContent = '✓ ' + binAsset.name + ' (' + firmwareData.length + ' bytes)';
