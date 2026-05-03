@@ -263,6 +263,7 @@ extern uint8_t           gCNCandidateCount;
 extern uint8_t           gCNCandidateOffset;
 extern uint8_t           gCNCandidateTotal;
 extern uint8_t           gPinyinTimeout_500ms; // multi-tap timeout counter
+extern uint8_t           gPinyinLookupNoMatch; // last MENU lookup returned 0 Hanzi
 #endif
 
 void UI_DisplayMenu(void);

@@ -2118,22 +2118,19 @@ void UI_DisplayMenu(void)
             if (gIsInSubMenu && edit_index >= 0)
             {
                 // Edit mode layout:
-                //   y=20: mode indicator "1"/"PY" at top-right
-                //   y=28: channel name edit buffer + cursor lines
-                //   y1:   pinyin buffer + cursor
-                //   y2:   candidates (numbered)
-                //   y3:   hint text
+                //   y=20: mode "PY" / "选" or "1"/"a"/"A"
+                //   y=28: channel name + pinyin (right)
+                //   y_strip: one line — either 4/6 候选 only, or hint only (不叠在同一点)
                 const uint8_t y_mode = 20u;
                 const uint8_t y_name = 28u;
-                const uint8_t y_pinyin = (uint8_t)(y_name + 4u);   // same line as channel name, down 4px
-                const uint8_t y_cand = (uint8_t)(y_name + 23u);    // same as hint
-                const uint8_t y_hint = (uint8_t)(y_name + 23u);    // hint line
+                const uint8_t y_pinyin = (uint8_t)(y_name + 4u);
+                const uint8_t y_strip = (uint8_t)(y_name + 22u);
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
                 if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
                     sub_val_x1 += 2u;
 
-                // Mode indicator at top-right
+                // Mode indicator at top-right (PY: show 选择/Sel. while composing pinyin, no Hanzi row yet)
                 switch (gMemNameInputMode) {
                     case MEM_NAME_INPUT_DIGIT:
                         UI_PrintStringSmallAtPixel("1", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
@@ -2145,7 +2142,15 @@ void UI_DisplayMenu(void)
                         UI_PrintStringSmallAtPixel("A", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
                         break;
                     default:
-                        UI_PrintStringSmallAtPixel("PY", (uint8_t)(sub_val_x2 - 12), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        if (gPinyinLen > 0 && gCNCandidateCount == 0)
+                        {
+                            if (gUiLanguage == UI_LANGUAGE_CN)
+                                UI_PrintStringSmallAtPixel("选择", (uint8_t)(sub_val_x2 - 24), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 11u), 0u);
+                            else
+                                UI_PrintStringSmallAtPixel("Sel.", (uint8_t)(sub_val_x2 - 18), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+                        }
+                        else
+                            UI_PrintStringSmallAtPixel("PY", (uint8_t)(sub_val_x2 - 12), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
                         break;
                 }
 
@@ -2275,16 +2280,19 @@ void UI_DisplayMenu(void)
                     UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)(sub_val_x2 - (gPinyinLen + 1) * 6u), (uint8_t)sub_val_x2, y_pinyin, (uint8_t)(y_pinyin + 7u), 0u);
                 }
 
-                // Chinese candidates (numbered 1-6)
+                // Chinese candidates: 6 slots evenly across strip; no other text on this screen
                 if (gCNCandidateCount > 0)
                 {
+                    const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+                    const unsigned slot_w = strip_w / 6u;
+
                     for (uint8_t i = 0; i < gCNCandidateCount; i++)
                     {
                         char num[2];
                         num[0] = (char)('1' + i);
                         num[1] = 0;
-                        uint8_t cx = (uint8_t)(sub_val_x1 + i * 20);
-                        UI_PrintStringSmallAtPixel(num, cx, cx, y_cand, (uint8_t)(y_cand + 7u), 0u);
+                        const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * slot_w);
+                        UI_PrintStringSmallAtPixel(num, cx, (uint8_t)(cx + 6u), y_strip, (uint8_t)(y_strip + 7u), 0u);
 
                         uint16_t unicode = gCNCandidates[i];
                         char utf8[4];
@@ -2292,32 +2300,56 @@ void UI_DisplayMenu(void)
                         utf8[1] = (char)(0x80 | ((unicode >> 6) & 0x3F));
                         utf8[2] = (char)(0x80 | (unicode & 0x3F));
                         utf8[3] = 0;
-                        UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8), (uint8_t)(cx + 8), y_cand, (uint8_t)(y_cand + 11u), 0u);
+                        UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8u), (uint8_t)(cx + 20u), y_strip, (uint8_t)(y_strip + 11u), 0u);
                     }
                 }
-
-                // Letter candidates (numbered 1-4, for lowercase/uppercase modes)
-                if (gMemNameCandidateCount > 0)
+                else if (gMemNameCandidateCount > 0)
                 {
+                    /* Letter strip: 4 columns fixed width (keys abc..pqrs); only letters, no hint here */
+                    const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+                    const unsigned slot_w = strip_w / 4u;
+
                     for (uint8_t i = 0; i < gMemNameCandidateCount; i++)
                     {
                         char num[2];
                         num[0] = (char)('1' + i);
                         num[1] = 0;
-                        uint8_t cx = (uint8_t)(sub_val_x1 + i * 16);
-                        UI_PrintStringSmallAtPixel(num, cx, cx, y_cand, (uint8_t)(y_cand + 7u), 0u);
+                        const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * slot_w);
+                        UI_PrintStringSmallAtPixel(num, cx, (uint8_t)(cx + 6u), y_strip, (uint8_t)(y_strip + 7u), 0u);
 
                         char ch[2] = {gMemNameCandidates[i], 0};
-                        UI_PrintStringSmallAtPixel(ch, (uint8_t)(cx + 8), (uint8_t)(cx + 8), y_cand, (uint8_t)(y_cand + 7u), 0u);
+                        UI_PrintStringSmallAtPixel(ch, (uint8_t)(cx + 8u), (uint8_t)(cx + 20u), y_strip, (uint8_t)(y_strip + 7u), 0u);
                     }
                 }
 
-                // Hint text
-                if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0 && edit_index < 10)
+                // Hint line: only when strip has no letter/Hanzi row (PY idle / compose); non-PY idle
+                if (edit_index < 10)
                 {
-                    UI_PrintStringSmallAtPixel(
-                        (gUiLanguage == UI_LANGUAGE_CN) ? "#切换 EXIT退" : "#switch EXIT del",
-                        (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_hint, (uint8_t)(y_hint + 7u), 0u);
+                    if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN)
+                    {
+                        const bool cn = (gUiLanguage == UI_LANGUAGE_CN);
+                        if (gCNCandidateCount == 0 && gMemNameCandidateCount == 0)
+                        {
+                            const char *hint_py;
+                            if (gPinyinLen > 0)
+                            {
+                                if (gPinyinLookupNoMatch != 0)
+                                    hint_py = cn ? "未查到 0删" : "No match 0 del";
+                                else
+                                    hint_py = cn ? "MENU确认 0删" : "MENU OK 0 del";
+                            }
+                            else
+                                hint_py = cn ? "2-9输入 #切换模式" : "2-9 input # mode";
+                            UI_PrintStringSmallAtPixel(
+                                hint_py, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_strip, (uint8_t)(y_strip + 7u), 0u);
+                        }
+                    }
+                    else if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0)
+                    {
+                        UI_PrintStringSmallAtPixel(
+                            (gUiLanguage == UI_LANGUAGE_CN) ? "#切换 EXIT回退" : "#switch EXIT back",
+                            (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_strip, (uint8_t)(y_strip + 7u), 0u);
+                    }
                 }
 
                 already_printed = true;

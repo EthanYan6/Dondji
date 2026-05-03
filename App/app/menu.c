@@ -70,6 +70,7 @@ uint8_t  gCNCandidateCount;
 uint8_t  gCNCandidateOffset;
 uint8_t  gCNCandidateTotal;
 uint8_t  gPinyinTimeout_500ms;
+uint8_t  gPinyinLookupNoMatch;
 
 static void MENU_PinyinSearch(void)
 {
@@ -78,46 +79,19 @@ static void MENU_PinyinSearch(void)
         gCNCandidateCount = 0;
         gCNCandidateTotal = 0;
         gCNCandidateOffset = 0;
+        gPinyinLookupNoMatch = 0;
         return;
     }
-    gCNCandidateTotal = (uint8_t)SETTINGS_CNGetPinyinCandidates(
-        gPinyinBuffer, gCNCandidates, CN_CANDIDATE_MAX, gCNCandidateOffset);
+    gMemNameCandidateCount = 0;
+    {
+        const int raw_total = SETTINGS_CNGetPinyinCandidates(
+            gPinyinBuffer, gCNCandidates, CN_CANDIDATE_MAX, gCNCandidateOffset);
+        gCNCandidateTotal = (uint8_t)(raw_total < 0 ? 0 : raw_total);
+        gPinyinLookupNoMatch = (raw_total <= 0) ? 1u : 0u;
+    }
     gCNCandidateCount = gCNCandidateTotal - gCNCandidateOffset;
     if (gCNCandidateCount > CN_CANDIDATE_MAX)
         gCNCandidateCount = CN_CANDIDATE_MAX;
-}
-
-// Check if any pinyin syllable in SPI Flash starts with the given prefix
-static bool MENU_PinyinHasPrefix(const char *prefix)
-{
-    uint16_t offset = 0;
-    size_t prefix_len = strlen(prefix);
-
-    for (uint16_t i = 0; i < CN_FONT_PY_COUNT && offset < CN_FONT_PY_TOTAL_SIZE; i++)
-    {
-        uint8_t str_len;
-        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
-                           &str_len, 1);
-        offset++;
-
-        if (str_len >= prefix_len)
-        {
-            char syllable[8];
-            PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
-                               (uint8_t *)syllable, str_len);
-            if (memcmp(syllable, prefix, prefix_len) == 0)
-                return true;
-        }
-
-        offset += str_len;
-        uint8_t char_count;
-        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
-                           &char_count, 1);
-        offset++;
-        offset += char_count * 2;
-    }
-
-    return false;
 }
 
 static void MENU_PinyinReset(void)
@@ -127,6 +101,8 @@ static void MENU_PinyinReset(void)
     gCNCandidateCount = 0;
     gCNCandidateOffset = 0;
     gCNCandidateTotal = 0;
+    gMemNameCandidateCount = 0;
+    gPinyinLookupNoMatch = 0;
     gPinyinTimeout_500ms = 0;
     memset(gPinyinKeyIndex, 0, sizeof(gPinyinKeyIndex));
 }
@@ -2117,6 +2093,7 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
             gCNCandidateCount = 0;
             gCNCandidateOffset = 0;
             gCNCandidateTotal = 0;
+            gMemNameCandidateCount = 0;
             gRequestDisplayScreen = DISPLAY_MENU;
             return;
         }
@@ -2151,100 +2128,89 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
             return;
         }
 
-        // Pinyin mode
+        // Pinyin mode: 2-9 show letters below; 1-4 pick letter; 0 backspace or dismiss row;
+        //               MENU then lookup; 1-6 pick Chinese (7-9 invalid while candidates shown)
+        if (Key == KEY_0)
+        {
+            if (gCNCandidateCount > 0)
+            {
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
+            if (gMemNameCandidateCount > 0)
+            {
+                gMemNameCandidateCount = 0;
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
+            }
+            if (gPinyinLen > 0)
+            {
+                gPinyinLen--;
+                gPinyinBuffer[gPinyinLen] = 0;
+                gPinyinLookupNoMatch = 0;
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
+            }
+            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+            return;
+        }
+
         if (Key <= KEY_9)
         {
-            // Keys 1-6: smart selection — try candidate first, fallback to pinyin
-            if (Key >= KEY_1 && Key <= KEY_6 && gCNCandidateCount > 0)
+            if (gCNCandidateCount > 0)
             {
-                // Try adding each letter on the key to pinyin to see if any forms a valid prefix
-                static const char *const kl[] = {
-                    NULL, NULL, "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"
-                };
-                char test[PINYIN_MAX_LEN + 2];
-                memcpy(test, gPinyinBuffer, gPinyinLen);
-                bool any_prefix = false;
-                for (const char *p = kl[Key]; *p; p++)
+                if (Key >= KEY_1 && Key <= KEY_6)
                 {
-                    test[gPinyinLen] = *p;
-                    test[gPinyinLen + 1] = 0;
-                    if (MENU_PinyinHasPrefix(test))
-                        { any_prefix = true; break; }
-                }
-
-                if (any_prefix)
-                {
-                    // Valid prefix: continue pinyin input (fall through to pinyin logic below)
-                }
-                else
-                {
-                    // Invalid prefix: select candidate
-                    const uint8_t idx = (uint8_t)(Key - KEY_1);
-                    if (idx < gCNCandidateCount)
+                    const uint8_t pick_idx = (uint8_t)(Key - KEY_1);
+                    if (pick_idx < gCNCandidateCount)
                     {
-                        uint16_t unicode = gCNCandidates[idx];
+                        uint16_t unicode = gCNCandidates[pick_idx];
                         edit[edit_index]     = (char)(0xE0 | (unicode >> 12));
                         edit[edit_index + 1] = (char)(0x80 | ((unicode >> 6) & 0x3F));
                         edit[edit_index + 2] = (char)(0x80 | (unicode & 0x3F));
                         edit_index += 3;
                         if (edit_index > 10)
                             edit_index = 10;
-                        gPinyinLen = 0;
-                        gPinyinBuffer[0] = 0;
-                        gCNCandidateCount = 0;
-                        gCNCandidateOffset = 0;
-                        gCNCandidateTotal = 0;
-                        memset(gPinyinKeyIndex, 0, sizeof(gPinyinKeyIndex));
-                        gPinyinTimeout_500ms = 0;
+                        MENU_PinyinReset();
                         gRequestDisplayScreen = DISPLAY_MENU;
                         return;
                     }
                 }
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
             }
 
-            // Keys 2-9: pinyin letter input with timeout-based cycling
-            if (Key >= KEY_2 && Key <= KEY_9 && gPinyinLen < PINYIN_MAX_LEN)
+            if (gMemNameCandidateCount > 0)
             {
-                static const char *const key_letters[] = {
-                    NULL, NULL, "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"
-                };
-                const char *letters = key_letters[Key];
-                if (letters)
+                if (Key >= KEY_1 && Key <= KEY_4)
                 {
-                    uint8_t letter_count = (uint8_t)strlen(letters);
-
-                    // Same key within timeout: cycle the last letter
-                    if (gPinyinLen > 0 &&
-                        gPinyinKeyIndex[gPinyinLen - 1] == (uint8_t)(Key - KEY_0) &&
-                        gPinyinTimeout_500ms > 0)
+                    const uint8_t letter_idx = (uint8_t)(Key - KEY_1);
+                    if (letter_idx < gMemNameCandidateCount && gPinyinLen < PINYIN_MAX_LEN)
                     {
-                        uint8_t tap_idx = 0;
-                        for (uint8_t i = 0; i < letter_count; i++)
-                        {
-                            if (gPinyinBuffer[gPinyinLen - 1] == letters[i])
-                            {
-                                tap_idx = (uint8_t)((i + 1) % letter_count);
-                                break;
-                            }
-                        }
-                        gPinyinBuffer[gPinyinLen - 1] = letters[tap_idx];
-                    }
-                    else
-                    {
-                        // Different key, or same key after timeout: add new letter
-                        gPinyinBuffer[gPinyinLen] = letters[0];
-                        gPinyinKeyIndex[gPinyinLen] = (uint8_t)(Key - KEY_0);
+                        gPinyinBuffer[gPinyinLen] = gMemNameCandidates[letter_idx];
                         gPinyinLen++;
                         gPinyinBuffer[gPinyinLen] = 0;
+                        gMemNameCandidateCount = 0;
+                        gPinyinLookupNoMatch = 0;
+                        gRequestDisplayScreen = DISPLAY_MENU;
+                        return;
                     }
-
-                    // Auto-search and reset timeout
-                    gCNCandidateOffset = 0;
-                    MENU_PinyinSearch();
-                    gPinyinTimeout_500ms = 2; // ~1 second
+                }
+                if (Key >= KEY_2 && Key <= KEY_9)
+                {
+                    MENU_BuildMemNameCandidatesFromKey(Key);
                     gRequestDisplayScreen = DISPLAY_MENU;
                     return;
                 }
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
+
+            if (Key >= KEY_2 && Key <= KEY_9)
+            {
+                MENU_BuildMemNameCandidatesFromKey(Key);
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
             }
 
             gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
@@ -2728,21 +2694,28 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
         }
         else if (edit_index >= 0)
         {
-            if (gPinyinLen > 0 && gCNCandidateCount > 0)
+            if (gMemNameCandidateCount > 0)
             {
-                // Candidates visible: MENU confirms/dismisses, reset pinyin
-                MENU_PinyinReset();
+                gMemNameCandidateCount = 0;
                 gRequestDisplayScreen = DISPLAY_MENU;
                 return;
             }
-            else if (gPinyinLen > 0 && gCNCandidateCount == 0)
+            if (gPinyinLen > 0 && gCNCandidateCount > 0)
             {
-                // Pinyin typed but no search yet: search now
+                gCNCandidateCount = 0;
+                gCNCandidateOffset = 0;
+                gCNCandidateTotal = 0;
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
+            }
+            if (gPinyinLen > 0 && gCNCandidateCount == 0)
+            {
+                gCNCandidateOffset = 0;
                 MENU_PinyinSearch();
                 gRequestDisplayScreen = DISPLAY_MENU;
                 return;
             }
-            else if (gPinyinLen == 0 && gCNCandidateCount == 0)
+            if (gPinyinLen == 0 && gCNCandidateCount == 0)
             {
                 // Pinyin empty, no candidates: advance cursor by one character
                 if (edit_index < 10)
