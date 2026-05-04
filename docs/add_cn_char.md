@@ -83,13 +83,14 @@ python App/tools/gen_cn_font.py
 - `VERSION_OFFSET = PY_OFFSET + PY_TOTAL_SIZE`
 - `cn_font.bin 文件大小 = VERSION_OFFSET + 1`
 
-## 6. 更新 README 文档
+## 6. 更新文档（仓库根目录与 docs）
 
-更新以下三个文件中的字库参数（字符数量、字库大小）：
+更新以下文件中的字库参数（字符数量、偏移量须与 `cn_font_data.h` 一致）：
 
-- `README.md`
-- `README.zh.md`
-- `README.en.md`
+- `README.md`、`README.zh.md`、`README.en.md` — 表格中的字符数量等
+- `docs/index.html` — 「刷字库」页：支持的汉字个数说明
+- `docs/js/flash.js` — `CN_FONT_VERSION_OFFSET`（与 `CN_FONT_VERSION_OFFSET` 宏相同）、从仓库加载字库时的展示文案（如「1232 字符」）
+- `docs/fonts/README.md` — 可选：当前 bin 大小与字数简述
 
 ## 7. 验证
 

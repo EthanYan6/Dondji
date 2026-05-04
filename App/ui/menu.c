@@ -380,6 +380,9 @@ const t_menu_item MenuList[] =
     {"M Long",      MENU_MLONG         },
 
     {"KeyLck",      MENU_AUTOLK        }, // was "AUTOLk"
+#ifdef ENABLE_FEAT_F4HWN
+    {"SetLck",      MENU_SET_LCK       },
+#endif
     {"Lang",        MENU_LANGUAGE      },
     {"RxMode",      MENU_TDR           },
     {"TxTOut",      MENU_TOT           }, // was "TOT"
@@ -445,7 +448,6 @@ const t_menu_item MenuList[] =
     {"SetEOT",      MENU_SET_EOT       },
     {"SetCtr",      MENU_SET_CTR       },
     {"SetInv",      MENU_SET_INV       },
-    {"SetLck",      MENU_SET_LCK       },
 #ifdef ENABLE_FEAT_F4HWN_AUDIO    
     {"SetRxA",      MENU_SET_AUD       },
 #endif
