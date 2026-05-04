@@ -2841,6 +2841,21 @@ void UI_DisplayMenu(void)
                     page4_line3_y0 = (uint8_t)page4_y_cursor;
                     page4_y_cursor = page4_y_cursor + page4_slot_h2;
                     page4_line3_y1 = (uint8_t)(page4_y_cursor - 1u);
+
+                    /* 第一行整体下移 2px，第二行整体下移 1px（相对第三行） */
+                    {
+                        const uint8_t page4_line1_down_px = 2u;
+                        const uint8_t page4_line2_down_px = 1u;
+
+                        page4_line1_y0 =
+                            (uint8_t)((unsigned int)page4_line1_y0 + (unsigned int)page4_line1_down_px);
+                        page4_line1_y1 =
+                            (uint8_t)((unsigned int)page4_line1_y1 + (unsigned int)page4_line1_down_px);
+                        page4_line2_y0 =
+                            (uint8_t)((unsigned int)page4_line2_y0 + (unsigned int)page4_line2_down_px);
+                        page4_line2_y1 =
+                            (uint8_t)((unsigned int)page4_line2_y1 + (unsigned int)page4_line2_down_px);
+                    }
                 }
 
                 {
@@ -2943,9 +2958,16 @@ void UI_DisplayMenu(void)
                     /* latin_down_when_mixed=0：标签与数值分两趟绘制，数值串纯英文/数字时在本行槽内垂直居中 */
                     UI_PrintStringSmallAtPixel(page4_label_line1, page4_draw_x, page4_draw_x,
                                                page4_line1_y0, page4_line1_y1, 0u);
-                    page4_draw_x = (uint8_t)(page4_value_col_left_x_px
-                                             + (unsigned int)page4_max_value_w_px
-                                             - (unsigned int)page4_value_w1_px);
+                    {
+                        const unsigned int page4_line1_value_nudge_right_px = 5u;
+                        unsigned int page4_value1_draw_x = 0u;
+
+                        page4_value1_draw_x = page4_value_col_left_x_px
+                                              + (unsigned int)page4_max_value_w_px
+                                              - (unsigned int)page4_value_w1_px
+                                              + page4_line1_value_nudge_right_px;
+                        page4_draw_x = (uint8_t)page4_value1_draw_x;
+                    }
                     UI_PrintStringSmallAtPixel(page4_value_line1, page4_draw_x, page4_draw_x,
                                                page4_line1_y0, page4_line1_y1, 0u);
 
