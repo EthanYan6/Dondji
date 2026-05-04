@@ -4,32 +4,6 @@
 const BAUDRATE = 38400;
 const GITHUB_REPO = 'EthanYan6/Dondji';
 
-/** 若把 Dondji.fusion.bin 放在与页面同源的路径（如 gh-pages 的 firmware/Dondji.fusion.bin），可优先从此加载；留空则仅用下方代理拉取 GitHub */
-const FIRMWARE_SAME_ORIGIN_REL = '';
-
-/** GitHub releases/download 响应不带 Access-Control-Allow-Origin，浏览器不能直接 fetch 原始链接，只能走代理或同源文件 */
-const CORS_PROXIES = [
-  url => 'https://corsproxy.io/?' + encodeURIComponent(url),
-  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-  url => 'https://ghproxy.net/https://' + url.replace(/^https?:\/\//, ''),
-];
-
-function buildFirmwareDownloadCandidates(browserDownloadUrl) {
-  const candidates = [];
-  const trimmedLocal = typeof FIRMWARE_SAME_ORIGIN_REL === 'string' ? FIRMWARE_SAME_ORIGIN_REL.trim() : '';
-  if (trimmedLocal.length > 0) {
-    const sameOriginAbsoluteUrl = new URL(trimmedLocal, window.location.href).href;
-    candidates.push(sameOriginAbsoluteUrl);
-  }
-  let proxyIndex = 0;
-  for (; proxyIndex < CORS_PROXIES.length; proxyIndex++) {
-    const proxyTransform = CORS_PROXIES[proxyIndex];
-    const proxiedUrl = proxyTransform(browserDownloadUrl);
-    candidates.push(proxiedUrl);
-  }
-  return candidates;
-}
-
 const MSG_DEV_INFO_REQ     = 0x0514;
 const MSG_DEV_INFO_RESP    = 0x0515;
 const MSG_NOTIFY_DEV_INFO  = 0x0518;
@@ -591,55 +565,103 @@ $('flashBtn').addEventListener('click', async () => {
   }
 });
 
+/**
+ * 组装 Dondji.fusion.bin 的候选 URL：相对 flash.js（…/js → …/firmware）与相对当前页面（与 index 同级 firmware）。
+ * 与 cn_font 同源策略一致，不再请求 GitHub Releases（避免 CORS 与代理）。
+ * @returns {string[]}
+ */
+function firmwareCollectDondjiFusionBinCandidateUrls() {
+  const seenHref = new Set();
+  const orderedUrls = [];
+
+  function pushUnique(urlHref) {
+    if (!urlHref) {
+      return;
+    }
+    const already = seenHref.has(urlHref);
+    if (already) {
+      return;
+    }
+    seenHref.add(urlHref);
+    orderedUrls.push(urlHref);
+  }
+
+  const flashJsUrl = cnFontGetFlashJsAbsoluteUrl();
+  const flashJsNonEmpty = flashJsUrl !== '';
+  if (flashJsNonEmpty) {
+    const fromJsFirmware = new URL('../firmware/Dondji.fusion.bin', flashJsUrl).href;
+    pushUnique(fromJsFirmware);
+  }
+
+  const baseUrl = document.baseURI || window.location.href;
+  const fromDocFirmware = new URL('firmware/Dondji.fusion.bin', baseUrl).href;
+  pushUnique(fromDocFirmware);
+
+  return orderedUrls;
+}
+
+/**
+ * 按候选 URL 依次拉取 Fusion 固件（同源 docs/firmware/Dondji.fusion.bin）。
+ * @returns {Promise<ArrayBuffer>}
+ */
+function firmwareFetchArrayBuffer() {
+  const candidateUrls = firmwareCollectDondjiFusionBinCandidateUrls();
+  const totalCandidates = candidateUrls.length;
+  let attemptIndex = 0;
+
+  function attemptNextUrl() {
+    if (attemptIndex >= totalCandidates) {
+      const errText =
+        '无法加载固件：已尝试 firmware/Dondji.fusion.bin（共 ' +
+        totalCandidates +
+        ' 个地址）。请用本地 HTTP 打开本页并确认已执行 Fusion 打包脚本将产物复制到 docs/firmware。';
+      return Promise.reject(new Error(errText));
+    }
+    const fullUrl = candidateUrls[attemptIndex];
+    attemptIndex = attemptIndex + 1;
+    const fetchPromise = fetch(fullUrl);
+    return fetchPromise.then(function onResponse(response) {
+      const responseOk = response.ok;
+      if (responseOk) {
+        return response.arrayBuffer();
+      }
+      return attemptNextUrl();
+    }).catch(function onFetchError() {
+      return attemptNextUrl();
+    });
+  }
+  return attemptNextUrl();
+}
+
 // ========== FETCH LATEST FIRMWARE ==========
 $('fetchLatestBtn').addEventListener('click', async () => {
   const btn = $('fetchLatestBtn');
   btn.disabled = true;
-  btn.textContent = '正在获取...';
+  btn.textContent = '正在加载...';
   try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-    if (!res.ok) throw new Error('GitHub API: ' + res.status);
-    const release = await res.json();
-    const binAsset = release.assets.find(a => a.name === 'Dondji.fusion.bin');
-    if (!binAsset) throw new Error('未找到 Dondji.fusion.bin 文件');
+    log('正在加载同源 firmware/Dondji.fusion.bin …', 'info');
+    const arrayBuffer = await firmwareFetchArrayBuffer();
+    const loadedBytes = new Uint8Array(arrayBuffer);
+    firmwareData = loadedBytes;
+    const byteLength = firmwareData.length;
+    const sizeKbText = (byteLength / 1024).toFixed(1);
     $('fwReleaseInfo').style.display = 'block';
     $('fwReleaseInfo').innerHTML =
-      `<span class="fw-name">${release.tag_name}</span> &middot; ` +
-      `<span class="fw-size">${(binAsset.size/1024).toFixed(1)} KB</span> &middot; ` +
-      `<span class="fw-date">${new Date(release.published_at).toLocaleDateString()}</span>`;
-    log('正在下载: ' + binAsset.name, 'info');
-    const candidateUrls = buildFirmwareDownloadCandidates(binAsset.browser_download_url);
-    let binRes = null;
-    let lastErr = null;
-    let attemptIndex = 0;
-    for (; attemptIndex < candidateUrls.length; attemptIndex++) {
-      const tryUrl = candidateUrls[attemptIndex];
-      try {
-        const responseTry = await fetch(tryUrl);
-        if (responseTry.ok) {
-          binRes = responseTry;
-          break;
-        }
-        lastErr = new Error('下载失败: HTTP ' + responseTry.status);
-      } catch (fetchErr) {
-        lastErr = fetchErr;
-        binRes = null;
-      }
-    }
-    if (!binRes || !binRes.ok) throw lastErr || new Error('下载失败（GitHub 发布文件需经代理或同源镜像拉取）');
-    const buf = await binRes.arrayBuffer();
-    firmwareData = new Uint8Array(buf);
-    $('fileName').textContent = '✓ ' + binAsset.name + ' (' + firmwareData.length + ' bytes)';
+      `<span class="fw-name">Dondji.fusion.bin</span> &middot; ` +
+      `<span class="fw-size">${sizeKbText} KB</span> &middot; ` +
+      `<span class="fw-date">文档站点随附</span>`;
+    $('fileName').textContent = '✓ Dondji.fusion.bin (' + byteLength + ' bytes)';
     $('fileName').classList.add('has-file');
     $('fileLabel').classList.add('has-file');
-    log('固件已下载: ' + binAsset.name + ' (' + firmwareData.length + ' bytes)', 'success');
+    log('固件已加载: Dondji.fusion.bin (' + byteLength + ' bytes)', 'success');
     $('flashBtn').disabled = false;
     $('flashBtn').textContent = '刷入固件';
-  } catch(e) {
-    log('获取失败: ' + e.message + '（请检查网络，可能需要开启代理/VPN）', 'error');
+  } catch (loadErr) {
+    const messageText = loadErr && loadErr.message ? loadErr.message : String(loadErr);
+    log('加载失败: ' + messageText, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '从 GitHub 拉取最新固件';
+    btn.textContent = '从页面加载 Fusion 固件';
   }
 });
 

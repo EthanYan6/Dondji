@@ -61,15 +61,35 @@ build_preset() {
 }
 
 # ---------------------------------------------
+# 将 Fusion 产物同步到 docs/firmware（供静态页同源加载）
+# ---------------------------------------------
+copy_fusion_firmware_to_docs() {
+  local src="build/Fusion/Dondji.fusion.bin"
+  if [[ -f "$src" ]]; then
+    mkdir -p docs/firmware
+    cp -f "$src" docs/firmware/Dondji.fusion.bin
+    echo "📁 已复制固件到 docs/firmware/Dondji.fusion.bin"
+  else
+    echo "⚠️ 未找到 $src，跳过复制到 docs/firmware"
+  fi
+}
+
+# ---------------------------------------------
 # Handle 'All' preset
 # ---------------------------------------------
 if [[ "$PRESET" == "All" ]]; then
   PRESETS=(Bandscope Broadcast Basic RescueOps Game Fusion)
   for p in "${PRESETS[@]}"; do
     build_preset "$p"
+    if [[ "$p" == "Fusion" ]]; then
+      copy_fusion_firmware_to_docs
+    fi
   done
   echo ""
   echo "🎉 All presets built successfully!"
 else
   build_preset "$PRESET"
+  if [[ "$PRESET" == "Fusion" ]]; then
+    copy_fusion_firmware_to_docs
+  fi
 fi
