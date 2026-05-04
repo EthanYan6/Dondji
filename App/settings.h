@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* Unified MR channel name @ SPI Flash 0x004000 slot (16 B): max UTF-8/ASCII payload e.g. 5 Hanzi */
+#define CHANNEL_NAME_MAX_BYTES 15u
+
 #include "frequencies.h"
 #include <helper/battery.h>
 #include "radio.h"
@@ -318,6 +321,9 @@ void     SETTINGS_InitEEPROM(void);
 void     SETTINGS_LoadCalibration(void);
 uint32_t SETTINGS_FetchChannelFrequency(const uint16_t channel);
 void     SETTINGS_FetchChannelName(char *s, const uint16_t channel);
+#ifdef ENABLE_CHINESE
+bool     SETTINGS_ChannelNameHasCjkUtf8(const char *s);
+#endif
 void     SETTINGS_FactoryReset(bool bIsAll);
 #ifdef ENABLE_FMRADIO
     void SETTINGS_SaveFM(void);
@@ -331,11 +337,8 @@ void SETTINGS_SaveSettings(void);
 void SETTINGS_SaveChannelName(uint16_t channel, const char * name);
 void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO, uint8_t Mode);
 
-#ifdef ENABLE_CHINESE
-// CN channel name storage: 0x020000, 1024 channels x 16 bytes
-#define CN_NAME_FLASH_BASE  0x020000u
-void SETTINGS_FetchCNChannelName(char *s, uint16_t channel);
-void SETTINGS_SaveCNChannelName(uint16_t channel, const char *name);
+#if defined(ENABLE_CHINESE) || defined(ENABLE_FEAT_F4HWN)
+/* Legacy CN-only names @ 0x020000 removed after one-shot migration; font stays below */
 
 // CN font SPI Flash layout (data written via web tool)
 // NOTE: these must match the output of gen_cn_font.py / cn_font_data.h
@@ -348,7 +351,9 @@ void SETTINGS_SaveCNChannelName(uint16_t channel, const char *name);
 #define CN_FONT_VERSION         2u
 #define CN_FONT_VERSION_OFFSET  38667u
 #define CN_FONT_PY_TOTAL_SIZE   4171u
+#endif
 
+#ifdef ENABLE_CHINESE
 // CN font SPI Flash functions
 void SETTINGS_InitCNFont(void);
 int16_t SETTINGS_CNCharToIndex(uint16_t unicode);

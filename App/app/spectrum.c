@@ -1214,7 +1214,7 @@ static void DrawStatus()
 static void ShowChannelName(uint32_t f)
 {
     static uint32_t channelF = 0;
-    static char channelName[12]; 
+    static char channelName[24]; 
 
     if (isListening)
     {

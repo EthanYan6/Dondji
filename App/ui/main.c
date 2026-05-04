@@ -174,8 +174,8 @@ static void DualVfoHeaderLeft(unsigned int vfoIdx, char *out, size_t outLen)
     else
         snprintf(out, outLen, "VFO");
     out[outLen - 1u] = 0;
-    if (strlen(out) > 10u)
-        out[10] = 0;
+    if (strlen(out) > (size_t)CHANNEL_NAME_MAX_BYTES)
+        out[CHANNEL_NAME_MAX_BYTES] = 0;
 }
 
 static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
@@ -592,26 +592,32 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
             frequency = gEeprom.VfoInfo[vfoIdx].pTX->Frequency;
         bool cnSwap = false;
 #ifdef ENABLE_CHINESE
-        if (gUiLanguage == UI_LANGUAGE_CN && IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
-            char cn[16];
-            SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
-            if (cn[0] != 0) {
+        if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
+            char cn[20];
+            SETTINGS_FetchChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
+            if (SETTINGS_ChannelNameHasCjkUtf8(cn)) {
                 cnSwap = true;
+                char fs[16];
+                sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
                 {
-                    char fstr[16];
-                    sprintf(fstr, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
-                    const unsigned int fw = (unsigned int)DualVfoU8g2_GetSmallTextWidth(fstr);
-                    uint8_t x0 = (fw < LCD_WIDTH - 4u) ? (uint8_t)(LCD_WIDTH - 2u - fw) : 2u;
-                    if (x0 < 44u) x0 = 44u;
-                    DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, (uint8_t)(x0 - 4u), (uint8_t)(DV_Y_TOP_CH + 3u));
+                    /* 必须与 DualVfoDrawMainFreq2x 相同：用 strlen×8 估宽算 x0。
+                     * 若改用 GetSmallTextWidth，x0 与非中文不一致，频差会相对「假想的 2x 频」偏一大截（约数像素）。 */
+                    const unsigned int freqNominalWidthPx = (unsigned int)strlen(fs) * 8u;
+                    uint8_t            x0;
+                    if (freqNominalWidthPx < LCD_WIDTH - 4u)
+                        x0 = (uint8_t)(LCD_WIDTH - 2u - freqNominalWidthPx);
+                    else
+                        x0 = 2u;
+                    if (x0 < 44u)
+                        x0 = 44u;
+                    DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, x0,
+                                                     (uint8_t)(DV_Y_TOP_CH + 3u));
                 }
                 if (rxHere)
                     UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127, 9, 20);
                 else
                     UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
                 DualVfoFillRectBlack(2u, DV_Y_TOP_HDR, 60u, (uint8_t)(DV_Y_TOP_HDR + 6u));
-                char fs[16];
-                sprintf(fs, "%3u.%05u", (unsigned)(frequency / 100000u), (unsigned)(frequency % 100000u));
                 DualVfoU8g2_DrawSmallText(fs, 2u, (uint8_t)(DV_Y_TOP_HDR + 1u), false);
             }
         }
@@ -674,10 +680,10 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
         {
             bool cnSwap = false;
 #ifdef ENABLE_CHINESE
-            if (gUiLanguage == UI_LANGUAGE_CN && IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
-                char cn[16];
-                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
-                if (cn[0] != 0) {
+            if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfoIdx])) {
+                char cn[20];
+                SETTINGS_FetchChannelName(cn, gEeprom.ScreenChannel[vfoIdx]);
+                if (SETTINGS_ChannelNameHasCjkUtf8(cn)) {
                     cnSwap = true;
                     /* 条左侧信道名 → 频率 */
                     {
@@ -1910,22 +1916,16 @@ void UI_DisplayMain(void)
         }
 
         if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo])) {
-            char chName[16];
+            char chName[24];
             SETTINGS_FetchChannelName(chName, gEeprom.ScreenChannel[vfo]);
 #ifdef ENABLE_CHINESE
-            if (gUiLanguage == UI_LANGUAGE_CN) {
-                char cn[16];
-                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo]);
-                if (cn[0] != 0) {
-                    memcpy(chName, cn, sizeof(cn));
-                    chName[10] = 0;
-                    UI_PrintStringSmallAtPixel(chName, contentX, contentX, 1 * 8 + 4, 1 * 8 + 15 + 4, 0);
-                } else if (chName[0]) {
-                    UI_PrintStringSmallNormal(chName, contentX, contentX, 1);
-                }
-            } else
+            if (SETTINGS_ChannelNameHasCjkUtf8(chName))
+                UI_PrintStringSmallAtPixel(chName, contentX, contentX, 1 * 8 + 4, 1 * 8 + 15 + 4, 0);
+            else if (chName[0])
+#else
+            if (chName[0])
 #endif
-            if (chName[0]) UI_PrintStringSmallNormal(chName, contentX, contentX, 1);
+                UI_PrintStringSmallNormal(chName, contentX, contentX, 1);
         } else {
             UI_PrintStringSmallNormal("VFO", contentX, contentX, 1);
         }
@@ -2513,61 +2513,39 @@ void UI_DisplayMain(void)
                         }
 
                         if (gEeprom.CHANNEL_DISPLAY_MODE == MDF_NAME) {
-                        #ifdef ENABLE_CHINESE
-                            if (gUiLanguage == UI_LANGUAGE_CN) {
-                                char cn[16];
-                                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                if (cn[0] != 0) {
-                                    memcpy(String, cn, sizeof(cn));
-                                    String[10] = 0;
-                                    UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
-                                    break;
-                                }
-                                if (String[0] == 0) {
-                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
-                                }
+#ifdef ENABLE_CHINESE
+                            if (SETTINGS_ChannelNameHasCjkUtf8(String))
+                            {
+                                UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
+                                break;
                             }
-                        #endif
-                            String[10] = 0;
+#endif
+                            String[CHANNEL_NAME_MAX_BYTES] = 0;
                             UI_PrintString(String, 33, 0, line, 8);
                         }
                         else {
 #ifdef ENABLE_FEAT_F4HWN
                             if (isMainOnly())
                             {
-                            #ifdef ENABLE_CHINESE
-                                if (gUiLanguage == UI_LANGUAGE_CN) {
-                                    char cn[16];
-                                    SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                    if (cn[0] != 0) {
-                                        memcpy(String, cn, sizeof(cn));
-                                        String[10] = 0;
-                                        UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
-                                        break;
-                                    }
-                                    if (String[0] == 0) {
-                                        sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
-                                    }
+#ifdef ENABLE_CHINESE
+                                if (SETTINGS_ChannelNameHasCjkUtf8(String))
+                                {
+                                    UI_PrintStringSmallAtPixel(String, 33, 127, line * 8, line * 8 + 15, 0);
+                                    break;
                                 }
-                            #endif
-                                String[10] = 0;
+                                if (String[0] == 0)
+                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+#endif
+                                String[CHANNEL_NAME_MAX_BYTES] = 0;
                                 UI_PrintString(String, 33, 0, line, 8);
                             }
                             else
                             {
-                            #ifdef ENABLE_CHINESE
-                                if (gUiLanguage == UI_LANGUAGE_CN) {
-                                    char cn[16];
-                                    SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                    if (cn[0] != 0) {
-                                        memcpy(String, cn, sizeof(cn));
-                                        String[10] = 0;
-                                    }
-                                    else if (String[0] == 0) {
-                                        sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
-                                    }
-                                }
-                            #endif
+#ifdef ENABLE_CHINESE
+                                if (String[0] == 0)
+                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+#endif
+                                String[CHANNEL_NAME_MAX_BYTES] = 0;
                                 if(activeTxVFO == vfo_num) {
                                     UI_PrintStringSmallBold(String, 32 + 4, 0, line);
                                 }
@@ -2577,19 +2555,11 @@ void UI_DisplayMain(void)
                                 }
                             }
 #else
-                        #ifdef ENABLE_CHINESE
-                            if (gUiLanguage == UI_LANGUAGE_CN) {
-                                char cn[16];
-                                SETTINGS_FetchCNChannelName(cn, gEeprom.ScreenChannel[vfo_num]);
-                                if (cn[0] != 0) {
-                                    memcpy(String, cn, sizeof(cn));
-                                    String[10] = 0;
-                                }
-                                else if (String[0] == 0) {
-                                    sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
-                                }
-                            }
-                        #endif
+#ifdef ENABLE_CHINESE
+                            if (String[0] == 0)
+                                sprintf(String, "CH-%04u", gEeprom.ScreenChannel[vfo_num] + 1);
+#endif
+                            String[CHANNEL_NAME_MAX_BYTES] = 0;
                             UI_PrintStringSmallBold(String, 32 + 4, 0, line);
 #endif
 

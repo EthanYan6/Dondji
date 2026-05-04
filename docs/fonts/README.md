@@ -1,6 +1,6 @@
 # 中文字库（SPI Flash）
 
-嵌入固件与 Web 刷写使用的字形数据由脚本生成，输出路径为 **`docs/font/cn_font.bin`**（与仓库中原有的 `docs/font` 目录一致；本目录用于文档说明）。
+嵌入固件与 Web 刷写使用的字形数据由脚本生成，主输出为 **`docs/font/cn_font.bin`**；生成后会**同步一份**到 **`docs/fonts/cn_font.bin`**（便于按 `docs/fonts` 路径取用）。
 
 ## 生成命令
 

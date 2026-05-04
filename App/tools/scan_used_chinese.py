@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Scan App/*.c for CJK in string literals; compare with extract_chinese_font MENU_CHARS."""
+"""Scan App/*.c for CJK in string literals; compare with gen_cn_font.py CN_CHARS_500 (SPI 字库生成字表)."""
 
 import re
 from pathlib import Path
@@ -114,10 +114,13 @@ def collect_used_from_app(app_root: Path):
     return used
 
 
-def menu_chars_needing_chinese_glyph(menu_text):
-    """MENU_CHARS 里仅中文字模相关字符（排除 ASCII 如 ROGER、#）。"""
+def cn_font_char_set():
+    """与 App/tools/gen_cn_font.py 中 SPI 字库字表一致（合并元组内各段字符串）。"""
+    import gen_cn_font as gcf
+
+    blob = "".join(gcf.CN_CHARS_500)
     result = set()
-    for ch in menu_text.replace("\n", "").replace(" ", ""):
+    for ch in blob:
         if is_cjk(ch) or ord(ch) > 0x7F:
             result.add(ch)
     return result
@@ -128,21 +131,18 @@ def main():
     app_root = script_dir.parent
     used = collect_used_from_app(app_root)
 
-    import extract_chinese_font as ecf
-
-    menu_text = ecf.MENU_CHARS
-    menu_cjk = menu_chars_needing_chinese_glyph(menu_text)
+    menu_cjk = cn_font_char_set()
     only_old = menu_cjk - used
     only_used = used - menu_cjk
 
     minimal_line = "".join(sorted(used))
     lines = [
         "used CJK count: %d" % len(used),
-        "in MENU(CJK) not in code count: %d" % len(only_old),
-        "in MENU(CJK) not in code: %s" % "".join(sorted(only_old)),
-        "in code not in MENU count: %d" % len(only_used),
-        "in code not in MENU: %s" % "".join(sorted(only_used)),
-        "--- minimal MENU_CHARS body (sorted, one line) ---",
+        "in CN_CHARS_500 not in code count: %d" % len(only_old),
+        "in CN_CHARS_500 not in code: %s" % "".join(sorted(only_old)),
+        "in code not in CN_CHARS_500 count: %d" % len(only_used),
+        "in code not in CN_CHARS_500: %s" % "".join(sorted(only_used)),
+        "--- minimal merged chars from code (sorted, one line) ---",
         minimal_line,
     ]
     for line in lines:

@@ -72,6 +72,57 @@ let isWritefreqBusy = false;
 // ========== UI ==========
 const $ = id => document.getElementById(id);
 
+const THEME_STORAGE_KEY = 'uvk1-web-theme';
+
+function applyThemeToDocument(themeName) {
+  const useLight = themeName === 'light';
+  document.documentElement.classList.toggle('theme-light', useLight);
+  const toggleBtn = $('themeToggleBtn');
+  if (!toggleBtn) {
+    return;
+  }
+  let titleText = '';
+  if (useLight) {
+    titleText = '切换为深色主题';
+  } else {
+    titleText = '切换为浅色主题';
+  }
+  toggleBtn.setAttribute('title', titleText);
+  toggleBtn.setAttribute('aria-label', titleText);
+}
+
+function initThemeToggle() {
+  const toggleBtn = $('themeToggleBtn');
+  if (!toggleBtn) {
+    return;
+  }
+  toggleBtn.addEventListener('click', function onThemeToggleClick() {
+    const hasLight = document.documentElement.classList.contains('theme-light');
+    let nextTheme = '';
+    if (hasLight) {
+      nextTheme = 'dark';
+    } else {
+      nextTheme = 'light';
+    }
+    applyThemeToDocument(nextTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch (storeErr) {
+      // ignore
+    }
+  });
+  let storedTheme = 'dark';
+  try {
+    const rawStored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (rawStored === 'light' || rawStored === 'dark') {
+      storedTheme = rawStored;
+    }
+  } catch (readErr) {
+    storedTheme = 'dark';
+  }
+  applyThemeToDocument(storedTheme);
+}
+
 // ========== TABS ==========
 function syncWritefreqFullLayoutClass() {
   const activeTab = document.querySelector('.tab.active');
@@ -127,6 +178,102 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 syncWritefreqFullLayoutClass();
 syncLogDockPlacement();
+initThemeToggle();
+
+/** @type {number|null} */
+let appToastAutoHideTimer = null;
+
+/**
+ * 底部 Toast 提示（样式见 .app-toast），替代 alert。
+ * @param {string} messageText
+ * @param {'warning'|'info'|'success'} toastVariant
+ */
+function showAppToast(messageText, toastVariant) {
+  const root = $('appToastRoot');
+  if (!root) {
+    return;
+  }
+  const variantDefault = 'warning';
+  const variantUse =
+    toastVariant === 'info' || toastVariant === 'success'
+      ? toastVariant
+      : variantDefault;
+  if (appToastAutoHideTimer !== null) {
+    clearTimeout(appToastAutoHideTimer);
+    appToastAutoHideTimer = null;
+  }
+  root.replaceChildren();
+  const toastEl = document.createElement('div');
+  toastEl.className = 'app-toast app-toast--' + variantUse;
+  toastEl.setAttribute('role', 'status');
+
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'app-toast-icon';
+  iconSpan.setAttribute('aria-hidden', 'true');
+  const svgWarning =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const svgInfo =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+  const svgSuccess =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  let iconHtml = svgWarning;
+  if (variantUse === 'info') {
+    iconHtml = svgInfo;
+  }
+  if (variantUse === 'success') {
+    iconHtml = svgSuccess;
+  }
+  iconSpan.innerHTML = iconHtml;
+
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'app-toast-body';
+  const msgP = document.createElement('p');
+  msgP.className = 'app-toast-msg';
+  msgP.textContent = messageText;
+  bodyDiv.appendChild(msgP);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'app-toast-close';
+  closeBtn.setAttribute('aria-label', '关闭');
+  closeBtn.textContent = '\u00d7';
+
+  toastEl.appendChild(iconSpan);
+  toastEl.appendChild(bodyDiv);
+  toastEl.appendChild(closeBtn);
+  root.appendChild(toastEl);
+
+  function removeToastFromDom() {
+    const parentNode = toastEl.parentNode;
+    if (parentNode) {
+      parentNode.removeChild(toastEl);
+    }
+  }
+
+  function hideToastAnimated() {
+    toastEl.classList.remove('app-toast-visible');
+    const hideTransitionMs = 340;
+    setTimeout(removeToastFromDom, hideTransitionMs);
+  }
+
+  closeBtn.addEventListener('click', function onToastCloseClick() {
+    if (appToastAutoHideTimer !== null) {
+      clearTimeout(appToastAutoHideTimer);
+      appToastAutoHideTimer = null;
+    }
+    hideToastAnimated();
+  });
+
+  requestAnimationFrame(function toastShowFrame() {
+    toastEl.classList.add('app-toast-visible');
+  });
+
+  const autoHideMs = 6200;
+  appToastAutoHideTimer = window.setTimeout(function toastAutoHide() {
+    appToastAutoHideTimer = null;
+    hideToastAnimated();
+  }, autoHideMs);
+}
 
 // ========== LOG ==========
 function log(msg, type='') {
@@ -822,7 +969,7 @@ if (!('serial' in navigator)) {
 })();
 
 // ========== WRITE FREQUENCY (MR CHANNELS, SPI FLASH) ==========
-// 地址与固件一致：MR 块 channel*16；英文名 0x004000+ch*16；中文名 0x020000+ch*16（settings.c / settings.h）
+// 地址与固件一致：MR 块 channel*16；统一信道名 0x004000+ch*16（UTF-8，最长 15 字节）；旧中文区 0x020000 仅读取合并/写入时按槽擦除（settings.c）
 
 /** 本工具仅读写设备 MR 的前 N 槽（Flash 下标 0 … N-1，界面 CH1 … CHN）；大于 N 的 MR 槽读写时不触碰 */
 const WRITE_FREQ_MR_MAX = 200;
@@ -836,8 +983,8 @@ let writefreqPageIndex = 0;
 let writefreqRowsData = null;
 /** SortableJS 实例（写频表格行拖拽） */
 let writefreqSortableInstance = null;
-const WRITE_FREQ_EN_NAME_MAX_BYTES = 10;
-const WRITE_FREQ_CN_NAME_MAX_BYTES = 10;
+/** 与固件 CHANNEL_NAME_MAX_BYTES 一致：约 5 个汉字（UTF-8） */
+const WRITE_FREQ_CHANNEL_NAME_MAX_BYTES = 15;
 const WRITE_FREQ_SPI_MAX_CHUNK = 120;
 /** waitForMsg 循环次数，×10ms 为大约最长等待（例 120 ≈ 1.2s） */
 const WRITE_FREQ_SPI_READ_WAIT_ITERATIONS = 120;
@@ -1188,27 +1335,6 @@ async function spiFlashWriteChunk(sessionTs, flashAddress, payload) {
   return ok;
 }
 
-function writefreqTrimAsciiName(bytes) {
-  const outChars = [];
-  let i = 0;
-  for (; i < WRITE_FREQ_EN_NAME_MAX_BYTES && i < bytes.length; i++) {
-    const b = bytes[i];
-    if (b === 0 || b === 0xff) {
-      break;
-    }
-    if (b >= 32 && b <= 127) {
-      outChars.push(String.fromCharCode(b));
-    } else {
-      break;
-    }
-  }
-  let s = outChars.join('');
-  while (s.length > 0 && s.charAt(s.length - 1) === ' ') {
-    s = s.slice(0, -1);
-  }
-  return s;
-}
-
 function writefreqDecodeCnNameUtf8(bytes) {
   const len = Math.min(16, bytes.length);
   let end = 0;
@@ -1232,6 +1358,25 @@ function writefreqDecodeCnNameUtf8(bytes) {
   }
 }
 
+/** 从 0x004000 与旧区 0x020000 合并为单一显示名：统一区非空则优先，否则用旧中文区 */
+function writefreqMergeReadChannelName(unifiedUtf8Text, legacyCnUtf8Text) {
+  const unifiedStripped = String(unifiedUtf8Text).trim();
+  if (unifiedStripped !== '') {
+    return unifiedStripped;
+  }
+  const legacyStripped = String(legacyCnUtf8Text).trim();
+  return legacyStripped;
+}
+
+/** 旧版 Excel 两列（英文信道名、中文信道名）合并为单一信道名列：非空中文列优先，否则用英文列 */
+function writefreqLegacyTableMergeEnCn(textEn, textCn) {
+  const trimmedCn = String(textCn).trim();
+  if (trimmedCn !== '') {
+    return trimmedCn;
+  }
+  return String(textEn).trim();
+}
+
 /** 返回与 Flash 一致的 uint32：步长为 WRITE_FREQ_STORE_STEP_HZ（10 Hz），非标准 Hz */
 function writefreqParseMHzOrThrow(label, text) {
   const trimmed = text.trim();
@@ -1250,52 +1395,96 @@ function writefreqParseMHzOrThrow(label, text) {
 }
 
 /**
- * 按 UTF-8 字节截断，不在多字节字符中间切断。
- * 返回截断后字符串、是否截断、原始 UTF-8 字节长度。
+ * 取 text 的最长 UTF-8 前缀，使编码长度不超过 maxPrefixBytes（完整码点边界，不在中间切断）。
+ */
+function writefreqUtf8PrefixWithinBytes(text, maxPrefixBytes) {
+  const encoder = new TextEncoder();
+  const encodedBytes = encoder.encode(text);
+  const decoderFatal = new TextDecoder('utf-8', { fatal: true });
+  let cutEnd = maxPrefixBytes;
+  if (cutEnd > encodedBytes.length) {
+    cutEnd = encodedBytes.length;
+  }
+  let resultText = '';
+  let foundValidPrefix = false;
+  while (cutEnd > 0) {
+    const sliceBytes = encodedBytes.subarray(0, cutEnd);
+    let decodedString = '';
+    let decodeOk = false;
+    try {
+      decodedString = decoderFatal.decode(sliceBytes);
+      decodeOk = true;
+    } catch {
+      decodeOk = false;
+    }
+    if (decodeOk) {
+      const roundTripBytes = encoder.encode(decodedString);
+      const roundTripLen = roundTripBytes.length;
+      const roundTripMatches = roundTripLen === cutEnd;
+      if (roundTripMatches) {
+        resultText = decodedString;
+        foundValidPrefix = true;
+        break;
+      }
+    }
+    cutEnd = cutEnd - 1;
+  }
+  if (!foundValidPrefix) {
+    resultText = '';
+  }
+  return resultText;
+}
+
+/**
+ * 按 UTF-8 字节截断到 maxBytes；超长时末尾用 ASCII「...」表示省略（共 3 字节），避免界面出现替换字符。
  */
 function writefreqTruncateUtf8ToMaxBytes(text, maxBytes) {
   const encoder = new TextEncoder();
   const encodedBytes = encoder.encode(text);
   const originalByteLength = encodedBytes.length;
-  let resultText = text;
-  let wasTruncated = false;
-  if (originalByteLength <= maxBytes) {
+  const withinLimit = originalByteLength <= maxBytes;
+  if (withinLimit) {
     const resultOk = {
-      text: resultText,
-      wasTruncated: wasTruncated,
+      text: text,
+      wasTruncated: false,
       originalByteLength: originalByteLength
     };
     return resultOk;
   }
-  wasTruncated = true;
-  let cutEnd = maxBytes;
-  let foundBoundary = false;
-  while (!foundBoundary) {
-    if (cutEnd <= 0) {
-      resultText = '';
-      foundBoundary = true;
+  const ellipsisSuffix = '...';
+  const suffixByteLen = encoder.encode(ellipsisSuffix).length;
+  let prefixBudget = maxBytes - suffixByteLen;
+  if (prefixBudget < 0) {
+    prefixBudget = 0;
+  }
+  let prefixText = writefreqUtf8PrefixWithinBytes(text, prefixBudget);
+  let combinedText = prefixText + ellipsisSuffix;
+  let combinedByteLen = encoder.encode(combinedText).length;
+  let guard = 0;
+  while (combinedByteLen > maxBytes && prefixBudget > 0) {
+    prefixBudget = prefixBudget - 1;
+    prefixText = writefreqUtf8PrefixWithinBytes(text, prefixBudget);
+    combinedText = prefixText + ellipsisSuffix;
+    combinedByteLen = encoder.encode(combinedText).length;
+    guard = guard + 1;
+    if (guard > maxBytes + 8) {
       break;
     }
-    const byteAtCut = encodedBytes[cutEnd - 1];
-    const isContinuationByte = (byteAtCut & 0xc0) === 0x80;
-    if (!isContinuationByte) {
-      const sliceBytes = encodedBytes.subarray(0, cutEnd);
-      const decoder = new TextDecoder('utf-8');
-      resultText = decoder.decode(sliceBytes);
-      foundBoundary = true;
-      break;
-    }
-    cutEnd = cutEnd - 1;
+  }
+  let resultText = combinedText;
+  const stillTooLong = combinedByteLen > maxBytes;
+  if (stillTooLong) {
+    resultText = ellipsisSuffix;
   }
   const resultTrunc = {
     text: resultText,
-    wasTruncated: wasTruncated,
+    wasTruncated: true,
     originalByteLength: originalByteLength
   };
   return resultTrunc;
 }
 
-/** 有接收频率的信道：英文名、中文名按 10 字节（UTF-8）截断并写回 model */
+/** 有接收频率的信道：统一信道名按 15 字节（UTF-8）截断并写回 model */
 function writefreqApplyAllChannelNameTruncations() {
   writefreqEnsureModelInit();
   const truncationWarnings = [];
@@ -1309,48 +1498,97 @@ function writefreqApplyAllChannelNameTruncations() {
     }
     const channelNumber = startCh + rowIndex;
     const rowLabel = '第 ' + channelNumber + ' 信道';
-    const enResult = writefreqTruncateUtf8ToMaxBytes(fields.enText, WRITE_FREQ_EN_NAME_MAX_BYTES);
-    if (enResult.wasTruncated) {
-      fields.enText = enResult.text;
-      const enMsg = rowLabel + '：英文信道名超过 10 字节（原 ' + enResult.originalByteLength + ' 字节，UTF-8），已截断';
-      truncationWarnings.push(enMsg);
-    }
-    const cnResult = writefreqTruncateUtf8ToMaxBytes(fields.cnText, WRITE_FREQ_CN_NAME_MAX_BYTES);
-    if (cnResult.wasTruncated) {
-      fields.cnText = cnResult.text;
-      const cnMsg = rowLabel + '：中文信道名超过 10 字节（原 ' + cnResult.originalByteLength + ' 字节，UTF-8），已截断';
-      truncationWarnings.push(cnMsg);
+    const nameResult = writefreqTruncateUtf8ToMaxBytes(
+      fields.channelNameText,
+      WRITE_FREQ_CHANNEL_NAME_MAX_BYTES
+    );
+    if (nameResult.wasTruncated) {
+      fields.channelNameText = nameResult.text;
+      const nameMsg =
+        rowLabel +
+        '：信道名超过 15 字节（原 ' +
+        nameResult.originalByteLength +
+        ' 字节，UTF-8），已截断，末尾为 ...';
+      truncationWarnings.push(nameMsg);
     }
   }
   return truncationWarnings;
 }
 
-function writefreqValidateEnglishName(text) {
-  const problems = [];
-  let ci = 0;
-  for (; ci < text.length; ci++) {
-    const code = text.charCodeAt(ci);
-    if (code < 32 || code > 127) {
-      problems.push('英文信道名仅允许 ASCII 可打印字符（32–127）');
-      break;
-    }
-  }
-  return problems;
-}
-
-function writefreqValidateCnName(text) {
+function writefreqValidateChannelName(text) {
   const problems = [];
   const encoder = new TextEncoder();
   const encoded = encoder.encode(text);
   const byteCount = encoded.length;
-  if (byteCount > WRITE_FREQ_CN_NAME_MAX_BYTES) {
-    problems.push('中文信道名 UTF-8 最长 10 字节（当前 ' + byteCount + ' 字节）');
+  if (byteCount > WRITE_FREQ_CHANNEL_NAME_MAX_BYTES) {
+    const problemText =
+      '信道名 UTF-8 最长 15 字节（当前 ' + byteCount + ' 字节）';
+    problems.push(problemText);
   }
   return problems;
 }
 
-function writefreqBuildEnglish16(text) {
-  const truncated = writefreqTruncateUtf8ToMaxBytes(text, WRITE_FREQ_EN_NAME_MAX_BYTES);
+/**
+ * 写频表格「信道名」失焦：超过 15 字节 UTF-8 时截断并提示（与 Flash 存储一致）。
+ */
+function writefreqApplyChannelNameBlur(channelNameInput) {
+  if (!channelNameInput) {
+    return;
+  }
+  const rawText = channelNameInput.value;
+  const maxBytes = WRITE_FREQ_CHANNEL_NAME_MAX_BYTES;
+  const nameResult = writefreqTruncateUtf8ToMaxBytes(rawText, maxBytes);
+  const didTruncate = nameResult.wasTruncated;
+  if (!didTruncate) {
+    return;
+  }
+  const truncatedText = nameResult.text;
+  channelNameInput.value = truncatedText;
+  writefreqFlushDomToModel();
+  const rowEl = channelNameInput.closest('tr');
+  let channelLabelForMsg = '';
+  if (rowEl) {
+    const chIdxRaw = rowEl.dataset.writefreqChIdx;
+    const chIdxParsed = Number.parseInt(chIdxRaw, 10);
+    const chIdxOk =
+      Number.isFinite(chIdxParsed) &&
+      chIdxParsed >= 0 &&
+      chIdxParsed < WRITE_FREQ_MR_MAX;
+    if (chIdxOk) {
+      const baseChannel = writefreqGetBaseChannel();
+      const channelNumber = baseChannel + chIdxParsed;
+      channelLabelForMsg = '第 ' + channelNumber + ' 信道';
+    }
+  }
+  const originalBytes = nameResult.originalByteLength;
+  let messageText = '';
+  const labelNonEmpty = channelLabelForMsg !== '';
+  if (labelNonEmpty) {
+    messageText =
+      channelLabelForMsg +
+      '：信道名超过 15 字节（原 ' +
+      originalBytes +
+      ' 字节，UTF-8），已截断，末尾为 ...';
+  } else {
+    messageText =
+      '信道名超过 15 字节（原 ' +
+      originalBytes +
+      ' 字节，UTF-8），已截断，末尾为 ...';
+  }
+  log(messageText, 'warning');
+  const logPanel = $('log');
+  if (logPanel) {
+    logPanel.classList.add('visible');
+  }
+  const logToggleBtn = $('logToggle');
+  if (logToggleBtn) {
+    logToggleBtn.textContent = '隐藏日志';
+  }
+  showAppToast(messageText, 'warning');
+}
+
+function writefreqBuildChannelName16(text) {
+  const truncated = writefreqTruncateUtf8ToMaxBytes(text, WRITE_FREQ_CHANNEL_NAME_MAX_BYTES);
   const encoder = new TextEncoder();
   const encoded = encoder.encode(truncated.text);
   const buf = new Uint8Array(16);
@@ -1361,15 +1599,10 @@ function writefreqBuildEnglish16(text) {
   return buf;
 }
 
-function writefreqBuildCn16(text) {
-  const truncated = writefreqTruncateUtf8ToMaxBytes(text, WRITE_FREQ_CN_NAME_MAX_BYTES);
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(truncated.text);
+/** 写入旧中文名区：整槽 0xFF，表示该槽已废弃、由统一区承载名称 */
+function writefreqLegacyCnSlotCleared16() {
   const buf = new Uint8Array(16);
-  let j = 0;
-  for (; j < encoded.length; j++) {
-    buf[j] = encoded[j];
-  }
+  buf.fill(0xff);
   return buf;
 }
 
@@ -1383,8 +1616,7 @@ function writefreqErasedMrBlock16() {
 function writefreqGetRowInputs(tr) {
   const rxEl = tr.querySelector('.wf-rx');
   const offsetEl = tr.querySelector('.wf-offset');
-  const enEl = tr.querySelector('.wf-en');
-  const cnEl = tr.querySelector('.wf-cn');
+  const channelNameEl = tr.querySelector('.wf-channel-name');
   const powerEl = tr.querySelector('.wf-power');
   const rxCtcssEl = tr.querySelector('.wf-rx-ctcss');
   const rxDcsEl = tr.querySelector('.wf-rx-dcs');
@@ -1394,8 +1626,7 @@ function writefreqGetRowInputs(tr) {
   const modEl = tr.querySelector('.wf-mod');
   const rxText = rxEl ? rxEl.value : '';
   const offsetText = offsetEl ? offsetEl.value : '';
-  const enText = enEl ? enEl.value : '';
-  const cnText = cnEl ? cnEl.value : '';
+  const channelNameText = channelNameEl ? channelNameEl.value : '';
   const powerVal = powerEl ? powerEl.value : '';
   const rxCtcss = rxCtcssEl ? rxCtcssEl.value : '';
   const rxDcs = rxDcsEl ? rxDcsEl.value : '';
@@ -1406,8 +1637,7 @@ function writefreqGetRowInputs(tr) {
   return {
     rxText,
     offsetText,
-    enText,
-    cnText,
+    channelNameText,
     powerVal,
     rxCtcss,
     rxDcs,
@@ -1422,8 +1652,7 @@ function writefreqEmptyRowFields() {
   return {
     rxText: '',
     offsetText: '',
-    enText: '',
-    cnText: '',
+    channelNameText: '',
     powerVal: '',
     rxCtcss: '',
     rxDcs: '',
@@ -1452,6 +1681,25 @@ function writefreqGetPageCount() {
   return fullPages;
 }
 
+/** 已填写：接收频率非空（与写入前校验一致） */
+function writefreqCountFilledRows() {
+  writefreqEnsureModelInit();
+  let filledCount = 0;
+  let rowIndex = 0;
+  for (; rowIndex < WRITE_FREQ_MR_MAX; rowIndex++) {
+    const fields = writefreqRowsData[rowIndex];
+    if (fields === null || fields === undefined) {
+      continue;
+    }
+    const rxTrimmed = fields.rxText.trim();
+    const hasRx = rxTrimmed !== '';
+    if (hasRx) {
+      filledCount++;
+    }
+  }
+  return filledCount;
+}
+
 function writefreqFlushDomToModel() {
   writefreqEnsureModelInit();
   const rowList = document.querySelectorAll('#writefreqTbody tr');
@@ -1476,8 +1724,7 @@ function writefreqFlushDomToModel() {
 function writefreqApplyFieldsToTr(tr, fields) {
   const rxIn = tr.querySelector('.wf-rx');
   const offsetEl = tr.querySelector('.wf-offset');
-  const enEl = tr.querySelector('.wf-en');
-  const cnEl = tr.querySelector('.wf-cn');
+  const channelNameEl = tr.querySelector('.wf-channel-name');
   const powerEl = tr.querySelector('.wf-power');
   const rxCtcssEl = tr.querySelector('.wf-rx-ctcss');
   const rxDcsEl = tr.querySelector('.wf-rx-dcs');
@@ -1491,11 +1738,8 @@ function writefreqApplyFieldsToTr(tr, fields) {
   if (offsetEl) {
     offsetEl.value = fields.offsetText;
   }
-  if (enEl) {
-    enEl.value = fields.enText;
-  }
-  if (cnEl) {
-    cnEl.value = fields.cnText;
+  if (channelNameEl) {
+    channelNameEl.value = fields.channelNameText;
   }
   if (powerEl) {
     powerEl.value = fields.powerVal;
@@ -1558,15 +1802,19 @@ function wfBlock16ToRowFields(block16) {
 }
 
 function writefreqUpdatePaginationUI() {
+  writefreqFlushDomToModel();
   const infoEl = $('writefreqPageInfo');
   const prevBtn = $('writefreqPagePrev');
   const nextBtn = $('writefreqPageNext');
   const totalPages = writefreqGetPageCount();
   const cur = writefreqPageIndex + 1;
+  const filledCount = writefreqCountFilledRows();
   if (infoEl) {
     const totalLine =
       '共 ' +
       WRITE_FREQ_MR_MAX +
+      ' 条 · 已填写 ' +
+      filledCount +
       ' 条 · 第 ' +
       cur +
       ' / ' +
@@ -1811,18 +2059,15 @@ function writefreqRebuildRows() {
     }
     tdMod.appendChild(selMod);
 
-    const tdEn = document.createElement('td');
-    const inEn = document.createElement('input');
-    inEn.type = 'text';
-    inEn.className = 'wf-en';
-    inEn.maxLength = 10;
-    tdEn.appendChild(inEn);
-
-    const tdCn = document.createElement('td');
-    const inCn = document.createElement('input');
-    inCn.type = 'text';
-    inCn.className = 'wf-cn';
-    tdCn.appendChild(inCn);
+    const tdName = document.createElement('td');
+    const inName = document.createElement('input');
+    inName.type = 'text';
+    inName.className = 'wf-channel-name';
+    inName.placeholder = 'ASCII 或汉字等，≤15 字节 UTF-8';
+    inName.addEventListener('blur', function writefreqChannelNameBlurHandler() {
+      writefreqApplyChannelNameBlur(inName);
+    });
+    tdName.appendChild(inName);
 
     tr.appendChild(tdDrag);
     tr.appendChild(tdN);
@@ -1835,8 +2080,7 @@ function writefreqRebuildRows() {
     tr.appendChild(tdSft);
     tr.appendChild(tdOff);
     tr.appendChild(tdMod);
-    tr.appendChild(tdEn);
-    tr.appendChild(tdCn);
+    tr.appendChild(tdName);
     tbody.appendChild(tr);
   }
   writefreqShowCurrentPage();
@@ -1890,19 +2134,19 @@ async function writefreqReadFromDevice() {
       const enRaw = await spiFlashReadChunk(sessionTs, enAddr, 16);
       if (!enRaw) {
         const enHex = enAddr.toString(16);
-        throw new Error('读取英文信道名区失败 @ CH ' + (chIndex0 + 1) + '（SPI 0x' + enHex + '）');
+        throw new Error('读取统一信道名区失败 @ CH ' + (chIndex0 + 1) + '（SPI 0x' + enHex + '）');
       }
       await sleep(25);
       const cnRaw = await spiFlashReadChunk(sessionTs, cnAddr, 16);
       if (!cnRaw) {
         const cnHex = cnAddr.toString(16);
-        throw new Error('读取中文信道名区失败 @ CH ' + (chIndex0 + 1) + '（SPI 0x' + cnHex + '）');
+        throw new Error('读取旧中文名区失败 @ CH ' + (chIndex0 + 1) + '（SPI 0x' + cnHex + '）');
       }
-      const enText = writefreqTrimAsciiName(enRaw);
-      const cnText = writefreqDecodeCnNameUtf8(cnRaw);
+      const unifiedNameText = writefreqDecodeCnNameUtf8(enRaw);
+      const legacyCnNameText = writefreqDecodeCnNameUtf8(cnRaw);
+      const mergedNameText = writefreqMergeReadChannelName(unifiedNameText, legacyCnNameText);
       const rowFields = wfBlock16ToRowFields(block);
-      rowFields.enText = enText;
-      rowFields.cnText = cnText;
+      rowFields.channelNameText = mergedNameText;
       writefreqRowsData[chIdx] = rowFields;
       const pct = ((chIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
       updateProgress(pct);
@@ -1938,7 +2182,7 @@ async function writefreqWriteToDevice() {
   if (nameTruncationWarnings.length > 0) {
     writefreqShowCurrentPage();
     const warnJoined = nameTruncationWarnings.join('\n');
-    log('信道名截断提示（≤10 字节 UTF-8）：\n' + warnJoined, 'warning');
+    log('信道名截断提示（≤15 字节 UTF-8，超长末尾为 ...）：\n' + warnJoined, 'warning');
   }
   const messages = [];
   const startCh = writefreqGetBaseChannel();
@@ -1950,18 +2194,11 @@ async function writefreqWriteToDevice() {
     }
     const chNum = startCh + validateRow;
     const rowPrefix = '第 ' + chNum + ' 信道：';
-    const enProblems = writefreqValidateEnglishName(fields.enText);
-    const cnProblems = writefreqValidateCnName(fields.cnText);
-    if (enProblems.length > 0) {
+    const nameProblems = writefreqValidateChannelName(fields.channelNameText);
+    if (nameProblems.length > 0) {
       let pi = 0;
-      for (; pi < enProblems.length; pi++) {
-        messages.push(rowPrefix + enProblems[pi]);
-      }
-    }
-    if (cnProblems.length > 0) {
-      let pj = 0;
-      for (; pj < cnProblems.length; pj++) {
-        messages.push(rowPrefix + cnProblems[pj]);
+      for (; pi < nameProblems.length; pi++) {
+        messages.push(rowPrefix + nameProblems[pi]);
       }
     }
     try {
@@ -2031,15 +2268,15 @@ async function writefreqWriteToDevice() {
         if (!writeEraseOk) {
           throw new Error('覆盖写入擦除信道失败 @ CH ' + (chIndex0 + 1));
         }
-        const enBufClear = writefreqBuildEnglish16('');
+        const enBufClear = writefreqBuildChannelName16('');
         const enClearOk = await spiFlashWriteChunk(sessionTs, enAddr, enBufClear);
         if (!enClearOk) {
-          throw new Error('覆盖写入清空英文信道名失败 @ CH ' + (chIndex0 + 1));
+          throw new Error('覆盖写入清空命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
         }
-        const cnBufClear = writefreqBuildCn16('');
+        const cnBufClear = writefreqLegacyCnSlotCleared16();
         const cnClearOk = await spiFlashWriteChunk(sessionTs, cnAddr, cnBufClear);
         if (!cnClearOk) {
-          throw new Error('覆盖写入清空中文信道名失败 @ CH ' + (chIndex0 + 1));
+          throw new Error('覆盖写入清空旧中文名区失败 @ CH ' + (chIndex0 + 1));
         }
         const pctErase = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
         updateProgress(pctErase);
@@ -2072,22 +2309,22 @@ async function writefreqWriteToDevice() {
       if (!writeMainOk) {
         throw new Error('写入信道数据失败 @ CH ' + (chIndex0 + 1));
       }
-      const enBuf = writefreqBuildEnglish16(fields.enText);
+      const enBuf = writefreqBuildChannelName16(fields.channelNameText);
       const enOk = await spiFlashWriteChunk(sessionTs, enAddr, enBuf);
       if (!enOk) {
-        throw new Error('写入英文信道名失败 @ CH ' + (chIndex0 + 1));
+        throw new Error('写入命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
       }
-      const cnBuf = writefreqBuildCn16(fields.cnText);
+      const cnBuf = writefreqLegacyCnSlotCleared16();
       const cnOk = await spiFlashWriteChunk(sessionTs, cnAddr, cnBuf);
       if (!cnOk) {
-        throw new Error('写入中文信道名失败 @ CH ' + (chIndex0 + 1));
+        throw new Error('写入旧中文名区（清除）失败 @ CH ' + (chIndex0 + 1));
       }
       const pct = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
       updateProgress(pct);
       await sleep(40);
     }
     updateProgress(100);
-    log('已按表格覆盖设备 MR CH1–CH' + WRITE_FREQ_MR_MAX + '（共 ' + WRITE_FREQ_MR_MAX + ' 槽；无接收频率的槽已擦除含中英文名）。第 ' + (WRITE_FREQ_MR_MAX + 1) + ' 个及以后 MR 未修改。请先确认固件与备份。', 'success');
+    log('已按表格覆盖设备 MR CH1–CH' + WRITE_FREQ_MR_MAX + '（共 ' + WRITE_FREQ_MR_MAX + ' 槽；无接收频率的槽已擦除含信道名）。第 ' + (WRITE_FREQ_MR_MAX + 1) + ' 个及以后 MR 未修改。请先确认固件与备份。', 'success');
   } catch (e) {
     log('写频写入失败: ' + e.message, 'error');
   } finally {
@@ -2331,8 +2568,7 @@ function writefreqExportSheet() {
     '频差方向',
     '频差频率_MHz',
     '调制模式',
-    '英文信道名称',
-    '中文信道名称'
+    '信道名'
   ];
   const rows = [];
   rows.push(header);
@@ -2351,8 +2587,7 @@ function writefreqExportSheet() {
       writefreqSftValToSheetLabel(fields.sftVal),
       fields.offsetText.trim(),
       writefreqModValToSheetLabel(fields.modVal),
-      fields.enText,
-      fields.cnText
+      fields.channelNameText
     ];
     rows.push(row);
   }
@@ -2402,6 +2637,13 @@ function writefreqImportSheet(rowsAoA) {
   const idxSft = header.indexOf('频差方向');
   const idxOff = header.indexOf('频差频率_MHz');
   const idxMod = header.indexOf('调制模式');
+  let idxName = header.indexOf('信道名');
+  if (idxName < 0) {
+    idxName = header.indexOf('命名信道');
+  }
+  if (idxName < 0) {
+    idxName = header.indexOf('信道名称');
+  }
   let idxEn = header.indexOf('英文信道名称');
   if (idxEn < 0) {
     idxEn = header.indexOf('英文信道名');
@@ -2416,7 +2658,10 @@ function writefreqImportSheet(rowsAoA) {
   const hasNew = idxRx >= 0 && idxOff >= 0 && idxSft >= 0;
   const hasLegacy = idxRx >= 0 && legacyTx >= 0 && legacyEn >= 0 && legacyCn >= 0;
   if (!hasNew && !hasLegacy) {
-    log('表头不匹配：请使用新版导出列名，或包含 接收频率_MHz / 发射频率_MHz / 英文信道名 / 中文信道名', 'error');
+    log(
+      '表头不匹配：请使用新版导出列名（含「信道名」），或旧版完整列（接收频率_MHz / 发射频率_MHz / 英文信道名 / 中文信道名）',
+      'error'
+    );
     return;
   }
   if (idxCh >= 0) {
@@ -2467,8 +2712,17 @@ function writefreqImportSheet(rowsAoA) {
       merged.txCtcss = writefreqSheetLabelToCtcssVal(cellStr(idxTxCt));
       merged.sftVal = writefreqSheetLabelToSftVal(cellStr(idxSft));
       merged.modVal = writefreqSheetLabelToModVal(cellStr(idxMod));
-      merged.enText = cellStr(idxEn);
-      merged.cnText = cellStr(idxCn);
+      const hasNameUnifiedCol = idxName >= 0;
+      const hasNamePairCols = idxEn >= 0 && idxCn >= 0;
+      if (hasNamePairCols) {
+        merged.channelNameText = writefreqLegacyTableMergeEnCn(cellStr(idxEn), cellStr(idxCn));
+      } else if (hasNameUnifiedCol) {
+        merged.channelNameText = cellStr(idxName);
+      } else if (idxCn >= 0) {
+        merged.channelNameText = cellStr(idxCn).trim();
+      } else if (idxEn >= 0) {
+        merged.channelNameText = cellStr(idxEn).trim();
+      }
     }
     if (hasLegacy && !hasNew) {
       merged.rxText = cellStr(idxRx);
@@ -2476,8 +2730,7 @@ function writefreqImportSheet(rowsAoA) {
       merged.sftVal = '0';
       merged.modVal = '0';
       merged.powerVal = '1';
-      merged.enText = cellStr(legacyEn);
-      merged.cnText = cellStr(legacyCn);
+      merged.channelNameText = writefreqLegacyTableMergeEnCn(cellStr(legacyEn), cellStr(legacyCn));
       const rxTxt = cellStr(idxRx);
       const txTxt = cellStr(legacyTx);
       const rxHzTry = Number.parseFloat(rxTxt) * 1e6;
@@ -2592,6 +2845,16 @@ if (writefreqPagePrevEl) {
 if (writefreqPageNextEl) {
   writefreqPageNextEl.addEventListener('click', () => {
     writefreqPageDelta(1);
+  });
+}
+
+const writefreqTbodyEl = $('writefreqTbody');
+if (writefreqTbodyEl) {
+  writefreqTbodyEl.addEventListener('input', function writefreqTbodyInputSyncPagination() {
+    writefreqUpdatePaginationUI();
+  });
+  writefreqTbodyEl.addEventListener('change', function writefreqTbodyChangeSyncPagination() {
+    writefreqUpdatePaginationUI();
   });
 }
 

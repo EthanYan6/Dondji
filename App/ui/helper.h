@@ -65,6 +65,8 @@ void UI_DisplayClear();
 #ifdef ENABLE_CHINESE
 size_t UI_SmallStringPixelWidth(const char *pString);
 void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end, uint8_t latin_down_when_mixed);
+/** 12px 纵带内绘信道名（中英混排）：与命名信道拼音编辑、主界面 MR 一致，latin_down=0 */
+void UI_PrintStringSmallChannelNameBand(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_top);
 void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
 void UI_PrintStringSmallAtPixelCnInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
 #endif

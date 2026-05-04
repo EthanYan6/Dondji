@@ -32,6 +32,10 @@ EEPROM_Config_t gEeprom = { 0 };
 
 uint8_t gUiLanguage = UI_LANGUAGE_EN;
 
+#ifdef ENABLE_CHINESE
+static void SETTINGS_MigrateLegacyCnChannelNamesToUnified(void);
+#endif
+
 void SETTINGS_InitEEPROM(void)
 {
     uint8_t Data[16] = {0};
@@ -597,6 +601,10 @@ void SETTINGS_LoadCalibration(void)
         BK4819_WriteRegister(BK4819_REG_3B, 22656 + gEeprom.BK4819_XTAL_FREQ_LOW);
 //      BK4819_WriteRegister(BK4819_REG_3C, gEeprom.BK4819_XTAL_FREQ_HIGH);
     }
+
+#ifdef ENABLE_CHINESE
+    SETTINGS_MigrateLegacyCnChannelNamesToUnified();
+#endif
 }
 
 uint32_t SETTINGS_FetchChannelFrequency(const uint16_t channel)
@@ -614,6 +622,8 @@ uint32_t SETTINGS_FetchChannelFrequency(const uint16_t channel)
 
 void SETTINGS_FetchChannelName(char *s, const uint16_t channel)
 {
+    int i;
+
     if (s == NULL)
         return;
 
@@ -625,18 +635,26 @@ void SETTINGS_FetchChannelName(char *s, const uint16_t channel)
     if (!RADIO_CheckValidChannel(channel, false, 0))
         return;
 
-    // 0x0F50
-    PY25Q16_ReadBuffer(0x004000 + (channel * 16), s, 10);
+    PY25Q16_ReadBuffer(0x004000 + (channel * 16), s, CHANNEL_NAME_MAX_BYTES);
 
-    int i;
-    for (i = 0; i < 10; i++)
-        if (s[i] < 32 || s[i] > 127)
-            break;                // invalid char
+    for (i = 0; i < (int)CHANNEL_NAME_MAX_BYTES; i++)
+    {
+        uint8_t c = (uint8_t)s[i];
+        if (c == 0 || c == 0xFF)
+            break;
+        if (c >= 0xE4 && c <= 0xEF)
+        {
+            i += 2;
+            continue;
+        }
+        if (c < 32 || c > 127)
+            break;
+    }
+    s[i] = 0;
 
-    s[i--] = 0;                   // null term
-
-    while (i >= 0 && s[i] == 32)  // trim trailing spaces
-        s[i--] = 0;               // null term
+    i--;
+    while (i >= 0 && s[i] == 32)
+        s[i--] = 0;
 }
 
 void SETTINGS_FactoryReset(bool bIsAll)
@@ -1148,8 +1166,10 @@ void SETTINGS_SaveChannelName(uint16_t channel, const char * name)
 {
     uint16_t offset = channel * 16;
     uint8_t buf[16] = {0};
-    memcpy(buf, name, MIN(strlen(name), 10u));
-    // 0x0F50
+    size_t len = strlen(name);
+    if (len > CHANNEL_NAME_MAX_BYTES)
+        len = CHANNEL_NAME_MAX_BYTES;
+    memcpy(buf, name, len);
     PY25Q16_WriteBuffer(0x004000 + offset, buf, 0x10, false);
 }
 
@@ -1356,20 +1376,21 @@ void SETTINGS_ResetTxLock(void)
 
 #ifdef ENABLE_CHINESE
 
-// ── CN Channel Name storage (SPI Flash at 0x020000) ──
+/* Legacy dedicated CN name area (pre-unified); erased after migration */
+#define CN_NAME_LEGACY_BASE 0x020000u
 
-void SETTINGS_FetchCNChannelName(char *s, uint16_t channel)
+static void SETTINGS_LegacyMigrationReadCnSlot(char *s, uint16_t channel)
 {
+    int i;
+
     if (s == NULL)
         return;
     s[0] = 0;
     if (!RADIO_CheckValidChannel(channel, false, 0))
         return;
 
-    PY25Q16_ReadBuffer(CN_NAME_FLASH_BASE + (channel * 16), s, 10);
+    PY25Q16_ReadBuffer(CN_NAME_LEGACY_BASE + (channel * 16), s, 10);
 
-    // validate UTF-8: first byte must be 0xE4-0xEF (CJK) or 32-127 (ASCII)
-    int i;
     for (i = 0; i < 10; i++)
     {
         uint8_t c = (uint8_t)s[i];
@@ -1377,7 +1398,7 @@ void SETTINGS_FetchCNChannelName(char *s, uint16_t channel)
             break;
         if (c >= 0xE4 && c <= 0xEF)
         {
-            i += 2; // skip the 2 continuation bytes
+            i += 2;
             continue;
         }
         if (c < 32 || c > 127)
@@ -1385,21 +1406,82 @@ void SETTINGS_FetchCNChannelName(char *s, uint16_t channel)
     }
     s[i] = 0;
 
-    // trim trailing spaces
     i--;
     while (i >= 0 && s[i] == ' ')
         s[i--] = 0;
 }
 
-void SETTINGS_SaveCNChannelName(uint16_t channel, const char *name)
+/*
+ * 一次性迁移：仅当旧区某信道存在「有效非空」中文名时，才写入统一区 (0x004000)。
+ * 若无中文名则不写，保留原英文。完成后擦除旧区。
+ */
+static bool SETTINGS_LegacyCnFlashRegionIsBlank(void)
 {
-    uint16_t offset = channel * 16;
-    uint8_t buf[16] = {0};
-    size_t len = strlen(name);
-    if (len > 10)
-        len = 10;
-    memcpy(buf, name, len);
-    PY25Q16_WriteBuffer(CN_NAME_FLASH_BASE + offset, buf, 0x10, false);
+    uint8_t sample[256];
+    uint32_t sec;
+
+    for (sec = 0; sec < 4u; sec++)
+    {
+        uint32_t base;
+        size_t i;
+
+        base = CN_NAME_LEGACY_BASE + sec * 0x1000u;
+        PY25Q16_ReadBuffer(base, sample, sizeof(sample));
+        for (i = 0; i < sizeof(sample); i++)
+        {
+            if (sample[i] != 0xFFu)
+                return false;
+        }
+    }
+    return true;
+}
+
+static void SETTINGS_MigrateLegacyCnChannelNamesToUnified(void)
+{
+    uint16_t channel;
+
+    if (SETTINGS_LegacyCnFlashRegionIsBlank())
+        return;
+
+    for (channel = 0; channel < MR_CHANNELS_MAX; channel++)
+    {
+        char legacy_cn[16];
+        bool has_legacy_name;
+
+        SETTINGS_LegacyMigrationReadCnSlot(legacy_cn, channel);
+        has_legacy_name = (legacy_cn[0] != 0);
+        if (!has_legacy_name)
+            continue;
+
+        SETTINGS_SaveChannelName(channel, legacy_cn);
+    }
+
+    for (channel = 0; channel < 4u; channel++)
+        PY25Q16_SectorErase(CN_NAME_LEGACY_BASE + (uint32_t)channel * 0x1000u);
+}
+
+bool SETTINGS_ChannelNameHasCjkUtf8(const char *s)
+{
+    const unsigned char *p;
+
+    if (s == NULL)
+        return false;
+    if (s[0] == 0)
+        return false;
+
+    p = (const unsigned char *)s;
+    while (*p != 0)
+    {
+        if (*p >= 0xE4 && *p <= 0xEF)
+            return true;
+        if (*p < 0x80u)
+        {
+            p++;
+            continue;
+        }
+        p++;
+    }
+    return false;
 }
 
 // ── CN Font SPI Flash functions ──

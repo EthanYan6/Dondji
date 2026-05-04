@@ -881,6 +881,13 @@ void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_
     }
 }
 
+void UI_PrintStringSmallChannelNameBand(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_top)
+{
+    const uint8_t band_bottom_inclusive = (uint8_t)((unsigned)y_pixel_top + 11u);
+
+    UI_PrintStringSmallAtPixel(pString, x_start, x_end, y_pixel_top, band_bottom_inclusive, 0u);
+}
+
 void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end)
 {
     const uint8_t eng_char_width = 6;

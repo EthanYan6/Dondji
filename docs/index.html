@@ -6,8 +6,27 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('uvk1-web-theme') === 'light') {
+          document.documentElement.classList.add('theme-light');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
+  <button type="button" id="themeToggleBtn" class="theme-toggle" title="切换浅色主题" aria-label="切换浅色主题">
+    <svg class="theme-toggle__icon theme-toggle__icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+  <div id="appToastRoot" class="app-toast-root" aria-live="polite"></div>
   <div class="page-layout">
     <!-- VERSION TIMELINE SIDEBAR -->
     <aside class="timeline-sidebar" id="timelineSidebar">
@@ -55,6 +74,14 @@
           </svg>
           <span class="subtitle-chip-label">小红书</span>
           <span class="subtitle-chip-name">小闫同学</span>
+        </span>
+        <span class="subtitle-chip subtitle-chip--weixin" title="微信视频号">
+          <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M10 9.5L15 12l-5 2.5V9.5z" fill="currentColor" stroke="none"/>
+          </svg>
+          <span class="subtitle-chip-label">微信视频号</span>
+          <span class="subtitle-chip-name">小闫连不上</span>
         </span>
       </div>
     </div>
@@ -158,15 +185,6 @@
     <div class="tab-content" id="writefreq-content">
       <section class="section">
         <p class="writefreq-lead">
-          <span class="writefreq-warn">
-            <svg class="writefreq-lead-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            开发中，请勿使用。
-          </span>
-          <span class="writefreq-lead-sep" aria-hidden="true"></span>
           <span class="writefreq-scope-note">
             <svg class="writefreq-lead-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="6" y="6" width="12" height="12" rx="1"/>
@@ -228,8 +246,7 @@
               <th>频差方向<br><span class="th-sub">MENU 频差方向</span></th>
               <th>频差频率<br><span class="th-sub">MHz</span></th>
               <th>调制模式<br><span class="th-sub">FM/AM/USB</span></th>
-              <th>英文信道名称</th>
-              <th>中文信道名称</th>
+              <th>信道名<br><span class="th-sub">UTF-8 最长 15 字节</span></th>
             </tr>
           </thead>
           <tbody id="writefreqTbody"></tbody>
@@ -237,7 +254,7 @@
       </div>
       <div class="writefreq-pagination" id="writefreqPagination" aria-label="写频分页">
         <button type="button" class="btn-inline btn-secondary" id="writefreqPagePrev">上一页</button>
-        <span class="writefreq-page-info" id="writefreqPageInfo" aria-live="polite">共 200 条 · 第 1 / 20 页 · 每页 10 信道</span>
+        <span class="writefreq-page-info" id="writefreqPageInfo" aria-live="polite">共 200 条 · 已填写 0 条 · 第 1 / 20 页 · 每页 10 信道</span>
         <button type="button" class="btn-inline btn-secondary" id="writefreqPageNext">下一页</button>
       </div>
       <p id="writefreqValidation" class="writefreq-validation" style="display:none;"></p>
