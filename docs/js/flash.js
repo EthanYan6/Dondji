@@ -1023,7 +1023,8 @@ if (!('serial' in navigator)) {
 })();
 
 // ========== WRITE FREQUENCY (MR CHANNELS, SPI FLASH) ==========
-// 地址与固件一致：MR 块 channel*16；统一信道名 0x004000+ch*16（UTF-8，最长 15 字节）；旧中文区 0x020000 仅读取合并/写入时按槽擦除（settings.c）
+// 地址与固件一致：MR 块 channel*16；统一信道名 0x004000+ch*16；信道属性 ChannelAttributes_t 2 字节 @ 0x8000+ch*2（misc.c FLASH_CHANNEL_ATTR_BASE）；旧中文区 0x020000 仅读取合并/写入时按槽擦除（settings.c）
+// 若属性区为 0xFFFF，radio.c RADIO_ConfigureChannel 视该槽为未使用，不会加载 MR 频率——故写「有频率」的信道时必须写入有效属性字节。
 
 /** 本工具仅读写设备 MR 的前 N 槽（Flash 下标 0 … N-1，界面 CH1 … CHN）；大于 N 的 MR 槽读写时不触碰 */
 const WRITE_FREQ_MR_MAX = 200;
@@ -1043,13 +1044,88 @@ const WRITE_FREQ_SPI_MAX_CHUNK = 120;
 /** waitForMsg 循环次数，×10ms 为大约最长等待（例 120 ≈ 1.2s） */
 const WRITE_FREQ_SPI_READ_WAIT_ITERATIONS = 120;
 const WRITE_FREQ_SPI_READ_RETRIES = 5;
+/** SPI 写扇区/整片编程时固件可能阻塞较久，需明显大于读（例 1500 ≈ 15s） */
+const WRITE_FREQ_SPI_WRITE_WAIT_ITERATIONS = 1500;
 
 const WRITE_FREQ_ADDR_EN_BASE = 0x004000;
 const WRITE_FREQ_ADDR_CN_BASE = 0x020000;
+/** 与 misc.c FLASH_CHANNEL_ATTR_BASE 一致；每信道 2 字节，擦除态 0xFFFF 表示未使用 */
+const WRITE_FREQ_ATTR_BASE = 0x008000;
+
+/**
+ * 与 App/frequencies.c（ENABLE_WIDE_RX）frequencyBandTable[].lower 一致：Flash 频率为「步长 10 Hz」的 uint32
+ * FREQUENCY_GetBand 自高向低比较 lower
+ */
+const WF_BAND_LOWER_RX_STORED = [
+  1800000,
+  10800000,
+  13700000,
+  17400000,
+  35000000,
+  40000000,
+  47000000
+];
 /** 固件/擦除区常用 0xFFFFFFFF 表示无有效频率；直接换算成 MHz 会显示 4294.967295，读表应留空 */
 const WRITE_FREQ_HZ_UNSET = 0xffffffff;
 /** 与固件 VFO / MR 一致：Flash 中 uint32 频率步长为 10 Hz（见 App/frequencies.c frequencyBandTable、radio.c info.Frequency → BK4819） */
 const WRITE_FREQ_STORE_STEP_HZ = 10;
+
+/**
+ * @param {number} rxStored Flash MR 块内接收频率 uint32（步长 10 Hz）
+ * @returns {number} FREQUENCY_Band_t 枚举 0…6（与 firmware 自高到低扫描一致）
+ */
+function writefreqBandEnumFromRxStored(rxStored) {
+  let idx = 6;
+  for (; idx >= 0; idx--) {
+    const lowerBound = WF_BAND_LOWER_RX_STORED[idx];
+    const meetsLower = rxStored >= lowerBound;
+    if (meetsLower) {
+      return idx;
+    }
+  }
+  return 0;
+}
+
+/**
+ * @param {number} valueU16
+ * @returns {Uint8Array}
+ */
+function writefreqUint16ToLeBytes(valueU16) {
+  const outBuf = new Uint8Array(2);
+  const dataView = new DataView(outBuf.buffer);
+  dataView.setUint16(0, valueU16, true);
+  return outBuf;
+}
+
+/**
+ * 合成要写回 SPI 的 ChannelAttributes_t（uint16 LE）。原值为 0xFFFF 时用默认 band；否则只更新低 3 位 band，保留扫描列表等高位字段。
+ * @param {Uint8Array|null} existingTwoBytes
+ * @param {number} rxStored
+ * @returns {number}
+ */
+function writefreqBuildAttrUint16ForProgram(existingTwoBytes, rxStored) {
+  const bandEnum = writefreqBandEnumFromRxStored(rxStored);
+  const bandPart = bandEnum & 7;
+  let existingVal = 0xffff;
+  if (existingTwoBytes !== null && existingTwoBytes !== undefined) {
+    if (existingTwoBytes.length === 2) {
+      const existingView = new DataView(
+        existingTwoBytes.buffer,
+        existingTwoBytes.byteOffset,
+        2
+      );
+      existingVal = existingView.getUint16(0, true);
+    }
+  }
+  let mergedAttr = 0;
+  if (existingVal === 0xffff) {
+    mergedAttr = bandPart;
+  } else {
+    const withoutBand = existingVal & ~7;
+    mergedAttr = withoutBand | bandPart;
+  }
+  return mergedAttr;
+}
 
 // 与 App/dcs.c、App/radio.c 一致
 const WF_CTCSS_OPTIONS = [
@@ -1381,7 +1457,7 @@ async function spiFlashWriteChunk(sessionTs, flashAddress, payload) {
       msg[16 + bi] = payload[bi];
     }
     await sendMessage(msg);
-    const wr = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 600);
+    const wr = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, WRITE_FREQ_SPI_WRITE_WAIT_ITERATIONS);
     if (wr) {
       ok = true;
     }
@@ -1546,7 +1622,7 @@ function writefreqApplyAllChannelNameTruncations() {
   let rowIndex = 0;
   for (; rowIndex < WRITE_FREQ_MR_MAX; rowIndex++) {
     const fields = writefreqRowsData[rowIndex];
-    const rxTrimmed = fields.rxText.trim();
+    const rxTrimmed = writefreqSafeRxTrim(fields);
     if (rxTrimmed === '') {
       continue;
     }
@@ -2075,13 +2151,39 @@ function writefreqCountFilledRows() {
     if (fields === null || fields === undefined) {
       continue;
     }
-    const rxTrimmed = fields.rxText.trim();
-    const hasRx = rxTrimmed !== '';
+    const rxTrimmedForCount = writefreqSafeRxTrim(fields);
+    const hasRx = rxTrimmedForCount !== '';
     if (hasRx) {
       filledCount++;
     }
   }
   return filledCount;
+}
+
+/** 写入前确保 MR 0…WRITE_FREQ_MR_MAX-1 均有对象，避免 rowIdx 处 undefined 导致写入中途抛错、仅前半段成功写入 */
+function writefreqNormalizeRowsDataBeforeWrite() {
+  writefreqEnsureModelInit();
+  let rowIndex = 0;
+  for (; rowIndex < WRITE_FREQ_MR_MAX; rowIndex++) {
+    const existingRow = writefreqRowsData[rowIndex];
+    const existingMissing = existingRow === undefined || existingRow === null;
+    if (existingMissing) {
+      writefreqRowsData[rowIndex] = writefreqEmptyRowFields();
+    }
+  }
+}
+
+/** @param {{ rxText?: string }} fields */
+function writefreqSafeRxTrim(fields) {
+  let rxSourceText = '';
+  if (fields !== undefined && fields !== null) {
+    const rawRx = fields.rxText;
+    if (rawRx !== undefined && rawRx !== null) {
+      rxSourceText = String(rawRx);
+    }
+  }
+  const trimmedRx = rxSourceText.trim();
+  return trimmedRx;
 }
 
 function writefreqFlushDomToModel() {
@@ -2090,9 +2192,6 @@ function writefreqFlushDomToModel() {
   let ri = 0;
   for (; ri < rowList.length; ri++) {
     const tr = rowList[ri];
-    if (tr.style.display === 'none') {
-      continue;
-    }
     const chIdxRaw = tr.dataset.writefreqChIdx;
     if (chIdxRaw === undefined || chIdxRaw === '') {
       continue;
@@ -2562,6 +2661,7 @@ async function writefreqWriteToDevice() {
   }
   writefreqEnsureModelInit();
   writefreqFlushDomToModel();
+  writefreqNormalizeRowsDataBeforeWrite();
   const nameTruncationWarnings = writefreqApplyAllChannelNameTruncations();
   if (nameTruncationWarnings.length > 0) {
     writefreqShowCurrentPage();
@@ -2573,7 +2673,8 @@ async function writefreqWriteToDevice() {
   let validateRow = 0;
   for (; validateRow < WRITE_FREQ_MR_MAX; validateRow++) {
     const fields = writefreqRowsData[validateRow];
-    if (fields.rxText.trim() === '') {
+    const rxTrimmedValidate = writefreqSafeRxTrim(fields);
+    if (rxTrimmedValidate === '') {
       continue;
     }
     const chNum = startCh + validateRow;
@@ -2643,10 +2744,12 @@ async function writefreqWriteToDevice() {
       /** 与读取一致：表格第 i 行对应 Flash MR 槽 i（CH i+1），与起始信道号显示无关，仅覆盖前 200 槽 */
       const chIndex0 = rowIdx;
       const fields = writefreqRowsData[rowIdx];
+      const rxTrimmedWrite = writefreqSafeRxTrim(fields);
       const baseAddr = chIndex0 * 16;
       const enAddr = WRITE_FREQ_ADDR_EN_BASE + chIndex0 * 16;
       const cnAddr = WRITE_FREQ_ADDR_CN_BASE + chIndex0 * 16;
-      if (fields.rxText.trim() === '') {
+      const attrAddr = WRITE_FREQ_ATTR_BASE + chIndex0 * 2;
+      if (rxTrimmedWrite === '') {
         const erasedMain = writefreqErasedMrBlock16();
         const writeEraseOk = await spiFlashWriteChunk(sessionTs, baseAddr, erasedMain);
         if (!writeEraseOk) {
@@ -2661,6 +2764,11 @@ async function writefreqWriteToDevice() {
         const cnClearOk = await spiFlashWriteChunk(sessionTs, cnAddr, cnBufClear);
         if (!cnClearOk) {
           throw new Error('覆盖写入清空旧中文名区失败 @ CH ' + (chIndex0 + 1));
+        }
+        const attrEraseBuf = new Uint8Array([0xff, 0xff]);
+        const attrEraseOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrEraseBuf);
+        if (!attrEraseOk) {
+          throw new Error('覆盖写入信道属性（标记未使用）失败 @ CH ' + (chIndex0 + 1));
         }
         const pctErase = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
         updateProgress(pctErase);
@@ -2703,12 +2811,32 @@ async function writefreqWriteToDevice() {
       if (!cnOk) {
         throw new Error('写入旧中文名区（清除）失败 @ CH ' + (chIndex0 + 1));
       }
+      const attrExisting = await spiFlashReadChunk(sessionTs, attrAddr, 2);
+      const attrValMerged = writefreqBuildAttrUint16ForProgram(attrExisting, rxStored);
+      const attrPayload = writefreqUint16ToLeBytes(attrValMerged);
+      const attrOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrPayload);
+      if (!attrOk) {
+        throw new Error('写入信道属性失败 @ CH ' + (chIndex0 + 1));
+      }
       const pct = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
       updateProgress(pct);
       await sleep(40);
     }
     updateProgress(100);
-    log('已按表格覆盖设备 MR CH1–CH' + WRITE_FREQ_MR_MAX + '（共 ' + WRITE_FREQ_MR_MAX + ' 槽；无接收频率的槽已擦除含信道名）。第 ' + (WRITE_FREQ_MR_MAX + 1) + ' 个及以后 MR 未修改。请先确认固件与备份。', 'success');
+    log(
+      '已按表格覆盖设备 MR CH1–CH' +
+        WRITE_FREQ_MR_MAX +
+        '（共 ' +
+        WRITE_FREQ_MR_MAX +
+        ' 槽；含 MR 数据区、信道名区、信道属性 0x8000；无接收频率的槽已擦除）。第 ' +
+        (WRITE_FREQ_MR_MAX + 1) +
+        ' 个及以后 MR 未修改。请先确认固件与备份。',
+      'success'
+    );
+    log('正在重启设备以加载新信道数据…', 'info');
+    await sendMessage(createMessage(MSG_REBOOT, 0));
+    await sleep(500);
+    log('已发送重启指令（设备将自动复位）', 'success');
   } catch (e) {
     log('写频写入失败: ' + e.message, 'error');
   } finally {
