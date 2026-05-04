@@ -89,7 +89,7 @@ python App/tools/gen_cn_font.py
 
 - `README.md`、`README.zh.md`、`README.en.md` — 表格中的字符数量等
 - `docs/index.html` — 「刷字库」页：支持的汉字个数说明
-- `docs/js/flash.js` — `CN_FONT_VERSION_OFFSET`（与 `CN_FONT_VERSION_OFFSET` 宏相同）、从仓库加载字库时的展示文案（如「1239 字符」）
+- `docs/js/flash.js` — `CN_FONT_VERSION_OFFSET`（与 `CN_FONT_VERSION_OFFSET` 宏相同）、从仓库加载字库时的展示文案（如「1243 字符」）
 - `docs/fonts/README.md` — 可选：当前 bin 大小与字数简述
 
 ## 7. 验证

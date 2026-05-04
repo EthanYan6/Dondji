@@ -27,11 +27,11 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 38877;
+const CN_FONT_VERSION_OFFSET = 38997;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_BITMAP_SIZE = 29736;
+const CN_FONT_BITMAP_SIZE = 29832;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_CHAR_COUNT = 1239;
+const CN_FONT_CHAR_COUNT = 1243;
 const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
@@ -719,7 +719,7 @@ $('fetchFontBtn').addEventListener('click', async () => {
     fontData = new Uint8Array(buf);
     cnFontOnFontDataLoaded();
     $('fontInfo').style.display = 'block';
-    $('fontInfo').innerHTML = `<span class="fw-name">cn_font.bin</span> &middot; <span class="fw-size">${(fontData.length/1024).toFixed(1)} KB</span> &middot; 1239 字符`;
+    $('fontInfo').innerHTML = `<span class="fw-name">cn_font.bin</span> &middot; <span class="fw-size">${(fontData.length/1024).toFixed(1)} KB</span> &middot; 1243 字符`;
     $('fontFileName').textContent = 'cn_font.bin (' + fontData.length + ' bytes)';
     $('fontFileName').classList.add('has-file');
     $('fontFileLabel').classList.add('has-file');
