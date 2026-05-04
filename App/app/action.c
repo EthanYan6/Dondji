@@ -555,7 +555,6 @@ void ACTION_RxMode(void)
     gCB = gEeprom.CROSS_BAND_RX_TX;
     gRequestSaveSettings = true;
 #ifdef ENABLE_AUDIO_BAR
-    SETTINGS_ForceMicBarOffWhenNotMainOnly();
     MENU_RefreshIconFilterAfterRxModeChange();
 #endif
 }
@@ -602,7 +601,6 @@ void ACTION_MainOnly(void)
     gCB = gEeprom.CROSS_BAND_RX_TX;
     gRequestSaveSettings = true;
 #ifdef ENABLE_AUDIO_BAR
-    SETTINGS_ForceMicBarOffWhenNotMainOnly();
     MENU_RefreshIconFilterAfterRxModeChange();
 #endif
 }

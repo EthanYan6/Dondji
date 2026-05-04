@@ -187,11 +187,6 @@ static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
 
 bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 {
-#ifdef ENABLE_AUDIO_BAR
-    if (menu_id == MENU_MIC_BAR &&
-        (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF))
-        return true;
-#endif
 #if !defined(ENABLE_FEAT_F4HWN)
     if (menu_id == MENU_BAT_TXT)
         return true;
@@ -229,10 +224,8 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         return false;
 
 #ifdef ENABLE_AUDIO_BAR
-    /* 发射条 / Mic Bar：仅 Main Only 时在设置图标下显示；双信道时隐藏 */
+    /* 发射条 / Mic Bar：归在「设置」图标（一级第 2 个）下；与双守/异频无关，条显在单 VFO 时由 UI 控制 */
     if (menu_id == MENU_MIC_BAR) {
-        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
-            return false;
         return (icon_index == 1u);
     }
 #endif
@@ -345,6 +338,7 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_F2SHRT) return 8u;
         if (menu_id == MENU_F2LONG) return 9u;
         if (menu_id == MENU_MLONG) return 10u;
+        if (menu_id == MENU_MIC_BAR) return 11u;
     }
 
     if (icon_index == 2u)
@@ -1127,9 +1121,6 @@ void MENU_AcceptSetting(void)
 
             gFlagReconfigureVfos = true;
             gUpdateStatus        = true;
-#ifdef ENABLE_AUDIO_BAR
-            SETTINGS_ForceMicBarOffWhenNotMainOnly();
-#endif
             MENU_RefreshIconFilterAfterRxModeChange();
             break;
 

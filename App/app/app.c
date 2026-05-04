@@ -1177,6 +1177,14 @@ void StopTransmitting(void) {
         ST7565_ContrastAndInv();
         #endif
     #endif
+
+#ifdef ENABLE_AUDIO_BAR
+    /* 松开 PTT 后整屏重画主页，去掉发射条弹窗残留（话筒+声纹一起消失） */
+    if (gSetting_mic_bar && gScreenToDisplay == DISPLAY_MAIN)
+    {
+        gUpdateDisplay = true;
+    }
+#endif
 }
 
 // called every 10ms
@@ -1363,24 +1371,6 @@ void APP_TimeSlice10ms(void)
     if (gCurrentFunction != FUNCTION_POWER_SAVE || !gRxIdleMode)
         CheckRadioInterrupts();
 
-    if (gCurrentFunction == FUNCTION_TRANSMIT)
-    {   // transmitting
-#if defined(ENABLE_AUDIO_BAR) && !defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
-        if (gSetting_mic_bar &&
-            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF &&
-            (gFlashLightBlinkCounter % (150 / 10)) == 0) // once every 150ms
-            UI_DisplayAudioBar();
-#endif
-    }
-
-#ifdef ENABLE_FEAT_F4HWN_AUDIO_SCOPE
-    if (gSetting_mic_bar &&
-        gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF &&
-        (gFlashLightBlinkCounter % (20 / 10)) == 0) // once every 20ms
-        // Sample audio amplitude and refresh display during TX only (FM RX has no usable audio register)
-        UI_DisplayAudioScope();
-#endif
-
     bool gUpdateDisplayCurrent = gUpdateDisplay;
     bool gUpdateStatusCurrent  = gUpdateStatus;
 
@@ -1388,6 +1378,14 @@ void APP_TimeSlice10ms(void)
         gUpdateDisplay = false;
         GUI_DisplayScreen();
     }
+
+#ifdef ENABLE_AUDIO_BAR
+    if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
+        (gFlashLightBlinkCounter % 2u) == 0u)
+    {
+        UI_DisplayMicBarTxPopup(gUpdateDisplayCurrent);
+    }
+#endif
 
     if (gUpdateStatusCurrent) {
         UI_DisplayStatus();

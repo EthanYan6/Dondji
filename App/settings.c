@@ -521,22 +521,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
     #endif
 
-#ifdef ENABLE_AUDIO_BAR
-    SETTINGS_ForceMicBarOffWhenNotMainOnly();
-#endif
 }
-
-#ifdef ENABLE_AUDIO_BAR
-void SETTINGS_ForceMicBarOffWhenNotMainOnly(void)
-{
-    if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
-        return;
-    if (!gSetting_mic_bar)
-        return;
-    gSetting_mic_bar = false;
-    gRequestSaveSettings = true;
-}
-#endif
 
 void SETTINGS_LoadCalibration(void)
 {

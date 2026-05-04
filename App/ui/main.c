@@ -1126,216 +1126,289 @@ static void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level, uint8_t bars
 #endif
 
 #ifdef ENABLE_AUDIO_BAR
-// Approximation of a logarithmic scale using integer arithmetic
-static uint8_t log2_approx(unsigned int value) {
-    uint8_t log = 0;
-    while (value >>= 1) {
-        log++;
-    }
-    return log;
-}
-#endif
 
-#ifdef ENABLE_AUDIO_BAR
+#define MIC_POPUP_WIDTH     52
+#define MIC_POPUP_HEIGHT    47  /* 较原 52 缩短 5px */
+#define MIC_POPUP_X0        ((LCD_WIDTH - MIC_POPUP_WIDTH) / 2)
+#define MIC_POPUP_Y0        ((LCD_HEIGHT - MIC_POPUP_HEIGHT) / 2)
 
-void UI_DisplayAudioBar(void)
+static void MicPopup_ClearRectPixels(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-    if (gSetting_mic_bar)
+    uint8_t y;
+    uint8_t x;
+
+    for (y = y1; y <= y2; y++)
     {
-        if(gLowBattery && !gLowBatteryConfirmed)
-            return;
-
-        /* Mic bar only on Main Only; hide on dual-VFO main screen */
-        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
-            return;
-
-#ifdef ENABLE_FEAT_F4HWN
-        RxBlinkLed = 0;
-        RxBlinkLedCounter = 0;
-        BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-        unsigned int line;
-        if (isMainOnly())
+        for (x = x1; x <= x2; x++)
         {
-            line = 5;
+            UI_DrawPixelBuffer(gFrameBuffer, x, y, false);
+        }
+    }
+}
+
+static void MicPopup_BlitFullScreen(void)
+{
+#ifdef ENABLE_FEAT_F4HWN
+    if (UI_IsDualVfoMainScreen())
+        ST7565_BlitFullScreenDualVfoTightTop();
+    else
+#endif
+        ST7565_BlitFullScreen();
+}
+
+/** 线稿话筒：圆角胶囊头 + 间隙 + U 形托 + 立柱 + 底座（参考扁平描边图标） */
+static void MicPopup_DrawMicIcon(uint8_t center_x, uint8_t top_y)
+{
+    const int16_t cx = (int16_t)center_x;
+    const int16_t y0 = (int16_t)top_y;
+    int16_t       ya;
+    int16_t       yb;
+    int16_t       x;
+
+    /* -------- 胶囊话筒头（仅描边） -------- */
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 0), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 0), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 0), true);
+
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 2), (uint8_t)(y0 + 1), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 2), (uint8_t)(y0 + 1), true);
+
+    ya = y0 + 2;
+    yb = y0 + 6;
+    UI_DrawLineBuffer(gFrameBuffer, cx - 2, ya, cx - 2, yb, true);
+    UI_DrawLineBuffer(gFrameBuffer, cx + 2, ya, cx + 2, yb, true);
+
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 7), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 7), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 7), true);
+
+    /* -------- 与 U 托之间的间隙（无像素）y0+8 -------- */
+
+    /* -------- U 形托（开口朝上，略宽于话筒头） -------- */
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 9), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 9), true);
+
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 10), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 10), true);
+
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 3), (uint8_t)(y0 + 11), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 3), (uint8_t)(y0 + 11), true);
+
+    for (x = cx - 2; x <= cx + 2; x++)
+    {
+        UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)x, (uint8_t)(y0 + 12), true);
+    }
+
+    /* -------- 立柱 -------- */
+    UI_DrawLineBuffer(gFrameBuffer, cx, y0 + 13, cx, y0 + 14, true);
+
+    /* -------- 底座 -------- */
+    UI_DrawLineBuffer(gFrameBuffer, cx - 3, y0 + 15, cx + 3, y0 + 15, true);
+}
+
+static uint32_t s_mic_wave_prng_state;
+
+/** 简易 PRNG，每帧调用多次使波形持续变化 */
+static uint16_t MicPopup_WaveRandU16(void)
+{
+    uint32_t x;
+
+    x = s_mic_wave_prng_state;
+    if (x == 0u)
+    {
+        x = 0xACE1u;
+    }
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    s_mic_wave_prng_state = x;
+    return (uint16_t)(x & 0xFFFFu);
+}
+
+/**
+ * 波形区：中间水平轴线 + 密排竖线，每根在上/下随机不等长；
+ * 整体包络为中间高、两侧低的菱形（参考音频波形示意）。
+ */
+static void MicPopup_DrawWaveformBand(uint8_t inner_left, uint8_t inner_right,
+                                      uint8_t wave_top, uint8_t wave_bottom)
+{
+    uint8_t        center_y;
+    uint8_t        max_up;
+    uint8_t        max_dn;
+    uint8_t        n_cols;
+    uint8_t        peak;
+    uint16_t       env_u16;
+    uint8_t        up_limit;
+    uint8_t        dn_limit;
+    uint8_t        h_up;
+    uint8_t        h_dn;
+    uint8_t        y_top;
+    uint8_t        y_bot;
+    uint8_t        xi;
+    uint8_t        col_idx;
+    uint16_t       prng_a;
+    uint16_t       prng_b;
+
+    if (inner_right < inner_left || wave_bottom < wave_top)
+    {
+        return;
+    }
+
+    MicPopup_ClearRectPixels(inner_left, wave_top, inner_right, wave_bottom);
+
+    center_y = (uint8_t)(((uint16_t)wave_top + (uint16_t)wave_bottom) / 2u);
+    UI_DrawLineBuffer(gFrameBuffer, inner_left, center_y, inner_right, center_y, true);
+
+    max_up = (uint8_t)(center_y - wave_top);
+    max_dn = (uint8_t)(wave_bottom - center_y);
+
+    n_cols = (uint8_t)(inner_right - inner_left + 1u);
+    if (n_cols == 0u)
+    {
+        return;
+    }
+
+    peak = (uint8_t)((n_cols - 1u) / 2u);
+    if (peak == 0u)
+    {
+        peak = 1u;
+    }
+
+    col_idx = 0u;
+    while (col_idx < n_cols)
+    {
+        if (n_cols <= 1u)
+        {
+            env_u16 = 255u;
+        }
+        else if (col_idx <= peak)
+        {
+            env_u16 = (uint16_t)col_idx * 255u / (uint16_t)peak;
         }
         else
         {
-            line = 3;
+            env_u16 = (uint16_t)(n_cols - 1u - col_idx) * 255u / (uint16_t)peak;
         }
-#else
-        const unsigned int line = 3;
-#endif
 
-        if (gCurrentFunction != FUNCTION_TRANSMIT ||
-            gScreenToDisplay != DISPLAY_MAIN
-#ifdef ENABLE_DTMF_CALLING
-            || gDTMF_CallState != DTMF_CALL_STATE_NONE
-#endif
-            )
+        up_limit = (uint8_t)(((uint16_t)max_up * env_u16) / 255u);
+        dn_limit = (uint8_t)(((uint16_t)max_dn * env_u16) / 255u);
+
+        prng_a = MicPopup_WaveRandU16();
+        prng_b = MicPopup_WaveRandU16();
+
+        if (up_limit == 0u)
         {
-            return;  // screen is in use
+            h_up = 0u;
+        }
+        else
+        {
+            h_up = (uint8_t)(prng_a % (uint16_t)(up_limit + 1u));
         }
 
-#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
-        if (gAlarmState != ALARM_STATE_OFF)
-            return;
-#endif
-        static uint8_t barsOld = 0;
-        const uint8_t thresold = 18; // arbitrary thresold
-        //const uint8_t barsList[] = {0, 0, 0, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 25};
-        const uint8_t barsList[] = {0, 0, 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 21, 25, 25, 25};
-        uint8_t logLevel;
-        uint8_t bars;
+        if (dn_limit == 0u)
+        {
+            h_dn = 0u;
+        }
+        else
+        {
+            h_dn = (uint8_t)(prng_b % (uint16_t)(dn_limit + 1u));
+        }
 
-        unsigned int voiceLevel  = BK4819_GetVoiceAmplitudeOut();  // 15:0
+        y_top = (uint8_t)(center_y - h_up);
+        y_bot = (uint8_t)(center_y + h_dn);
 
-        voiceLevel = (voiceLevel >= thresold) ? (voiceLevel - thresold) : 0;
-        logLevel = log2_approx(MIN(voiceLevel * 16, 32768u) + 1);
-        bars = barsList[logLevel];
-        barsOld = (barsOld - bars > 1) ? (barsOld - 1) : bars;
+        xi = (uint8_t)(inner_left + col_idx);
+        UI_DrawLineBuffer(gFrameBuffer, xi, y_top, xi, y_bot, true);
 
-        uint8_t *p_line = gFrameBuffer[line];
-        memset(p_line, 0, LCD_WIDTH);
-
-        DrawLevelBar(2, line, barsOld, 25);
-
-        if (gCurrentFunction == FUNCTION_TRANSMIT)
-            ST7565_BlitMainPerMode();
+        col_idx++;
     }
 }
-#endif
 
-#ifdef ENABLE_FEAT_F4HWN_AUDIO_SCOPE
-
-#define SCOPE_SAMPLES        43   // number of columns (43 × 3px = 128px wide)
-#define SCOPE_NOISE_GATE     50u  // minimum range below which the display shows baseline
-#define SCOPE_FLOOR_RISE     2u   // floor rise per frame (+100 units/s at 20ms/frame)
-#define SCOPE_FLOOR_DROP_SHR 3u   // floor drop IIR shift: drop by (floor-min) >> N per frame (~160ms to halve)
-#define SCOPE_VOLUME_MIN     200u // let's assume that the sound level in silence is 200
-
-void UI_DisplayAudioScope(void)
+void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
 {
-    static uint16_t g_scope_buf[SCOPE_SAMPLES];
-    static uint8_t  g_scope_write      = 0;
-    static uint16_t g_scope_floor      = SCOPE_VOLUME_MIN;     // persistent floor: snaps down fast, rises slowly
-    static uint8_t  g_scope_ready      = 0;                    // number of valid samples since TX entry
+    static uint8_t  sAnimTick                 = 0u;
+    static bool     s_mic_popup_main_prepared = false;
 
-    // REG_64 (VoiceAmplitudeOut) is only meaningful in TX (mic input).
-    // FM RX audio is frequency-encoded — no register gives the instantaneous waveform.
+    uint8_t         inner_left;
+    uint8_t         inner_right;
+    uint8_t         wave_top;
+    uint8_t         wave_bottom;
 
-// ------------------------------ Sample audio amplitude ------------------------------
-
-    static bool s_was_tx = false;
-
-    if (gCurrentFunction != FUNCTION_TRANSMIT) {
-        s_was_tx = false;
+    if (!gSetting_mic_bar)
+    {
+        s_mic_popup_main_prepared = false;
         return;
     }
-
-    if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
-        return;
-
-    // This prevents a sudden spike on the bar caused by release the PTT button
-    if (!GPIO_IsPttPressed()
-#ifdef ENABLE_VOX
-    && !gEeprom.VOX_SWITCH
-#endif
-#ifdef ENABLE_FEAT_F4HWN
-    && !gSetting_set_ptt_session
-#endif
-    )
-    return;
-
-    if (!s_was_tx) {
-        // TX entry: full reset so every new transmission starts from a clean state
-        for (uint8_t i = 0; i < SCOPE_SAMPLES; i++) g_scope_buf[i] = SCOPE_VOLUME_MIN;
-        g_scope_write      = 0u;
-        g_scope_floor      = SCOPE_VOLUME_MIN;
-        s_was_tx           = true;
-    }
-
-    // The first 7 bars after turning on the radio
-    // will not display any values: they cause high bars.
-    if (g_scope_ready >= 7)
-        g_scope_buf[g_scope_write] = BK4819_GetVoiceAmplitudeOut();
-    else
-        g_scope_ready++;
-        
-    // If the reading is 0, it is definitely an incorrect value
-    // caused by the microphone being muted - set it to 200.
-    if (g_scope_buf[g_scope_write] == 0) 
-        g_scope_buf[g_scope_write] =  SCOPE_VOLUME_MIN;
-
-    g_scope_write = (g_scope_write + 1u) % SCOPE_SAMPLES;
-
-// --------------------------------- Refresh display ---------------------------------
 
     if (gLowBattery && !gLowBatteryConfirmed)
+    {
+        s_mic_popup_main_prepared = false;
         return;
+    }
 
-    if (gScreenToDisplay != DISPLAY_MAIN
-#ifdef ENABLE_DTMF_CALLING
-        || gDTMF_CallState != DTMF_CALL_STATE_NONE
-#endif
-        )
+    if (gCurrentFunction != FUNCTION_TRANSMIT || gScreenToDisplay != DISPLAY_MAIN)
+    {
+        s_mic_popup_main_prepared = false;
         return;
+    }
+
+#ifdef ENABLE_DTMF_CALLING
+    if (gDTMF_CallState != DTMF_CALL_STATE_NONE)
+    {
+        s_mic_popup_main_prepared = false;
+        return;
+    }
+#endif
 
 #if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
     if (gAlarmState != ALARM_STATE_OFF)
+    {
+        s_mic_popup_main_prepared = false;
         return;
+    }
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN
     RxBlinkLed = 0;
     RxBlinkLedCounter = 0;
     BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-    const unsigned int line = isMainOnly() ? 5 : 3;
-#else
-    const unsigned int line = 3;
 #endif
 
-    uint8_t *p_line = gFrameBuffer[line];
-    memset(p_line, 0, LCD_WIDTH);
-
-    // Find min and max across current buffer
-    uint16_t min_val = g_scope_buf[0];
-    uint16_t max_val = g_scope_buf[0];
-    for (uint8_t i = 1u; i < SCOPE_SAMPLES; i++) {
-        if (g_scope_buf[i] < min_val) min_val = g_scope_buf[i];
-        if (g_scope_buf[i] > max_val) max_val = g_scope_buf[i];
+    /* 本周期 app 已整屏重画则不必再调；否则本段发射内仅首帧补一次主页，供弹窗外区域正确 */
+    if (main_screen_just_redrawn)
+    {
+        s_mic_popup_main_prepared = true;
+    }
+    else if (!s_mic_popup_main_prepared)
+    {
+        GUI_DisplayScreen();
+        s_mic_popup_main_prepared = true;
     }
 
-    // Floor tracks buffer minimum with asymmetric IIR:
-    // - drops toward min smoothly (SCOPE_FLOOR_DROP_SHR), avoiding instant-snap ghost
-    // - rises slowly (SCOPE_FLOOR_RISE/frame) to handle loud constant voice
-    if (g_scope_floor > min_val)
-        g_scope_floor -= ((g_scope_floor - min_val) >> SCOPE_FLOOR_DROP_SHR) + 1u;
-    else
-        g_scope_floor += SCOPE_FLOOR_RISE;
+    inner_left  = (uint8_t)(MIC_POPUP_X0 + 4u);
+    inner_right = (uint8_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 5u);
+    wave_top    = (uint8_t)(MIC_POPUP_Y0 + 22u);
+    wave_bottom = (uint8_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 3u);
 
-    const uint16_t range = (max_val > g_scope_floor) ? (max_val - g_scope_floor) : 0u;
+    /* 每帧同时绘制：方框 + 话筒 + 声纹（声纹在 MicPopup_DrawWaveformBand 内每帧重算，持续变化） */
+    MicPopup_ClearRectPixels(MIC_POPUP_X0, MIC_POPUP_Y0,
+                             (uint8_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 1u),
+                             (uint8_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 1u));
+    UI_DrawRectangleBuffer(gFrameBuffer, MIC_POPUP_X0, MIC_POPUP_Y0,
+                           (int16_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 1),
+                           (int16_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 1), true);
 
-    for (uint8_t i = 0u; i < SCOPE_SAMPLES; i++) {
-        const uint8_t  idx    = (g_scope_write + i) % SCOPE_SAMPLES;
-        uint8_t        height = 0u;
-        if (range >= SCOPE_NOISE_GATE) {
-            const uint16_t v = (g_scope_buf[idx] > g_scope_floor) ? (g_scope_buf[idx] - g_scope_floor) : 0u;
-            height = (uint8_t)((uint32_t)v * 7u / range);
-        }
-        // Filled column using bits 6..0 only (bit 7 always off to avoid overlap with text below)
-        // At silence (height 0): single pixel at bit 6 (baseline)
-        const uint8_t mask = (height > 0u) ? (uint8_t)((0x7Fu << (7u - height)) & 0x7Fu) : 0x40u;
-        // 2px column + 1px gap per sample
+    MicPopup_DrawMicIcon((uint8_t)(LCD_WIDTH / 2u), (uint8_t)(MIC_POPUP_Y0 + 6u));
 
-        uint8_t *p_col = &p_line[i * 3u];
-        p_col[0] = mask;
-        p_col[1] = mask;
+    sAnimTick++;
+    s_mic_wave_prng_state ^= (uint32_t)sAnimTick * 0x9E3779B9u;
+    s_mic_wave_prng_state ^= (uint32_t)gFlashLightBlinkCounter << 8;
 
-    }
+    MicPopup_DrawWaveformBand(inner_left, inner_right, wave_top, wave_bottom);
 
-    ST7565_BlitLine(line);
+    MicPopup_BlitFullScreen();
 }
-#endif  // ENABLE_FEAT_F4HWN_AUDIO_SCOPE
+#endif /* ENABLE_AUDIO_BAR */
 
 #ifdef ENABLE_FEAT_F4HWN
 /* 供 UI_DisplayMainOnlyStatusBar / 菜单顶栏 5 格信号条：与 DisplayRSSIBar(F4HWN) 同一映射 */
@@ -2981,24 +3054,6 @@ display_main_after_vfo_loop:
     {   // we're free to use the middle line
 
         const bool rx = FUNCTION_IsRx();
-
-#ifdef ENABLE_FEAT_F4HWN_AUDIO_SCOPE
-        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
-            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
-            // Reserve the line so no other element overwrites it.
-            // Actual drawing is handled exclusively by the app.c timeslice.
-            center_line = CENTER_LINE_AUDIO_SCOPE;
-        }
-        else
-#endif
-#ifdef ENABLE_AUDIO_BAR
-        if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
-            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
-            center_line = CENTER_LINE_AUDIO_BAR;
-            UI_DisplayAudioBar();
-        }
-        else
-#endif
 
 #if defined(ENABLE_AM_FIX) && defined(ENABLE_AM_FIX_SHOW_DATA)
         if (rx && gEeprom.VfoInfo[gEeprom.RX_VFO].Modulation == MODULATION_AM && gSetting_AM_fix)
