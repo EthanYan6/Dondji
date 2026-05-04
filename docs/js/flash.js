@@ -50,6 +50,31 @@ let isWritefreqBusy = false;
 // ========== UI ==========
 const $ = id => document.getElementById(id);
 
+/**
+ * 当前页面所在目录的绝对 URL（始终带尾部 /），用于拼接 firmware、font 等同源相对路径。
+ * 若用 document.baseURI 直接拼 `firmware/x`，在地址为 `https://…github.io/仓库名`（无尾部斜杠）时，
+ * URL 规范会把路径解析到站点根下的 `/firmware/x`，从而 404；本函数把最后一层视为「目录」再解析。
+ * @returns {string}
+ */
+function getDocumentDirectoryBaseUrlString() {
+  const pageUrl = new URL(window.location.href);
+  let path = pageUrl.pathname;
+  const pathEndsWithSlash = path.endsWith('/');
+  if (!pathEndsWithSlash) {
+    const pathSegments = path.split('/');
+    const lastSegment = pathSegments.pop() || '';
+    const lastSegmentLooksLikeFile = /\.[a-zA-Z0-9]+$/.test(lastSegment);
+    if (lastSegmentLooksLikeFile) {
+      const pathWithoutFile = path.replace(/[^/]+$/, '');
+      path = pathWithoutFile;
+    } else {
+      path = path + '/';
+    }
+  }
+  const directoryBase = pageUrl.origin + path;
+  return directoryBase;
+}
+
 const THEME_STORAGE_KEY = 'uvk1-web-theme';
 
 function applyThemeToDocument(themeName) {
@@ -593,9 +618,12 @@ function firmwareCollectDondjiFusionBinCandidateUrls() {
     pushUnique(fromJsFirmware);
   }
 
-  const baseUrl = document.baseURI || window.location.href;
-  const fromDocFirmware = new URL('firmware/Dondji.fusion.bin', baseUrl).href;
+  const docDirectoryBase = getDocumentDirectoryBaseUrlString();
+  const fromDocFirmware = new URL('firmware/Dondji.fusion.bin', docDirectoryBase).href;
   pushUnique(fromDocFirmware);
+
+  const fromDocsSubdirFirmware = new URL('docs/firmware/Dondji.fusion.bin', docDirectoryBase).href;
+  pushUnique(fromDocsSubdirFirmware);
 
   return orderedUrls;
 }
@@ -612,9 +640,9 @@ function firmwareFetchArrayBuffer() {
   function attemptNextUrl() {
     if (attemptIndex >= totalCandidates) {
       const errText =
-        '无法加载固件：已尝试 firmware/Dondji.fusion.bin（共 ' +
+        '无法加载固件：已尝试同源 firmware（共 ' +
         totalCandidates +
-        ' 个地址）。请用本地 HTTP 打开本页并确认已执行 Fusion 打包脚本将产物复制到 docs/firmware。';
+        ' 个地址）。请用 GitHub Pages 或本地 HTTP 打开；仓库页直接预览 HTML 无法加载；并确认已部署 docs/firmware/Dondji.fusion.bin。';
       return Promise.reject(new Error(errText));
     }
     const fullUrl = candidateUrls[attemptIndex];
@@ -1671,9 +1699,9 @@ function cnFontCollectCnBinCandidateUrls() {
     pushUnique(fromJsFonts);
   }
 
-  const baseUrl = document.baseURI || window.location.href;
-  const fromDocFont = new URL('font/cn_font.bin', baseUrl).href;
-  const fromDocFonts = new URL('fonts/cn_font.bin', baseUrl).href;
+  const docDirectoryBase = getDocumentDirectoryBaseUrlString();
+  const fromDocFont = new URL('font/cn_font.bin', docDirectoryBase).href;
+  const fromDocFonts = new URL('fonts/cn_font.bin', docDirectoryBase).href;
   pushUnique(fromDocFont);
   pushUnique(fromDocFonts);
 
