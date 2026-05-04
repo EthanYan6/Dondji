@@ -558,6 +558,7 @@ html.theme-light .theme-toggle__icon--moon {
   line-height: 1.5;
   color: var(--text-bright);
   letter-spacing: 0.01em;
+  white-space: pre-wrap;
 }
 .app-toast-close {
   flex-shrink: 0;

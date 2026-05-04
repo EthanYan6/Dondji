@@ -54,6 +54,10 @@ const OBFUS_TBL = new Uint8Array([
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
 const CN_FONT_VERSION_OFFSET = 38877;
+/** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
+const CN_FONT_BITMAP_SIZE = 29736;
+/** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
+const CN_FONT_CHAR_COUNT = 1239;
 const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
@@ -184,7 +188,7 @@ initThemeToggle();
 let appToastAutoHideTimer = null;
 
 /**
- * 底部 Toast 提示（样式见 .app-toast），替代 alert。
+ * 右上角 Toast 提示（样式见 .app-toast），替代 alert。
  * @param {string} messageText
  * @param {'warning'|'info'|'success'} toastVariant
  */
@@ -646,6 +650,7 @@ $('fontFile').addEventListener('change', e => {
   const fr = new FileReader();
   fr.onload = ev => {
     fontData = new Uint8Array(ev.target.result);
+    cnFontOnFontDataLoaded();
     $('fontFileName').textContent = file.name + ' (' + fontData.length + ' bytes)';
     $('fontFileName').classList.add('has-file');
     $('fontFileLabel').classList.add('has-file');
@@ -660,10 +665,9 @@ $('fetchFontBtn').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '正在加载...';
   try {
-    const res = await fetch('font/cn_font.bin');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const buf = await res.arrayBuffer();
+    const buf = await cnFontFetchArrayBuffer();
     fontData = new Uint8Array(buf);
+    cnFontOnFontDataLoaded();
     $('fontInfo').style.display = 'block';
     $('fontInfo').innerHTML = `<span class="fw-name">cn_font.bin</span> &middot; <span class="fw-size">${(fontData.length/1024).toFixed(1)} KB</span> &middot; 1239 字符`;
     $('fontFileName').textContent = 'cn_font.bin (' + fontData.length + ' bytes)';
@@ -1528,8 +1532,301 @@ function writefreqValidateChannelName(text) {
   return problems;
 }
 
+/** @type {Promise<Set<number>>|null} */
+let cnFontCodepointSetPromise = null;
+
 /**
- * 写频表格「信道名」失焦：超过 15 字节 UTF-8 时截断并提示（与 Flash 存储一致）。
+ * 从 docs/font/cn_font.bin 解析 Unicode 码点集合（与固件字库索引区一致）。
+ * @param {ArrayBuffer} arrayBuffer
+ * @returns {Set<number>}
+ */
+function cnFontParseCodepointsFromBin(arrayBuffer) {
+  const totalBytes = arrayBuffer.byteLength;
+  const minBytes = CN_FONT_BITMAP_SIZE + CN_FONT_CHAR_COUNT * 4;
+  if (totalBytes < minBytes) {
+    const errText = 'cn_font.bin 长度异常（' + totalBytes + ' < ' + minBytes + '）';
+    throw new Error(errText);
+  }
+  const dataView = new DataView(arrayBuffer);
+  const codepointSet = new Set();
+  let entryIndex = 0;
+  for (; entryIndex < CN_FONT_CHAR_COUNT; entryIndex++) {
+    const byteOffset = CN_FONT_BITMAP_SIZE + entryIndex * 4;
+    const packed = dataView.getUint32(byteOffset, true);
+    const unicodeVal = packed >>> 16;
+    codepointSet.add(unicodeVal);
+  }
+  return codepointSet;
+}
+
+/**
+ * 从刷字库 tab 的 Uint8Array 得到独立 ArrayBuffer，供 cnFontParseCodepointsFromBin 使用。
+ * @param {Uint8Array} uint8Array
+ * @returns {ArrayBuffer}
+ */
+function cnFontArrayBufferFromUint8(uint8Array) {
+  const sliceStart = uint8Array.byteOffset;
+  const sliceEnd = sliceStart + uint8Array.byteLength;
+  const slicedBuffer = uint8Array.buffer.slice(sliceStart, sliceEnd);
+  return slicedBuffer;
+}
+
+/**
+ * 若全局 fontData（刷字库已加载）可用，则解析为码点 Set 并写入 cnFontCodepointSetPromise，避免写频再 fetch。
+ */
+function cnFontTryFillCacheFromFontData() {
+  if (fontData === null || fontData === undefined) {
+    return;
+  }
+  const fontByteLength = fontData.length;
+  if (fontByteLength === 0) {
+    return;
+  }
+  try {
+    const fontBuffer = cnFontArrayBufferFromUint8(fontData);
+    const parsedSet = cnFontParseCodepointsFromBin(fontBuffer);
+    cnFontCodepointSetPromise = Promise.resolve(parsedSet);
+  } catch (parseErr) {
+    console.warn('刷字库已加载数据无法用于缺字码表解析（写频将仍尝试网络 fetch）', parseErr);
+  }
+}
+
+/**
+ * 刷字库从网络或本地文件更新 fontData 后调用：清空旧缓存并用当前 fontData 重建码表。
+ */
+function cnFontOnFontDataLoaded() {
+  cnFontCodepointSetPromise = null;
+  cnFontTryFillCacheFromFontData();
+}
+
+/**
+ * 查找 flash.js 的绝对 URL（用于相对脚本路径解析；document.currentScript 在异步回调中不可用）。
+ * @returns {string}
+ */
+function cnFontGetFlashJsAbsoluteUrl() {
+  const scriptElements = document.getElementsByTagName('script');
+  let scriptIndex = 0;
+  for (; scriptIndex < scriptElements.length; scriptIndex++) {
+    const srcAttr = scriptElements[scriptIndex].src;
+    if (!srcAttr) {
+      continue;
+    }
+    const looksLikeFlashJs = srcAttr.indexOf('flash.js') >= 0;
+    if (looksLikeFlashJs) {
+      return srcAttr;
+    }
+  }
+  return '';
+}
+
+/**
+ * 组装 cn_font.bin 的候选 URL：优先相对 flash.js（…/js → …/font），再相对当前页面（与 index 同级 font）。
+ * 解决 Live Server 打开仓库根目录、或 baseURI 与静态文件实际路径不一致时仅页面相对路径 404 的问题。
+ * @returns {string[]}
+ */
+function cnFontCollectCnBinCandidateUrls() {
+  const seenHref = new Set();
+  const orderedUrls = [];
+
+  function pushUnique(urlHref) {
+    if (!urlHref) {
+      return;
+    }
+    const already = seenHref.has(urlHref);
+    if (already) {
+      return;
+    }
+    seenHref.add(urlHref);
+    orderedUrls.push(urlHref);
+  }
+
+  const flashJsUrl = cnFontGetFlashJsAbsoluteUrl();
+  const flashJsNonEmpty = flashJsUrl !== '';
+  if (flashJsNonEmpty) {
+    const fromJsFont = new URL('../font/cn_font.bin', flashJsUrl).href;
+    const fromJsFonts = new URL('../fonts/cn_font.bin', flashJsUrl).href;
+    pushUnique(fromJsFont);
+    pushUnique(fromJsFonts);
+  }
+
+  const baseUrl = document.baseURI || window.location.href;
+  const fromDocFont = new URL('font/cn_font.bin', baseUrl).href;
+  const fromDocFonts = new URL('fonts/cn_font.bin', baseUrl).href;
+  pushUnique(fromDocFont);
+  pushUnique(fromDocFonts);
+
+  return orderedUrls;
+}
+
+/**
+ * 按候选 URL 依次拉取字库二进制。
+ * @returns {Promise<ArrayBuffer>}
+ */
+function cnFontFetchArrayBuffer() {
+  const candidateUrls = cnFontCollectCnBinCandidateUrls();
+  const totalCandidates = candidateUrls.length;
+  let attemptIndex = 0;
+
+  function attemptNextUrl() {
+    if (attemptIndex >= totalCandidates) {
+      const errText =
+        '无法加载字库：已尝试相对 js 与相对页面的 font/cn_font.bin、fonts/cn_font.bin（共 ' +
+        totalCandidates +
+        ' 个地址）';
+      return Promise.reject(new Error(errText));
+    }
+    const fullUrl = candidateUrls[attemptIndex];
+    attemptIndex = attemptIndex + 1;
+    const fetchPromise = fetch(fullUrl);
+    return fetchPromise.then(function onResponse(response) {
+      const responseOk = response.ok;
+      if (responseOk) {
+        return response.arrayBuffer();
+      }
+      return attemptNextUrl();
+    }).catch(function onFetchError() {
+      return attemptNextUrl();
+    });
+  }
+  return attemptNextUrl();
+}
+
+/**
+ * 加载并缓存字库码点集：优先刷字库 tab 已载入的 fontData；否则 fetch 同源 cn_font.bin。
+ * @returns {Promise<Set<number>>}
+ */
+function cnFontGetCodepointSet() {
+  if (cnFontCodepointSetPromise !== null) {
+    return cnFontCodepointSetPromise;
+  }
+  cnFontTryFillCacheFromFontData();
+  if (cnFontCodepointSetPromise !== null) {
+    return cnFontCodepointSetPromise;
+  }
+  const fetchPromise = cnFontFetchArrayBuffer();
+  const parsedPromise = fetchPromise.then(function onFontBufOk(arrayBuffer) {
+    const codepointSet = cnFontParseCodepointsFromBin(arrayBuffer);
+    return codepointSet;
+  });
+  cnFontCodepointSetPromise = parsedPromise.catch(function onFontLoadFail(loadErr) {
+    cnFontCodepointSetPromise = null;
+    return Promise.reject(loadErr);
+  });
+  return cnFontCodepointSetPromise;
+}
+
+/**
+ * @param {string} text
+ * @param {Set<number>} codepointSet
+ * @returns {string[]}
+ */
+function writefreqFindCharsMissingFromCnFont(text, codepointSet) {
+  const missingList = [];
+  const seenChar = new Set();
+  for (const ch of text) {
+    const codePoint = ch.codePointAt(0);
+    const isAscii = codePoint < 0x80;
+    if (isAscii) {
+      continue;
+    }
+    const inFont = codepointSet.has(codePoint);
+    if (inFont) {
+      continue;
+    }
+    const alreadyListed = seenChar.has(ch);
+    if (alreadyListed) {
+      continue;
+    }
+    seenChar.add(ch);
+    missingList.push(ch);
+  }
+  return missingList;
+}
+
+/**
+ * @param {HTMLInputElement} channelNameInput
+ * @returns {string}
+ */
+function writefreqGetChannelLabelForToast(channelNameInput) {
+  const rowEl = channelNameInput.closest('tr');
+  let channelLabelForMsg = '';
+  if (!rowEl) {
+    return channelLabelForMsg;
+  }
+  const chIdxRaw = rowEl.dataset.writefreqChIdx;
+  const chIdxParsed = Number.parseInt(chIdxRaw, 10);
+  const chIdxOk =
+    Number.isFinite(chIdxParsed) &&
+    chIdxParsed >= 0 &&
+    chIdxParsed < WRITE_FREQ_MR_MAX;
+  if (!chIdxOk) {
+    return channelLabelForMsg;
+  }
+  const baseChannel = writefreqGetBaseChannel();
+  const channelNumber = baseChannel + chIdxParsed;
+  channelLabelForMsg = '第 ' + channelNumber + ' 信道';
+  return channelLabelForMsg;
+}
+
+/**
+ * @param {HTMLInputElement} channelNameInput
+ * @param {string} finalText
+ * @param {Set<number>} codepointSet
+ * @returns {string}
+ */
+function writefreqBuildMissingCnFontToastMessage(channelNameInput, finalText, codepointSet) {
+  const missingChars = writefreqFindCharsMissingFromCnFont(finalText, codepointSet);
+  const hasMissing = missingChars.length > 0;
+  if (!hasMissing) {
+    return '';
+  }
+  const channelLabel = writefreqGetChannelLabelForToast(channelNameInput);
+  const missingJoined = missingChars.join('、');
+  const labelNonEmpty = channelLabel !== '';
+  let bodyText = '';
+  if (labelNonEmpty) {
+    bodyText =
+      channelLabel +
+      '：以下字符不在当前字库（共 ' +
+      CN_FONT_CHAR_COUNT +
+      ' 字）中：' +
+      missingJoined;
+  } else {
+    bodyText =
+      '以下字符不在当前字库（共 ' +
+      CN_FONT_CHAR_COUNT +
+      ' 字）中：' +
+      missingJoined;
+  }
+  const douyinPrivateMsgHint = '\n\n如需补充上述汉字，请抖音私信联系。';
+  const fullText = bodyText + douyinPrivateMsgHint;
+  return fullText;
+}
+
+/**
+ * @param {string} truncateMsg
+ * @param {string} fontMsg
+ * @returns {string}
+ */
+function writefreqCombineTruncateAndFontWarnings(truncateMsg, fontMsg) {
+  const truncateNonEmpty = truncateMsg !== '';
+  const fontNonEmpty = fontMsg !== '';
+  if (truncateNonEmpty && fontNonEmpty) {
+    const combined = truncateMsg + '\n\n' + fontMsg;
+    return combined;
+  }
+  if (truncateNonEmpty) {
+    return truncateMsg;
+  }
+  if (fontNonEmpty) {
+    return fontMsg;
+  }
+  return '';
+}
+
+/**
+ * 写频表格「信道名」失焦：超过 15 字节 UTF-8 时截断并提示（与 Flash 存储一致）；
+ * 失焦时对照同源 cn_font.bin 检查非 ASCII 字符是否在字库中，右上角 Toast 提示缺字。
  */
 function writefreqApplyChannelNameBlur(channelNameInput) {
   if (!channelNameInput) {
@@ -1539,52 +1836,89 @@ function writefreqApplyChannelNameBlur(channelNameInput) {
   const maxBytes = WRITE_FREQ_CHANNEL_NAME_MAX_BYTES;
   const nameResult = writefreqTruncateUtf8ToMaxBytes(rawText, maxBytes);
   const didTruncate = nameResult.wasTruncated;
-  if (!didTruncate) {
-    return;
-  }
-  const truncatedText = nameResult.text;
-  channelNameInput.value = truncatedText;
-  writefreqFlushDomToModel();
-  const rowEl = channelNameInput.closest('tr');
-  let channelLabelForMsg = '';
-  if (rowEl) {
-    const chIdxRaw = rowEl.dataset.writefreqChIdx;
-    const chIdxParsed = Number.parseInt(chIdxRaw, 10);
-    const chIdxOk =
-      Number.isFinite(chIdxParsed) &&
-      chIdxParsed >= 0 &&
-      chIdxParsed < WRITE_FREQ_MR_MAX;
-    if (chIdxOk) {
-      const baseChannel = writefreqGetBaseChannel();
-      const channelNumber = baseChannel + chIdxParsed;
-      channelLabelForMsg = '第 ' + channelNumber + ' 信道';
+  let truncateMsg = '';
+  if (didTruncate) {
+    const truncatedText = nameResult.text;
+    channelNameInput.value = truncatedText;
+    writefreqFlushDomToModel();
+    const channelLabelForMsg = writefreqGetChannelLabelForToast(channelNameInput);
+    const originalBytes = nameResult.originalByteLength;
+    const labelNonEmpty = channelLabelForMsg !== '';
+    if (labelNonEmpty) {
+      truncateMsg =
+        channelLabelForMsg +
+        '：信道名超过 15 字节（原 ' +
+        originalBytes +
+        ' 字节，UTF-8），已截断，末尾为 ...';
+    } else {
+      truncateMsg =
+        '信道名超过 15 字节（原 ' +
+        originalBytes +
+        ' 字节，UTF-8），已截断，末尾为 ...';
+    }
+    log(truncateMsg, 'warning');
+    const logPanel = $('log');
+    if (logPanel) {
+      logPanel.classList.add('visible');
+    }
+    const logToggleBtn = $('logToggle');
+    if (logToggleBtn) {
+      logToggleBtn.textContent = '隐藏日志';
     }
   }
-  const originalBytes = nameResult.originalByteLength;
-  let messageText = '';
-  const labelNonEmpty = channelLabelForMsg !== '';
-  if (labelNonEmpty) {
-    messageText =
-      channelLabelForMsg +
-      '：信道名超过 15 字节（原 ' +
-      originalBytes +
-      ' 字节，UTF-8），已截断，末尾为 ...';
-  } else {
-    messageText =
-      '信道名超过 15 字节（原 ' +
-      originalBytes +
-      ' 字节，UTF-8），已截断，末尾为 ...';
+  const finalText = channelNameInput.value;
+  const emptyName = finalText === '';
+  if (emptyName) {
+    if (truncateMsg !== '') {
+      showAppToast(truncateMsg, 'warning');
+    }
+    return;
   }
-  log(messageText, 'warning');
-  const logPanel = $('log');
-  if (logPanel) {
-    logPanel.classList.add('visible');
-  }
-  const logToggleBtn = $('logToggle');
-  if (logToggleBtn) {
-    logToggleBtn.textContent = '隐藏日志';
-  }
-  showAppToast(messageText, 'warning');
+  cnFontGetCodepointSet().then(function onFontReady(codepointSet) {
+    const fontMsg = writefreqBuildMissingCnFontToastMessage(
+      channelNameInput,
+      finalText,
+      codepointSet
+    );
+    const combinedMsg = writefreqCombineTruncateAndFontWarnings(truncateMsg, fontMsg);
+    const shouldShow = combinedMsg !== '';
+    if (!shouldShow) {
+      return;
+    }
+    if (fontMsg !== '') {
+      log(fontMsg, 'warning');
+      const logPanelAfterFont = $('log');
+      if (logPanelAfterFont) {
+        logPanelAfterFont.classList.add('visible');
+      }
+      const logToggleAfterFont = $('logToggle');
+      if (logToggleAfterFont) {
+        logToggleAfterFont.textContent = '隐藏日志';
+      }
+    }
+    showAppToast(combinedMsg, 'warning');
+  }).catch(function onFontSkip(loadErr) {
+    console.error('cn_font.bin 加载失败', loadErr);
+    const errDetail =
+      loadErr && loadErr.message ? loadErr.message : String(loadErr);
+    const loadFailHint =
+      '字库未加载，无法进行缺字检测（' +
+      errDetail +
+      '）。请用本地 HTTP 打开本页（勿直接双击 file 用 file://），并确认与页面同级的 font 或 fonts 目录中存在 cn_font.bin。';
+    const combinedOnFail = writefreqCombineTruncateAndFontWarnings(
+      truncateMsg,
+      loadFailHint
+    );
+    const hasSomethingToShow = combinedOnFail !== '';
+    if (!hasSomethingToShow) {
+      return;
+    }
+    let toastVariant = 'info';
+    if (truncateMsg !== '') {
+      toastVariant = 'warning';
+    }
+    showAppToast(combinedOnFail, toastVariant);
+  });
 }
 
 function writefreqBuildChannelName16(text) {
