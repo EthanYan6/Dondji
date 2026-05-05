@@ -1127,10 +1127,15 @@ static void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level, uint8_t bars
 
 #ifdef ENABLE_AUDIO_BAR
 
-#define MIC_POPUP_WIDTH     52
-#define MIC_POPUP_HEIGHT    47  /* 较原 52 缩短 5px */
-#define MIC_POPUP_X0        ((LCD_WIDTH - MIC_POPUP_WIDTH) / 2)
-#define MIC_POPUP_Y0        ((LCD_HEIGHT - MIC_POPUP_HEIGHT) / 2)
+#define MIC_POPUP_WIDTH          52
+#define MIC_POPUP_HEIGHT         47  /* 比原 52 减 5px：顶边仍在 mic_popup_y0，底边上移 */
+#define MIC_POPUP_X0             ((LCD_WIDTH - MIC_POPUP_WIDTH) / 2)
+/* 垂直位置见 UI_DisplayMicBarTxPopup：单守全屏 blit 与双守顶栏 blit 映射差约 8px，运行时修正 */
+#define MIC_POPUP_MIC_ICON_TOP_OFS 1u /* 相对旧版 6：话筒上移 5px，缩小顶部留白 */
+/* MicPopup_DrawMicIcon：仅椭圆下移嵌入 U 型，U/立柱/底座仍在 y+7..y+12；整体占位 top_y .. top_y+12 */
+#define MIC_POPUP_MIC_ICON_H       13u
+#define MIC_POPUP_GAP_MIC_FREQ     2u
+#define MIC_POPUP_GAP_FREQ_WAVE    2u
 
 static void MicPopup_ClearRectPixels(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
@@ -1156,54 +1161,103 @@ static void MicPopup_BlitFullScreen(void)
         ST7565_BlitFullScreen();
 }
 
-/** 线稿话筒：圆角胶囊头 + 间隙 + U 形托 + 立柱 + 底座（参考扁平描边图标） */
+/** 线稿话筒：椭圆单独下移嵌入 U 型开口；U 形托 / 立柱 / 底座坐标不变，后绘制的 U 盖住重叠像素 */
 static void MicPopup_DrawMicIcon(uint8_t center_x, uint8_t top_y)
 {
     const int16_t cx = (int16_t)center_x;
     const int16_t y0 = (int16_t)top_y;
+    const int16_t cap_drop = 3;
     int16_t       ya;
     int16_t       yb;
     int16_t       x;
 
-    /* -------- 胶囊话筒头（仅描边） -------- */
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 0), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 0), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 0), true);
+    /* -------- 胶囊话筒头（仅描边）：相对初始稿下移 cap_drop，下部与 U 区重叠 -------- */
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 0 + cap_drop), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 0 + cap_drop), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 0 + cap_drop), true);
 
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 2), (uint8_t)(y0 + 1), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 2), (uint8_t)(y0 + 1), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 2), (uint8_t)(y0 + 1 + cap_drop), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 2), (uint8_t)(y0 + 1 + cap_drop), true);
 
-    ya = y0 + 2;
-    yb = y0 + 6;
+    ya = y0 + 2 + cap_drop;
+    yb = y0 + 4 + cap_drop;
     UI_DrawLineBuffer(gFrameBuffer, cx - 2, ya, cx - 2, yb, true);
     UI_DrawLineBuffer(gFrameBuffer, cx + 2, ya, cx + 2, yb, true);
 
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 7), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 7), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 7), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 1), (uint8_t)(y0 + 5 + cap_drop), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 0), (uint8_t)(y0 + 5 + cap_drop), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 1), (uint8_t)(y0 + 5 + cap_drop), true);
 
-    /* -------- 与 U 托之间的间隙（无像素）y0+8 -------- */
+    /* -------- U 形托（开口朝上，位置与原始线稿一致） -------- */
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 7), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 7), true);
 
-    /* -------- U 形托（开口朝上，略宽于话筒头） -------- */
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 9), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 9), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 8), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 8), true);
 
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 4), (uint8_t)(y0 + 10), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 4), (uint8_t)(y0 + 10), true);
-
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 3), (uint8_t)(y0 + 11), true);
-    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 3), (uint8_t)(y0 + 11), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx - 3), (uint8_t)(y0 + 9), true);
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)(cx + 3), (uint8_t)(y0 + 9), true);
 
     for (x = cx - 2; x <= cx + 2; x++)
     {
-        UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)x, (uint8_t)(y0 + 12), true);
+        UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)x, (uint8_t)(y0 + 10), true);
     }
 
-    /* -------- 立柱 -------- */
-    UI_DrawLineBuffer(gFrameBuffer, cx, y0 + 13, cx, y0 + 14, true);
+    /* -------- 立柱（单像素） -------- */
+    UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)cx, (uint8_t)(y0 + 11), true);
 
     /* -------- 底座 -------- */
-    UI_DrawLineBuffer(gFrameBuffer, cx - 3, y0 + 15, cx + 3, y0 + 15, true);
+    UI_DrawLineBuffer(gFrameBuffer, cx - 3, y0 + 12, cx + 3, y0 + 12, true);
+}
+
+/** 话筒下方一行：TX + 当前发射频率；F4HWN 下用 u8g2 最小字（font_5_tr，与 DualVfo 小字一致） */
+static void MicPopup_DrawTxFreqLine(uint8_t inner_left, uint8_t inner_right, uint8_t y_top_px)
+{
+    char            freq_line_buf[16];
+    unsigned int    active_tx_vfo_idx;
+    uint32_t        tx_frequency_value;
+    unsigned int    freq_hi_digits;
+    unsigned int    freq_lo_digits;
+
+    active_tx_vfo_idx = gRxVfoIsActive ? (unsigned int)gEeprom.RX_VFO : (unsigned int)gEeprom.TX_VFO;
+    tx_frequency_value = gEeprom.VfoInfo[active_tx_vfo_idx].pTX->Frequency;
+    freq_hi_digits = (unsigned int)(tx_frequency_value / 100000u);
+    freq_lo_digits = (unsigned int)(tx_frequency_value % 100000u);
+    sprintf(freq_line_buf, "TX:%3u.%05u", freq_hi_digits, freq_lo_digits);
+
+#ifdef ENABLE_FEAT_F4HWN
+    {
+        uint8_t            text_width_px;
+        unsigned int       popup_width_u;
+        unsigned int       text_width_u;
+        uint8_t            text_left_x;
+
+        text_width_px = DualVfoU8g2_GetSmallTextWidth(freq_line_buf);
+        popup_width_u = (unsigned int)MIC_POPUP_WIDTH;
+        text_width_u = (unsigned int)text_width_px;
+        if (text_width_u >= popup_width_u)
+        {
+            text_left_x = MIC_POPUP_X0;
+        }
+        else
+        {
+            text_left_x =
+                (uint8_t)((unsigned int)MIC_POPUP_X0 + (popup_width_u - text_width_u) / 2u);
+        }
+        DualVfoU8g2_DrawSmallText(freq_line_buf, text_left_x, y_top_px, true);
+    }
+#else
+    {
+        uint8_t framebuffer_row;
+
+        framebuffer_row = (uint8_t)(((unsigned)y_top_px + 3u) / 8u);
+        if (framebuffer_row >= 8u)
+        {
+            framebuffer_row = 7u;
+        }
+        UI_PrintStringSmallNormal(freq_line_buf, inner_left, inner_right, framebuffer_row);
+    }
+#endif
 }
 
 static uint32_t s_mic_wave_prng_state;
@@ -1331,8 +1385,12 @@ void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
 
     uint8_t         inner_left;
     uint8_t         inner_right;
+    uint8_t         mic_popup_y0;
     uint8_t         wave_top;
     uint8_t         wave_bottom;
+    uint8_t         freq_line_top_px;
+    uint8_t         freq_row_reserved_px;
+    unsigned int    centered_popup_y;
 
     if (!gSetting_mic_bar)
     {
@@ -1387,18 +1445,49 @@ void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
 
     inner_left  = (uint8_t)(MIC_POPUP_X0 + 4u);
     inner_right = (uint8_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 5u);
-    wave_top    = (uint8_t)(MIC_POPUP_Y0 + 22u);
-    wave_bottom = (uint8_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 3u);
 
-    /* 每帧同时绘制：方框 + 话筒 + 声纹（声纹在 MicPopup_DrawWaveformBand 内每帧重算，持续变化） */
-    MicPopup_ClearRectPixels(MIC_POPUP_X0, MIC_POPUP_Y0,
+    centered_popup_y = ((unsigned)LCD_HEIGHT - (unsigned)MIC_POPUP_HEIGHT) / 2u;
+    mic_popup_y0 = (uint8_t)centered_popup_y;
+#ifdef ENABLE_FEAT_F4HWN
+    /* 单守：ST7565_BlitFullScreen 把 FB[0] 送到硬件第 1 行；双守：FB[0] 走顶栏第 0 行。
+     * 同一 Y 在单守物理屏上整体偏下约 8px，弹窗上移后与双守主观位置一致。 */
+    if (!UI_IsDualVfoMainScreen())
+    {
+        const unsigned int single_blit_shift_px = 8u;
+
+        if (centered_popup_y >= single_blit_shift_px)
+        {
+            mic_popup_y0 = (uint8_t)(centered_popup_y - single_blit_shift_px);
+        }
+        else
+        {
+            mic_popup_y0 = 0u;
+        }
+    }
+#endif
+
+    freq_line_top_px = (uint8_t)((unsigned)mic_popup_y0 + (unsigned)MIC_POPUP_MIC_ICON_TOP_OFS +
+                                 (unsigned)MIC_POPUP_MIC_ICON_H + (unsigned)MIC_POPUP_GAP_MIC_FREQ);
+#ifdef ENABLE_FEAT_F4HWN
+    freq_row_reserved_px = 6u;
+#else
+    freq_row_reserved_px = 8u;
+#endif
+    wave_top =
+        (uint8_t)((unsigned)freq_line_top_px + (unsigned)freq_row_reserved_px + (unsigned)MIC_POPUP_GAP_FREQ_WAVE);
+    wave_bottom = (uint8_t)((unsigned)mic_popup_y0 + (unsigned)MIC_POPUP_HEIGHT - 3u);
+
+    /* 每帧同时绘制：方框 + 话筒 + TX 频率 + 声纹（声纹在 MicPopup_DrawWaveformBand 内每帧重算，持续变化） */
+    MicPopup_ClearRectPixels(MIC_POPUP_X0, mic_popup_y0,
                              (uint8_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 1u),
-                             (uint8_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 1u));
-    UI_DrawRectangleBuffer(gFrameBuffer, MIC_POPUP_X0, MIC_POPUP_Y0,
+                             (uint8_t)((unsigned)mic_popup_y0 + (unsigned)MIC_POPUP_HEIGHT - 1u));
+    UI_DrawRectangleBuffer(gFrameBuffer, MIC_POPUP_X0, mic_popup_y0,
                            (int16_t)(MIC_POPUP_X0 + MIC_POPUP_WIDTH - 1),
-                           (int16_t)(MIC_POPUP_Y0 + MIC_POPUP_HEIGHT - 1), true);
+                           (int16_t)((unsigned)mic_popup_y0 + (unsigned)MIC_POPUP_HEIGHT - 1), true);
 
-    MicPopup_DrawMicIcon((uint8_t)(LCD_WIDTH / 2u), (uint8_t)(MIC_POPUP_Y0 + 6u));
+    MicPopup_DrawMicIcon((uint8_t)(LCD_WIDTH / 2u),
+                         (uint8_t)((unsigned)mic_popup_y0 + (unsigned)MIC_POPUP_MIC_ICON_TOP_OFS));
+    MicPopup_DrawTxFreqLine(inner_left, inner_right, freq_line_top_px);
 
     sAnimTick++;
     s_mic_wave_prng_state ^= (uint32_t)sAnimTick * 0x9E3779B9u;
