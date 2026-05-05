@@ -7,6 +7,9 @@
 #ifdef ENABLE_CHINESE
 
 extern const char gSubMenu_OFF_ON_CN[][4];
+#ifdef ENABLE_AUDIO_BAR
+extern const char gSubMenu_MIC_BAR_STYLE_CN[][10];
+#endif
 extern const char gSubMenu_SFT_D_CN[][4];
 extern const char gSubMenu_W_N_CN[][7];
 extern const char *const gSubMenu_RXMode_CN[];

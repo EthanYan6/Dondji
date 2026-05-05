@@ -400,7 +400,24 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     gSetting_live_DTMF_decoder = !!(Data[7] & (1u << 1));
     gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
     #ifdef ENABLE_AUDIO_BAR
-        gSetting_mic_bar       = !!(Data[7] & (1u << 4));
+        #ifdef ENABLE_FEAT_F4HWN
+            {
+                uint8_t mic_pair;
+
+                mic_pair = (uint8_t)((Data[7] >> 4) & 3u);
+                if (mic_pair == 0u)
+                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_OFF;
+                else if (mic_pair == 1u)
+                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_POPUP;
+                else if (mic_pair == 2u)
+                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_BAR;
+                else
+                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_POPUP;
+            }
+        #else
+            gSetting_mic_bar_display =
+                (Data[7] & (1u << 4)) ? MIC_BAR_DISPLAY_POPUP : MIC_BAR_DISPLAY_OFF;
+        #endif
     #endif
     #ifndef ENABLE_FEAT_F4HWN
         #ifdef ENABLE_AM_FIX
@@ -991,7 +1008,18 @@ void SETTINGS_SaveSettings(void)
     if (!gSetting_live_DTMF_decoder) State[7] &= ~(1u << 1);
     State[7] = (State[7] & ~(3u << 2)) | ((gSetting_battery_text & 3u) << 2);
     #ifdef ENABLE_AUDIO_BAR
-        if (!gSetting_mic_bar)           State[7] &= ~(1u << 4);
+        #ifdef ENABLE_FEAT_F4HWN
+            State[7] &= ~(3u << 4);
+            if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_POPUP)
+                State[7] |= (1u << 4);
+            else if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR)
+                State[7] |= (2u << 4);
+        #else
+            if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_OFF)
+                State[7] &= ~(1u << 4);
+            else
+                State[7] |= (1u << 4);
+        #endif
     #endif
     #ifndef ENABLE_FEAT_F4HWN
         #ifdef ENABLE_AM_FIX

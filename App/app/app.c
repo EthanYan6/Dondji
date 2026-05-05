@@ -1179,8 +1179,8 @@ void StopTransmitting(void) {
     #endif
 
 #ifdef ENABLE_AUDIO_BAR
-    /* 松开 PTT 后整屏重画主页，去掉发射条弹窗残留（话筒+声纹一起消失） */
-    if (gSetting_mic_bar && gScreenToDisplay == DISPLAY_MAIN)
+    /* 松开 PTT 后整屏重画主页，去掉发射条弹窗/条形残留 */
+    if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_OFF && gScreenToDisplay == DISPLAY_MAIN)
     {
         gUpdateDisplay = true;
     }
@@ -1380,10 +1380,27 @@ void APP_TimeSlice10ms(void)
     }
 
 #ifdef ENABLE_AUDIO_BAR
-    if (gSetting_mic_bar && gCurrentFunction == FUNCTION_TRANSMIT &&
-        (gFlashLightBlinkCounter % 2u) == 0u)
+    if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_OFF &&
+        gCurrentFunction == FUNCTION_TRANSMIT)
     {
-        UI_DisplayMicBarTxPopup(gUpdateDisplayCurrent);
+        /* 条形：与改动前一致，约 150ms 刷新（FlashLightBlinkCounter 每 10ms +1 → %15）。
+           弹窗：约 20ms 刷新波形，沿用现有逻辑。 */
+        if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_POPUP) {
+            if ((gFlashLightBlinkCounter % 2u) == 0u) {
+                UI_DisplayMicBarTxPopup(gUpdateDisplayCurrent);
+            }
+        } else if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR) {
+#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+            /* 与移除「发射条」改动前一致：约 20ms 刷新滚动波形（细条左移） */
+            if ((gFlashLightBlinkCounter % 2u) == 0u) {
+                UI_DisplayAudioScope();
+            }
+#else
+            if ((gFlashLightBlinkCounter % 15u) == 0u) {
+                UI_DisplayAudioBar();
+            }
+#endif
+        }
     }
 #endif
 

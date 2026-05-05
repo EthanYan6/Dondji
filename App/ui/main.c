@@ -26,6 +26,7 @@
 #include "board.h"
 #include "font.h"
 #include "driver/bk4819.h"
+#include "driver/gpio.h"
 #include "driver/st7565.h"
 #include "external/printf/printf.h"
 #include "functions.h"
@@ -538,6 +539,15 @@ static void DualVfoAppendTone(char *buf, size_t cap, char tag, const FREQ_Config
 
 static void DualVfoDrawTopDetailRowPx(unsigned int topVfoIdx, uint8_t y)
 {
+#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE) && defined(ENABLE_AUDIO_BAR) && defined(ENABLE_FEAT_F4HWN)
+    if (UI_IsDualVfoMainScreen() &&
+        gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR &&
+        gCurrentFunction == FUNCTION_TRANSMIT)
+    {
+        /* 该行由 UI_DisplayAudioScope 双守分支绘制（DV_Y_TOP_DET 像素带） */
+        return;
+    }
+#endif
     const VFO_Info_t *v = &gEeprom.VfoInfo[topVfoIdx];
     char              buf[48];
     uint8_t           sq = gEeprom.SQUELCH_LEVEL;
@@ -1127,6 +1137,375 @@ static void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level, uint8_t bars
 
 #ifdef ENABLE_AUDIO_BAR
 
+#if !defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+
+static uint8_t log2_approx(unsigned int value)
+{
+    uint8_t log = 0;
+    while (value >>= 1) {
+        log++;
+    }
+    return log;
+}
+
+void UI_DisplayAudioBar(void)
+{
+    if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_BAR) {
+        return;
+    }
+
+    if (gLowBattery && !gLowBatteryConfirmed) {
+        return;
+    }
+
+    /* Mic bar only on Main Only; hide on dual-VFO main screen（与 03ca225 之前一致） */
+    if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+        return;
+    }
+
+#ifdef ENABLE_FEAT_F4HWN
+    RxBlinkLed = 0;
+    RxBlinkLedCounter = 0;
+    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
+    {
+        unsigned int line;
+
+        if (isMainOnly()) {
+            line = 5u;
+        } else {
+            line = 3u;
+        }
+
+        if (gCurrentFunction != FUNCTION_TRANSMIT ||
+            gScreenToDisplay != DISPLAY_MAIN
+#ifdef ENABLE_DTMF_CALLING
+            || gDTMF_CallState != DTMF_CALL_STATE_NONE
+#endif
+            ) {
+            return;
+        }
+
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+        if (gAlarmState != ALARM_STATE_OFF) {
+            return;
+        }
+#endif
+
+        {
+            static uint8_t barsOld = 0;
+            const uint8_t thresold = 18;
+            const uint8_t barsList[] = {
+                0, 0, 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 21, 25, 25, 25
+            };
+            uint8_t       logLevel;
+            uint8_t       bars;
+            unsigned int  voiceLevel;
+            uint8_t      *p_line;
+
+            voiceLevel = BK4819_GetVoiceAmplitudeOut();
+
+            voiceLevel = (voiceLevel >= thresold) ? (voiceLevel - thresold) : 0;
+            logLevel = log2_approx(MIN(voiceLevel * 16, 32768u) + 1);
+            bars = barsList[logLevel];
+            barsOld = (barsOld - bars > 1) ? (barsOld - 1) : bars;
+
+            p_line = gFrameBuffer[line];
+            memset(p_line, 0, LCD_WIDTH);
+
+            DrawLevelBar(2, (uint8_t)line, barsOld, 25);
+        }
+
+        if (gCurrentFunction == FUNCTION_TRANSMIT) {
+            ST7565_BlitMainPerMode();
+        }
+    }
+#else
+    {
+        const unsigned int line = 3u;
+
+        if (gCurrentFunction != FUNCTION_TRANSMIT ||
+            gScreenToDisplay != DISPLAY_MAIN
+#ifdef ENABLE_DTMF_CALLING
+            || gDTMF_CallState != DTMF_CALL_STATE_NONE
+#endif
+            ) {
+            return;
+        }
+
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+        if (gAlarmState != ALARM_STATE_OFF) {
+            return;
+        }
+#endif
+
+        {
+            static uint8_t barsOld = 0;
+            const uint8_t thresold = 18;
+            const uint8_t barsList[] = {
+                0, 0, 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 21, 25, 25, 25
+            };
+            uint8_t       logLevel;
+            uint8_t       bars;
+            unsigned int  voiceLevel;
+            uint8_t      *p_line;
+
+            voiceLevel = BK4819_GetVoiceAmplitudeOut();
+
+            voiceLevel = (voiceLevel >= thresold) ? (voiceLevel - thresold) : 0;
+            logLevel = log2_approx(MIN(voiceLevel * 16, 32768u) + 1);
+            bars = barsList[logLevel];
+            barsOld = (barsOld - bars > 1) ? (barsOld - 1) : bars;
+
+            p_line = gFrameBuffer[line];
+            memset(p_line, 0, LCD_WIDTH);
+
+            DrawLevelBar(2, (uint8_t)line, barsOld, 25);
+        }
+
+        if (gCurrentFunction == FUNCTION_TRANSMIT) {
+            ST7565_BlitMainPerMode();
+        }
+    }
+#endif
+}
+
+#endif /* !ENABLE_FEAT_F4HWN_AUDIO_SCOPE */
+
+#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+
+#define SCOPE_SAMPLES        43
+#define SCOPE_NOISE_GATE     50u
+#define SCOPE_FLOOR_RISE     2u
+#define SCOPE_FLOOR_DROP_SHR 3u
+#define SCOPE_VOLUME_MIN     200u
+
+void UI_DisplayAudioScope(void)
+{
+    static uint16_t g_scope_buf[SCOPE_SAMPLES];
+    static uint8_t  g_scope_write = 0;
+    static uint16_t g_scope_floor = SCOPE_VOLUME_MIN;
+    static uint8_t  g_scope_ready = 0;
+    static bool     s_was_tx      = false;
+
+    uint8_t init_idx;
+
+    if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_BAR) {
+        return;
+    }
+
+    if (gCurrentFunction != FUNCTION_TRANSMIT) {
+        s_was_tx = false;
+        return;
+    }
+
+#ifdef ENABLE_FEAT_F4HWN
+    if (!UI_IsDualVfoMainScreen())
+#endif
+    {
+        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+            return;
+        }
+    }
+
+    if (!GPIO_IsPttPressed()
+#ifdef ENABLE_VOX
+        && !gEeprom.VOX_SWITCH
+#endif
+#ifdef ENABLE_FEAT_F4HWN
+        && !gSetting_set_ptt_session
+#endif
+        ) {
+        return;
+    }
+
+    if (!s_was_tx) {
+        for (init_idx = 0u; init_idx < SCOPE_SAMPLES; init_idx++) {
+            g_scope_buf[init_idx] = SCOPE_VOLUME_MIN;
+        }
+        g_scope_write = 0u;
+        g_scope_floor = SCOPE_VOLUME_MIN;
+        g_scope_ready = 0u;
+        s_was_tx       = true;
+    }
+
+    if (g_scope_ready >= 7u) {
+        g_scope_buf[g_scope_write] = BK4819_GetVoiceAmplitudeOut();
+    } else {
+        g_scope_ready++;
+    }
+
+    if (g_scope_buf[g_scope_write] == 0u) {
+        g_scope_buf[g_scope_write] = SCOPE_VOLUME_MIN;
+    }
+
+    g_scope_write = (uint8_t)((g_scope_write + 1u) % SCOPE_SAMPLES);
+
+    if (gLowBattery && !gLowBatteryConfirmed) {
+        return;
+    }
+
+    if (gScreenToDisplay != DISPLAY_MAIN
+#ifdef ENABLE_DTMF_CALLING
+        || gDTMF_CallState != DTMF_CALL_STATE_NONE
+#endif
+        ) {
+        return;
+    }
+
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+    if (gAlarmState != ALARM_STATE_OFF) {
+        return;
+    }
+#endif
+
+#ifdef ENABLE_FEAT_F4HWN
+    RxBlinkLed = 0;
+    RxBlinkLedCounter = 0;
+    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
+#endif
+
+    {
+        unsigned int   line;
+        uint16_t       min_val;
+        uint16_t       max_val;
+        uint16_t       range;
+        uint8_t        col_idx;
+
+#ifdef ENABLE_FEAT_F4HWN
+        if (isMainOnly()) {
+            line = 5u;
+        } else {
+            line = 3u;
+        }
+#else
+        line = 3u;
+#endif
+
+        min_val = g_scope_buf[0];
+        max_val = g_scope_buf[0];
+        for (col_idx = 1u; col_idx < SCOPE_SAMPLES; col_idx++) {
+            if (g_scope_buf[col_idx] < min_val) {
+                min_val = g_scope_buf[col_idx];
+            }
+            if (g_scope_buf[col_idx] > max_val) {
+                max_val = g_scope_buf[col_idx];
+            }
+        }
+
+        if (g_scope_floor > min_val) {
+            g_scope_floor =
+                (uint16_t)(g_scope_floor -
+                           (((g_scope_floor - min_val) >> SCOPE_FLOOR_DROP_SHR) + 1u));
+        } else {
+            g_scope_floor = (uint16_t)(g_scope_floor + SCOPE_FLOOR_RISE);
+        }
+
+        if (max_val > g_scope_floor) {
+            range = (uint16_t)(max_val - g_scope_floor);
+        } else {
+            range = 0u;
+        }
+
+#ifdef ENABLE_FEAT_F4HWN
+        if (UI_IsDualVfoMainScreen())
+        {
+            const uint8_t strip_top    = DV_Y_TOP_DET;
+            const uint8_t strip_bottom = (uint8_t)(DV_Y_TOP_DET + 6u);
+
+            DualVfoClearRectPx(0, strip_top, (uint8_t)(LCD_WIDTH - 1u), strip_bottom);
+
+            for (col_idx = 0u; col_idx < SCOPE_SAMPLES; col_idx++) {
+                uint8_t        idx;
+                uint16_t       sample_above_floor;
+                uint8_t        height;
+                uint8_t        x0;
+                uint8_t        x1;
+                uint8_t        mid_y;
+                uint8_t        y_top_px;
+                uint8_t        yy;
+
+                idx = (uint8_t)((g_scope_write + col_idx) % SCOPE_SAMPLES);
+
+                height = 0u;
+                if (range >= SCOPE_NOISE_GATE) {
+                    if (g_scope_buf[idx] > g_scope_floor) {
+                        sample_above_floor = (uint16_t)(g_scope_buf[idx] - g_scope_floor);
+                    } else {
+                        sample_above_floor = 0u;
+                    }
+                    height = (uint8_t)(((uint32_t)sample_above_floor * 7u) / (uint32_t)range);
+                }
+
+                if (height > 7u) {
+                    height = 7u;
+                }
+
+                x0 = (uint8_t)(col_idx * 3u);
+                x1 = (uint8_t)(x0 + 1u);
+
+                if (height == 0u) {
+                    mid_y = (uint8_t)(strip_top + 3u);
+                    PutPixel(x0, mid_y, true);
+                    PutPixel(x1, mid_y, true);
+                } else {
+                    y_top_px = (uint8_t)((unsigned)strip_bottom + 1u - (unsigned)height);
+                    if (y_top_px < strip_top) {
+                        y_top_px = strip_top;
+                    }
+                    for (yy = y_top_px; yy <= strip_bottom; yy++) {
+                        PutPixel(x0, yy, true);
+                        PutPixel(x1, yy, true);
+                    }
+                }
+            }
+
+            ST7565_BlitFullScreenDualVfoTightTop();
+        }
+        else
+#endif
+        {
+            uint8_t *p_line;
+
+            p_line = gFrameBuffer[line];
+            memset(p_line, 0, LCD_WIDTH);
+
+            for (col_idx = 0u; col_idx < SCOPE_SAMPLES; col_idx++) {
+                uint8_t        idx;
+                uint16_t       sample_above_floor;
+                uint8_t        height;
+                uint8_t        mask;
+                uint8_t       *p_col;
+
+                idx = (uint8_t)((g_scope_write + col_idx) % SCOPE_SAMPLES);
+
+                height = 0u;
+                if (range >= SCOPE_NOISE_GATE) {
+                    if (g_scope_buf[idx] > g_scope_floor) {
+                        sample_above_floor = (uint16_t)(g_scope_buf[idx] - g_scope_floor);
+                    } else {
+                        sample_above_floor = 0u;
+                    }
+                    height = (uint8_t)(((uint32_t)sample_above_floor * 7u) / (uint32_t)range);
+                }
+
+                if (height > 0u) {
+                    mask = (uint8_t)((0x7Fu << (7u - height)) & 0x7Fu);
+                } else {
+                    mask = 0x40u;
+                }
+
+                p_col = &p_line[col_idx * 3u];
+                p_col[0] = mask;
+                p_col[1] = mask;
+            }
+
+            ST7565_BlitLine((uint8_t)line);
+        }
+    }
+}
+
+#endif /* ENABLE_FEAT_F4HWN_AUDIO_SCOPE */
+
 #define MIC_POPUP_WIDTH          52
 #define MIC_POPUP_HEIGHT         47  /* 比原 52 减 5px：顶边仍在 mic_popup_y0，底边上移 */
 #define MIC_POPUP_X0             ((LCD_WIDTH - MIC_POPUP_WIDTH) / 2)
@@ -1392,7 +1771,7 @@ void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
     uint8_t         freq_row_reserved_px;
     unsigned int    centered_popup_y;
 
-    if (!gSetting_mic_bar)
+    if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_POPUP)
     {
         s_mic_popup_main_prepared = false;
         return;
@@ -3143,6 +3522,39 @@ display_main_after_vfo_loop:
     {   // we're free to use the middle line
 
         const bool rx = FUNCTION_IsRx();
+
+#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+#ifdef ENABLE_FEAT_F4HWN
+        if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR &&
+            gCurrentFunction == FUNCTION_TRANSMIT &&
+            (isMainOnly() || UI_IsDualVfoMainScreen()))
+        {
+            /* 细竖条波形：timeslice 内绘制；此处只占中间行，避免 RSSI/DTMF 覆盖 */
+            center_line = CENTER_LINE_AUDIO_SCOPE;
+        }
+        else
+#else
+        if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR &&
+            gCurrentFunction == FUNCTION_TRANSMIT &&
+            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF &&
+            gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
+        {
+            center_line = CENTER_LINE_AUDIO_SCOPE;
+        }
+        else
+#endif
+#endif
+#if defined(ENABLE_AUDIO_BAR) && !defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+        if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR &&
+            gCurrentFunction == FUNCTION_TRANSMIT &&
+            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF &&
+            gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
+        {
+            center_line = CENTER_LINE_AUDIO_BAR;
+            UI_DisplayAudioBar();
+        }
+        else
+#endif
 
 #if defined(ENABLE_AM_FIX) && defined(ENABLE_AM_FIX_SHOW_DATA)
         if (rx && gEeprom.VfoInfo[gEeprom.RX_VFO].Modulation == MODULATION_AM && gSetting_AM_fix)

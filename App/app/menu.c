@@ -223,13 +223,6 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
     if (MENU_IsHiddenDtmfMenu(menu_id))
         return false;
 
-#ifdef ENABLE_AUDIO_BAR
-    /* 发射条 / Mic Bar：归在「设置」图标（一级第 2 个）下；与双守/异频无关，条显在单 VFO 时由 UI 控制 */
-    if (menu_id == MENU_MIC_BAR) {
-        return (icon_index == 1u);
-    }
-#endif
-
     (void)menu_number_1based;
 
     bool in_channel = false;
@@ -280,7 +273,11 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_ABR_MAX ||
         menu_id == MENU_ABR_ON_TX_RX ||
         menu_id == MENU_SET_CTR ||
-        menu_id == MENU_SET_INV)
+        menu_id == MENU_SET_INV
+#ifdef ENABLE_AUDIO_BAR
+        || menu_id == MENU_MIC_BAR
+#endif
+        )
     {
         in_display = true;
     }
@@ -338,7 +335,6 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_F2SHRT) return 8u;
         if (menu_id == MENU_F2LONG) return 9u;
         if (menu_id == MENU_MLONG) return 10u;
-        if (menu_id == MENU_MIC_BAR) return 11u;
     }
 
     if (icon_index == 2u)
@@ -352,6 +348,9 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_ABR_ON_TX_RX) return 6u;
         if (menu_id == MENU_SET_CTR) return 7u;
         if (menu_id == MENU_SET_INV) return 8u;
+#ifdef ENABLE_AUDIO_BAR
+        if (menu_id == MENU_MIC_BAR) return 9u;
+#endif
     }
 
     return 255u;
@@ -686,13 +685,16 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             *pMax = ARRAY_SIZE(gSubMenu_RX_TX) - 1;
             break;
 
+        #ifdef ENABLE_AUDIO_BAR
+        case MENU_MIC_BAR:
+            *pMax = 2;
+            break;
+        #endif
+
         #ifndef ENABLE_FEAT_F4HWN
             #ifdef ENABLE_AM_FIX
                 case MENU_AM_FIX:
             #endif
-        #endif
-        #ifdef ENABLE_AUDIO_BAR
-            case MENU_MIC_BAR:
         #endif
         case MENU_BCL:
         case MENU_BEEP:
@@ -1175,7 +1177,7 @@ void MENU_AcceptSetting(void)
 
         #ifdef ENABLE_AUDIO_BAR
             case MENU_MIC_BAR:
-                gSetting_mic_bar = gSubMenuSelection;
+                gSetting_mic_bar_display = gSubMenuSelection;
                 break;
         #endif
 
@@ -1692,7 +1694,7 @@ void MENU_ShowCurrentSetting(void)
 
 #ifdef ENABLE_AUDIO_BAR
         case MENU_MIC_BAR:
-            gSubMenuSelection = gSetting_mic_bar;
+            gSubMenuSelection = gSetting_mic_bar_display;
             break;
 #endif
 

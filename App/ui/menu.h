@@ -173,6 +173,9 @@ extern const char        gSubMenu_TXP[8][6];
 extern const char        gSubMenu_SFT_D[3][4];
 extern const char        gSubMenu_W_N[2][7];
 extern const char        gSubMenu_OFF_ON[2][4];
+#ifdef ENABLE_AUDIO_BAR
+extern const char        gSubMenu_MIC_BAR_STYLE[3][10];
+#endif
 extern const char        gSubMenu_NA[4];
 extern const char        gSubMenu_TOT[11][7];
 extern const char* const gSubMenu_RXMode[4];

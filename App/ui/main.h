@@ -41,8 +41,14 @@ typedef enum center_line_t center_line_t;
 extern center_line_t center_line;
 
 #ifdef ENABLE_AUDIO_BAR
+#if !defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+void UI_DisplayAudioBar(void);
+#endif
+#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
+void UI_DisplayAudioScope(void);
+#endif
 /**
- * 发射条开启且主页发射时：叠加方形弹窗。
+ * 弹窗样式：发射条开启且主页发射时叠加方形弹窗。
  * main_screen_just_redrawn：本周期若已执行 GUI_DisplayScreen() 则为 true，用于在整屏刷新后重画边框/话筒，避免每帧整屏重绘闪烁。
  */
 void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn);

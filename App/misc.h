@@ -216,7 +216,11 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
 #endif
 
 #ifdef ENABLE_AUDIO_BAR
-    extern bool              gSetting_mic_bar;
+    /* 0=关闭 1=条形（单守页水平语音条） 2=弹窗 */
+    #define MIC_BAR_DISPLAY_OFF    0u
+    #define MIC_BAR_DISPLAY_BAR    1u
+    #define MIC_BAR_DISPLAY_POPUP  2u
+    extern uint8_t           gSetting_mic_bar_display;
 #endif
 extern uint8_t               gSetting_boot_hint; /* 0=叮咚鸡 1=魅力北京 2=五五节纪念版 */
 extern bool                  gSetting_live_DTMF_decoder;
