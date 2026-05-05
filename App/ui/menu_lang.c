@@ -154,7 +154,7 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_BATCAL:       return "\xe7\x94\xb5\xe6\xb1\xa0\xe6\xa0\xa1\xe5\x87\x86";
     case MENU_BATTYP:       return "\xe7\x94\xb5\xe6\xb1\xa0\xe7\xb1\xbb\xe5\x9e\x8b";
 #ifdef ENABLE_AUDIO_BAR
-    case MENU_MIC_BAR:      return "\xe5\x8f\x91\xe5\xb0\x84\xe6\x9d\xa1\xe6\xa0\xb7\xe5\xbc\x8f"; /* 发射条样式 */
+    case MENU_MIC_BAR:      return "\xe5\x8f\x91\xe5\xb0\x84\xe6\x8f\x90\xe7\xa4\xba"; /* 发射提示 */
 #endif
     default:
         return item->name;
