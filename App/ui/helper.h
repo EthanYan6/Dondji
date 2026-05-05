@@ -65,6 +65,8 @@ void UI_DisplayClear();
 #ifdef ENABLE_CHINESE
 size_t UI_SmallStringPixelWidth(const char *pString);
 void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end, uint8_t latin_down_when_mixed);
+/** 键盘锁弹窗「长按#解锁」：混排时拉丁上移，相对 UI_PrintStringSmallAtPixel(..., 3) 中 # 上移 3 像素 */
+void UI_PrintStringSmallAtPixelKeyLockUnlockHint(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
 /** 12px 纵带内绘信道名（中英混排）：与命名信道拼音编辑、主界面 MR 一致，latin_down=0 */
 void UI_PrintStringSmallChannelNameBand(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_top);
 void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);

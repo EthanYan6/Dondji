@@ -658,13 +658,12 @@ static void sort(int16_t *a, int16_t *b)
                 const uint8_t chinese_hint_x_end = (uint8_t)(chinese_hint_base_x_end + chinese_hint_offset_x);
 
                 unlock_hint_text = "长按#解锁";
-                UI_PrintStringSmallAtPixel(
+                UI_PrintStringSmallAtPixelKeyLockUnlockHint(
                     unlock_hint_text,
                     chinese_hint_x_start,
                     chinese_hint_x_end,
                     28u,
-                    42u,
-                    3u
+                    42u
                 );
             } else
 #endif
@@ -879,6 +878,13 @@ void UI_PrintStringSmallAtPixel(const char *pString, uint8_t x_start, uint8_t x_
             i++;
         }
     }
+}
+
+void UI_PrintStringSmallAtPixelKeyLockUnlockHint(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end)
+{
+    const uint8_t latin_down_key_lock_unlock_hint = 0u;
+
+    UI_PrintStringSmallAtPixel(pString, x_start, x_end, y_pixel_start, y_pixel_end, latin_down_key_lock_unlock_hint);
 }
 
 void UI_PrintStringSmallChannelNameBand(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_top)
