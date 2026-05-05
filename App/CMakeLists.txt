@@ -39,6 +39,7 @@ target_sources(App INTERFACE
     scheduler.c
     settings.c
     ui/battery.c
+    ui/boot_logo_bitmap.c
     ui/helper.c
     ui/inputbox.c
     ui/main.c

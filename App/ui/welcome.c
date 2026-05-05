@@ -27,66 +27,68 @@
 #include "ui/welcome.h"
 #include "ui/status.h"
 #include "version.h"
-#include "bitmaps.h"
 
 #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
     #include "screenshot.h"
 #endif
 
-#ifdef ENABLE_FEAT_F4HWN_MEM
-// Linker symbols (provided by the linker script)
-extern uint8_t _sdata;          // Start of .data in RAM
-extern uint8_t _edata;          // End of .data in RAM
-extern uint8_t _sbss;           // Start of .bss in RAM
-extern uint8_t _ebss;           // End of .bss in RAM
+#ifdef ENABLE_FEAT_F4HWN
+#include "ui/boot_logo_bitmap.h"
 
-// _eflash_used must be defined in the linker script immediately after the last
-// section with a FLASH load address (after .noncacheable). Example:
-//
-//   .noncacheable : {
-//       ...
-//   } > RAM AT> FLASH
-//   _eflash_used = LOADADDR(.noncacheable) + SIZEOF(.noncacheable);
-//
-// This gives the exact byte count that the linker reports as FLASH used.
-extern uint8_t _eflash_used;
-
-// Absolute symbols: their *address* IS the numeric size value (ARM/CMSIS convention).
-// RAM = .data + gap + .bss + heap_reserve + stack_reserve
-extern uint8_t _Min_Heap_Size;
-extern uint8_t _Min_Stack_Size;
-
-// Region sizes (must match your linker MEMORY regions)
-#define RAM_SIZE_BYTES     (16u * 1024u)
-#define FLASH_SIZE_BYTES   (118u * 1024u)
-
-// Base address of FLASH — must match ORIGIN(FLASH) in your linker script
-#define FLASH_BASE         (0x08002800u)
-
-static inline uint32_t span(const void* a, const void* b)
+static void UI_Welcome_CopyLogoToFrameBuffer(void)
 {
-    return (uint32_t)((uintptr_t)b - (uintptr_t)a);
+    uint8_t logo_row_index = 0;
+
+    while (logo_row_index < BOOT_LOGO_FRAME_LINES)
+    {
+        memcpy(gFrameBuffer[logo_row_index], gBootLogoBitmap[logo_row_index], LCD_WIDTH);
+        logo_row_index = logo_row_index + 1;
+    }
 }
 
-static void build_usage(uint32_t* ram_used, uint32_t* flash_used)
+static void UI_Welcome_DrawBootHintBottom(void)
 {
-    // RAM: span from start of .data to end of .bss covers .data + alignment gap + .bss.
-    // Then add heap and stack reservations (absolute linker symbols: address = size).
-    // Proof: (0x20002A60 - 0x20000000) + 0x200 + 0x400 = 10848 + 512 + 1024 = 12384 B ✓
-    const uint32_t heap_size  = (uint32_t)(uintptr_t)&_Min_Heap_Size;
-    const uint32_t stack_size = (uint32_t)(uintptr_t)&_Min_Stack_Size;
-    *ram_used = span(&_sdata, &_ebss) + heap_size + stack_size;
+    /* 开机提示再下移 7 像素：英文用语义明确的像素下移（小号字 Line6 + vOffset7） */
+    const uint8_t boot_hint_bottom_y_start = 57u;
+    const uint8_t boot_hint_bottom_y_end = 63u;
+    const uint8_t boot_hint_english_line = 6u;
+    const uint8_t boot_hint_english_down_px = 7u;
 
-    // FLASH: _eflash_used is placed by the linker script right after the last
-    // section copied to FLASH (.data LMA + .noncacheable LMA).
-    // Note: _etext is NOT usable here because this linker script places .rodata
-    // sections AFTER _etext, making it an unreliable end-of-flash marker.
-    *flash_used = span((void*)FLASH_BASE, &_eflash_used);
-}
-
-static inline uint16_t pct_x100(uint32_t used, uint32_t total)
-{
-    return (uint16_t)((used * 10000u) / total); // 7559 => 75.59%
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN)
+    {
+        if (gSetting_boot_hint == 0)
+        {
+            UI_PrintStringSmallAtPixel("\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 3u);
+        }
+        else if (gSetting_boot_hint == 1)
+        {
+            UI_PrintStringSmallAtPixel("\xe9\xad\x85\xe5\x8a\x9b\xe5\x8c\x97\xe4\xba\xac", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 3u);
+        }
+        else
+        {
+            UI_PrintStringSmallAtPixel("\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 3u);
+        }
+    }
+    else
+#endif
+    {
+        if (gSetting_boot_hint == 0)
+        {
+            UI_PrintStringSmallNormalVOffset(
+                "Dondji", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+        }
+        else if (gSetting_boot_hint == 1)
+        {
+            UI_PrintStringSmallNormalVOffset(
+                "Beautiful BJ", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+        }
+        else
+        {
+            UI_PrintStringSmallNormalVOffset(
+                "happy 55th", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+        }
+    }
 }
 #endif
 
@@ -125,10 +127,11 @@ void UI_DisplayReleaseKeys(void)
 
 void UI_DisplayWelcome(void)
 {
+#ifndef ENABLE_FEAT_F4HWN
     char WelcomeString0[16];
     char WelcomeString1[16];
     char WelcomeString2[16];
-    char WelcomeString3[32];
+#endif
 
     memset(gStatusLine,  0, sizeof(gStatusLine));
 
@@ -138,9 +141,8 @@ void UI_DisplayWelcome(void)
     UI_DisplayClear();
 
 #ifdef ENABLE_FEAT_F4HWN
-    ST7565_BlitStatusLine();
-    ST7565_BlitFullScreen();
-    
+    ST7565_BlitFullScreenDualVfoTightTop();
+
     if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_NONE || gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_SOUND) {
         ST7565_FillScreen(0x00);
 #else
@@ -148,6 +150,7 @@ void UI_DisplayWelcome(void)
         ST7565_FillScreen(0xFF);
 #endif
     } else {
+#ifndef ENABLE_FEAT_F4HWN
         memset(WelcomeString0, 0, sizeof(WelcomeString0));
         memset(WelcomeString1, 0, sizeof(WelcomeString1));
 
@@ -217,47 +220,15 @@ void UI_DisplayWelcome(void)
         }
         UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 
-#ifdef ENABLE_FEAT_F4HWN
-        snprintf(WelcomeString3, sizeof(WelcomeString3), "Dondji %s", VERSION_STRING_2);
-        UI_PrintStringSmallNormal(WelcomeString3, 0, 128, 4);
-
-        UI_DrawLineBuffer(gFrameBuffer, 0, 35, 18, 35, 1);
-        gFrameBuffer[4][19] ^= 0x7F;
-        for (uint8_t x = 20; x < 108; x++)
-        {
-            gFrameBuffer[4][x] ^= 0xFF;
-            gFrameBuffer[3][x] ^= 0x80;
-        }
-        gFrameBuffer[4][108] ^= 0x7F;
-        UI_DrawLineBuffer(gFrameBuffer, 109, 35, 127, 35, 1);
-
-        #ifdef ENABLE_FEAT_F4HWN_MEM
-            uint32_t ram_used   = 0;
-            uint32_t flash_used = 0;
-            build_usage(&ram_used, &flash_used);
-
-            const uint16_t ram_pct   = pct_x100(ram_used,   RAM_SIZE_BYTES);
-            const uint16_t flash_pct = pct_x100(flash_used, FLASH_SIZE_BYTES);
-
-            // No floats: 7559 => 75.59%
-            sprintf(WelcomeString3,
-            "FLASH %u.%02u %% - SRAM  %u.%02u %%",
-            (unsigned)(flash_pct / 100), (unsigned)(flash_pct % 100),
-            (unsigned)(ram_pct / 100),   (unsigned)(ram_pct % 100));
-
-            GUI_DisplaySmallest(WelcomeString3, 5, 1, true, true);
-            ST7565_BlitStatusLine();
-        #endif
-
-        strcpy(WelcomeString3, "power by BD1AHN.");
-        UI_PrintStringSmallNormal(WelcomeString3, 0, 127, 6);
+        UI_PrintStringSmallNormal(Version, 0, 127, 6);
 
 #else
-        UI_PrintStringSmallNormal(Version, 0, 127, 6);
+        /* F4HWN：顶部 Mini Kong Logo，最下行显示菜单「开机提示」当前选项（与 menu 子项文案一致） */
+        UI_Welcome_CopyLogoToFrameBuffer();
+        UI_Welcome_DrawBootHintBottom();
 #endif
 
-        //ST7565_BlitStatusLine();  // blank status line : I think it's useless
-        ST7565_BlitFullScreen();
+        ST7565_BlitFullScreenDualVfoTightTop();
 
         #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
             SCREENSHOT_Update(true);

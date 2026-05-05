@@ -731,6 +731,45 @@ void UI_DisplayPopup(const char *string)
     //  UI_DrawPixelBuffer(117, y, true);
     // }
     // DrawRectangle(9,9, 118,38, true);
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        /* 大字 UI_PrintString 仅 ASCII；中文标题用小字号混排（SPI 字库） */
+        const char *const english_low_battery = "LOW BATTERY";
+        /* 低电量 */
+        const char *const chinese_low_battery = "\xe4\xbd\x8e\xe7\x94\xb5\xe9\x87\x8f";
+        /* 按 EXIT 键退出 */
+        const char *const chinese_press_exit = "\xe6\x8c\x89 EXIT \xe9\x94\xae\xe9\x80\x80\xe5\x87\xba";
+        const uint8_t title_y_top = 16u;
+        const uint8_t title_y_bottom = 31u;
+        const uint8_t footer_y_top = 46u;
+        const uint8_t footer_y_bottom = 57u;
+        const uint8_t latin_down_mixed = 3u;
+
+        const int low_battery_cmp = strcmp(string, english_low_battery);
+        const bool use_cn_low_battery_title = (low_battery_cmp == 0);
+
+        if (use_cn_low_battery_title) {
+            UI_PrintStringSmallAtPixel(
+                chinese_low_battery,
+                9u,
+                118u,
+                title_y_top,
+                title_y_bottom,
+                0u);
+        } else {
+            UI_PrintString(string, 9, 118, 2, 8);
+        }
+
+        UI_PrintStringSmallAtPixel(
+            chinese_press_exit,
+            9u,
+            118u,
+            footer_y_top,
+            footer_y_bottom,
+            latin_down_mixed);
+        return;
+    }
+#endif
     UI_PrintString(string, 9, 118, 2, 8);
     UI_PrintStringSmallNormal("Press EXIT", 9, 118, 6);
 }
