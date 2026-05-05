@@ -40,7 +40,7 @@ for k, v in targets.items():
 
 ### 3a. 将字符加入 CN_CHARS_500 列表
 
-在 "用户补充" 区域末尾追加新字符。
+`CN_CHARS_500` 为**已去重**的连续字表（多行字符串隐式拼接）。在**字序末尾**追加新字（在最后一个 `"..."` 行内或另起一行继续接字符串），**不要**重复已出现的字。跑 `python App/tools/gen_cn_font.py` 时若源串仍有重复会打印警告。
 
 ### 3b. 将拼音加入 PINYIN_MAP
 
@@ -89,7 +89,7 @@ python App/tools/gen_cn_font.py
 
 - `README.md`、`README.zh.md`、`README.en.md` — 表格中的字符数量等
 - `docs/index.html` — 「刷字库」页：支持的汉字个数说明
-- `docs/js/flash.js` — `CN_FONT_VERSION_OFFSET`（与 `CN_FONT_VERSION_OFFSET` 宏相同）、从仓库加载字库时的展示文案（如「1243 字符」）
+- `docs/js/flash.js` — `CN_FONT_VERSION_OFFSET`（与 `CN_FONT_VERSION_OFFSET` 宏相同）、从仓库加载字库时的展示文案（如「1254 字符」）
 - `docs/fonts/README.md` — 可选：当前 bin 大小与字数简述
 
 ## 7. 验证
