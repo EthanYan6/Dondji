@@ -198,6 +198,15 @@ body.writefreq-full .subtitle-chips { display: none; }
 .subtitle-chip--redbook .subtitle-chip-label { color: #fca5a5; }
 .subtitle-chip--weixin .subtitle-icon { color: #22c55e; }
 .subtitle-chip--weixin .subtitle-chip-label { color: #4ade80; }
+a.subtitle-chip {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+a.subtitle-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .language-selector { position: absolute; top: 16px; right: 16px; }
 .language-selector select { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 8px; font-size: 0.85em; }
 
