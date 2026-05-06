@@ -1380,8 +1380,18 @@ void APP_TimeSlice10ms(void)
     }
 
 #ifdef ENABLE_AUDIO_BAR
+    /* RTTE 尾音期间 gCurrentFunction 仍为 TRANSMIT，但用户已松 PTT；若不判断「仍在发声控/按住键」，
+       发射弹窗/条形会在尾音倒计时整段内继续刷新。松键后应立即回到主页画面（StopTransmitting 已设 gUpdateDisplay）。 */
+    bool activeMicBarUserTransmit;
+#ifdef ENABLE_VOX
+    activeMicBarUserTransmit = gPttIsPressed || gVOX_NoiseDetected;
+#else
+    activeMicBarUserTransmit = gPttIsPressed;
+#endif
+
     if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_OFF &&
-        gCurrentFunction == FUNCTION_TRANSMIT)
+        gCurrentFunction == FUNCTION_TRANSMIT &&
+        activeMicBarUserTransmit)
     {
         /* 条形：与改动前一致，约 150ms 刷新（FlashLightBlinkCounter 每 10ms +1 → %15）。
            弹窗：约 20ms 刷新波形，沿用现有逻辑。 */
