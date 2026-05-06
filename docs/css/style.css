@@ -78,6 +78,8 @@ body {
 .container { min-width: 0; max-width: 720px; margin-left: auto; margin-right: auto; padding: 24px 32px; width: 100%; box-sizing: border-box; }
 /* 仅「写频」标签激活时由 JS 为 body 添加 .writefreq-full，主栏占满右侧 */
 body.writefreq-full .container { max-width: none; margin-left: 0; margin-right: 0; }
+/* 写频表格较宽，隐藏右侧悬浮社交平台条以免遮挡 */
+body.writefreq-full .subtitle-chips { display: none; }
 .header { text-align: center; margin-bottom: 24px; max-width: 720px; margin-left: auto; margin-right: auto; }
 .h1 { font-size: 1.6em; color: var(--accent); margin-bottom: 4px; }
 .subtitle { font-size: 0.9em; color: var(--text-muted); text-align: center; margin-bottom: 20px; max-width: 720px; margin-left: auto; margin-right: auto; }
