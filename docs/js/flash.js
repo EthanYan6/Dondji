@@ -2247,6 +2247,20 @@ function writefreqSafeRxTrim(fields) {
   return trimmedRx;
 }
 
+/** 频差方向为「关闭」时，频差频率可不填，写入设备时按 0，不做空值校验 */
+function writefreqIsOffsetDirectionClosed(fields) {
+  if (fields === undefined || fields === null) {
+    return false;
+  }
+  const rawSft = fields.sftVal;
+  if (rawSft === undefined || rawSft === null) {
+    return false;
+  }
+  const sftTrimmed = String(rawSft).trim();
+  const isClosed = sftTrimmed === '0';
+  return isClosed;
+}
+
 function writefreqFlushDomToModel() {
   writefreqEnsureModelInit();
   const rowList = document.querySelectorAll('#writefreqTbody tr');
@@ -2749,7 +2763,10 @@ async function writefreqWriteToDevice() {
     }
     try {
       writefreqParseMHzOrThrow(rowPrefix + '接收频率(MHz)', fields.rxText);
-      writefreqParseMHzOrThrow(rowPrefix + '频差频率(MHz)', fields.offsetText);
+      const offsetClosedValidate = writefreqIsOffsetDirectionClosed(fields);
+      if (!offsetClosedValidate) {
+        writefreqParseMHzOrThrow(rowPrefix + '频差频率(MHz)', fields.offsetText);
+      }
     } catch (err) {
       messages.push(err.message);
     }
@@ -2838,7 +2855,13 @@ async function writefreqWriteToDevice() {
       }
       const chLabel = 'CH ' + (chIndex0 + 1);
       const rxStored = writefreqParseMHzOrThrow(chLabel + ' 接收频率(MHz)', fields.rxText);
-      const offsetStored = writefreqParseMHzOrThrow(chLabel + ' 频差频率(MHz)', fields.offsetText);
+      const offsetClosedWrite = writefreqIsOffsetDirectionClosed(fields);
+      let offsetStored;
+      if (offsetClosedWrite) {
+        offsetStored = 0;
+      } else {
+        offsetStored = writefreqParseMHzOrThrow(chLabel + ' 频差频率(MHz)', fields.offsetText);
+      }
       const offsetDir = Number.parseInt(fields.sftVal, 10);
       const modNum = Number.parseInt(fields.modVal, 10);
       const pow7 = Number.parseInt(fields.powerVal, 10);
