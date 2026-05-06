@@ -27,6 +27,15 @@
     </svg>
   </button>
   <div id="appToastRoot" class="app-toast-root" aria-live="polite"></div>
+  <div id="flashDeviceWarningModal" class="flash-device-warning-modal" hidden aria-hidden="true">
+    <div class="flash-device-warning-modal__backdrop" data-flash-warning-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="flash-device-warning-modal__panel" role="dialog" aria-modal="true" aria-labelledby="flashDeviceWarningTitle">
+      <h2 id="flashDeviceWarningTitle" class="flash-device-warning-modal__title">刷机前请确认设备型号</h2>
+      <p class="flash-device-warning-modal__text">请检查你的设备是否为泉盛 uvk1、泉盛 uvk5/uvk6 <strong>V3 版本</strong>。老版本泉盛 uvk5 和 uvk6 刷机会变砖！！！</p>
+      <p class="flash-device-warning-modal__text">查看方法：机器背部标签是否有 V3 字样，或者询问卖家。</p>
+      <button type="button" class="flash-device-warning-modal__btn" id="flashDeviceWarningOkBtn">我已了解</button>
+    </div>
+  </div>
   <div class="subtitle-chips" aria-label="社交平台账号">
     <span class="subtitle-chip subtitle-chip--douyin" title="抖音 · 小闫连不上">
       <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
@@ -316,7 +325,7 @@
       </div>
       <div class="writefreq-pagination" id="writefreqPagination" aria-label="写频分页">
         <button type="button" class="btn-inline btn-secondary" id="writefreqPagePrev">上一页</button>
-        <span class="writefreq-page-info" id="writefreqPageInfo" aria-live="polite">共 200 条 · 已填写 0 条 · 第 1 / 20 页 · 每页 10 信道</span>
+        <span class="writefreq-page-info" id="writefreqPageInfo" aria-live="polite">共 1024 条 · 已填写 0 条 · 第 1 / 103 页 · 每页 10 信道</span>
         <button type="button" class="btn-inline btn-secondary" id="writefreqPageNext">下一页</button>
       </div>
       <p id="writefreqValidation" class="writefreq-validation" style="display:none;"></p>

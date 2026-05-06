@@ -848,6 +848,82 @@ html.theme-light .theme-toggle__icon--moon {
   background: var(--toast-close-hover-bg);
 }
 
+/* 刷固件标签：设备型号安全提示弹窗 */
+.flash-device-warning-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+.flash-device-warning-modal[hidden] {
+  display: none;
+}
+.flash-device-warning-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 4, 9, 0.72);
+  backdrop-filter: blur(4px);
+}
+html.theme-light .flash-device-warning-modal__backdrop {
+  background: rgba(31, 35, 40, 0.45);
+}
+.flash-device-warning-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
+  max-height: min(90vh, 520px);
+  overflow: auto;
+  padding: 22px 22px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(210, 153, 34, 0.55);
+  background: linear-gradient(155deg, var(--toast-1) 0%, var(--toast-2) 55%, var(--toast-3) 100%);
+  box-shadow:
+    0 24px 64px var(--shadow-kicker),
+    0 0 0 1px rgba(210, 153, 34, 0.15) inset,
+    0 0 40px rgba(158, 106, 3, 0.14);
+}
+.flash-device-warning-modal__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0 0 14px;
+  line-height: 1.35;
+}
+.flash-device-warning-modal__text {
+  margin: 0 0 20px;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.flash-device-warning-modal__text strong {
+  color: #e3b341;
+  font-weight: 600;
+}
+.flash-device-warning-modal__btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--btn-primary);
+  color: #fff;
+  transition: background 0.15s ease;
+}
+.flash-device-warning-modal__btn:hover {
+  background: var(--btn-primary-hover);
+}
+.flash-device-warning-modal__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Version Timeline Sidebar */
 .timeline-sidebar::-webkit-scrollbar { width: 6px; }
 .timeline-sidebar::-webkit-scrollbar-track { background: transparent; }

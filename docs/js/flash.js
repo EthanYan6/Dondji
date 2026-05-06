@@ -168,8 +168,85 @@ function syncLogDockPlacement() {
   logSection.after(progressSection);
 }
 
+function openFlashDeviceWarningModal() {
+  const modalRoot = $('flashDeviceWarningModal');
+  if (!modalRoot) {
+    return;
+  }
+  modalRoot.removeAttribute('hidden');
+  modalRoot.setAttribute('aria-hidden', 'false');
+  const confirmButton = $('flashDeviceWarningOkBtn');
+  if (confirmButton) {
+    confirmButton.focus();
+  }
+}
+
+function closeFlashDeviceWarningModal() {
+  const modalRoot = $('flashDeviceWarningModal');
+  if (!modalRoot) {
+    return;
+  }
+  modalRoot.setAttribute('hidden', '');
+  modalRoot.setAttribute('aria-hidden', 'true');
+}
+
+function initFlashDeviceWarningModal() {
+  const modalRoot = $('flashDeviceWarningModal');
+  if (!modalRoot) {
+    return;
+  }
+  const confirmButton = $('flashDeviceWarningOkBtn');
+  if (confirmButton) {
+    confirmButton.addEventListener('click', function onFlashWarningConfirmClick() {
+      closeFlashDeviceWarningModal();
+    });
+  }
+  const backdropEl = modalRoot.querySelector('[data-flash-warning-dismiss]');
+  if (backdropEl) {
+    backdropEl.addEventListener('click', function onFlashWarningBackdropClick() {
+      closeFlashDeviceWarningModal();
+    });
+  }
+  modalRoot.addEventListener('keydown', function onFlashWarningModalKeydown(event) {
+    const escapeKey = 'Escape';
+    if (event.key !== escapeKey) {
+      return;
+    }
+    closeFlashDeviceWarningModal();
+  });
+}
+
+/**
+ * 首次进入页面且默认展示「刷固件」时弹出型号提示。
+ */
+function openFlashDeviceWarningIfInitialViewIsFlashTab() {
+  const flashTabBtn = $('tabFlash');
+  const flashContentPanel = $('flash-content');
+  if (!flashTabBtn || !flashContentPanel) {
+    return;
+  }
+  const flashTabIsActive = flashTabBtn.classList.contains('active');
+  const flashPanelIsActive = flashContentPanel.classList.contains('active');
+  if (!flashTabIsActive) {
+    return;
+  }
+  if (!flashPanelIsActive) {
+    return;
+  }
+  openFlashDeviceWarningModal();
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
+    const previousActiveTab = document.querySelector('.tab.active');
+    let previousTabWasFlash = false;
+    if (previousActiveTab) {
+      const previousTabId = previousActiveTab.dataset.tab;
+      if (previousTabId === 'flash') {
+        previousTabWasFlash = true;
+      }
+    }
+    const targetTabIsFlash = tab.dataset.tab === 'flash';
     document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     tab.classList.add('active');
@@ -180,11 +257,24 @@ document.querySelectorAll('.tab').forEach(tab => {
     window.requestAnimationFrame(() => {
       flashStepsBarApplyOverflowPolicy();
     });
+    let shouldShowFlashDeviceWarning = false;
+    if (targetTabIsFlash) {
+      if (!previousTabWasFlash) {
+        shouldShowFlashDeviceWarning = true;
+      }
+    }
+    if (shouldShowFlashDeviceWarning) {
+      openFlashDeviceWarningModal();
+    }
   });
 });
 syncWritefreqFullLayoutClass();
 syncLogDockPlacement();
 initThemeToggle();
+initFlashDeviceWarningModal();
+window.requestAnimationFrame(() => {
+  openFlashDeviceWarningIfInitialViewIsFlashTab();
+});
 
 /** @type {number|null} */
 let appToastAutoHideTimer = null;
@@ -1085,13 +1175,13 @@ function timelineReleaseMarkdownToSafeHtml(rawMarkdown) {
 
 // ========== WRITE FREQUENCY (MR CHANNELS, SPI FLASH) ==========
 // 地址与固件一致：MR 块 channel*16；统一信道名 0x004000+ch*16；信道属性 ChannelAttributes_t 2 字节 @ 0x8000+ch*2（misc.c FLASH_CHANNEL_ATTR_BASE）；旧中文区 0x020000 仅读取合并/写入时按槽擦除（settings.c）
-// 若属性区为 0xFFFF，radio.c RADIO_ConfigureChannel 视该槽为未使用，不会加载 MR 频率——故写「有频率」的信道时必须写入有效属性字节。
+// 读取：属性未使用；MR 槽须通过 writefreqMrSlotPassesReadQualityGate（RX 范围、有效功率、band 一致、亚音合法），避免 Flash 残留乱码行。
 
-/** 本工具仅读写设备 MR 的前 N 槽（Flash 下标 0 … N-1，界面 CH1 … CHN）；大于 N 的 MR 槽读写时不触碰 */
-const WRITE_FREQ_MR_MAX = 200;
+/** 本工具仅读写设备 MR 的前 N 槽（Flash 下标 0 … N-1，界面 CH1 … CHN）；与固件 misc.h MR_CHANNELS_MAX（1024）一致 */
+const WRITE_FREQ_MR_MAX = 1024;
 /** 写频表导出文件名的前缀（如 Dondji_channels_export.xlsx） */
 const WRITE_FREQ_EXPORT_FILE_PREFIX = 'Dondji';
-/** 表格第 1 行对应的 MR 信道号（与 WRITE_FREQ_MR_MAX 一致，当前为 1–200）；默认 1；Excel 导入时取首行「信道号」 */
+/** 表格第 1 行对应的 MR 信道号（与 WRITE_FREQ_MR_MAX 一致，当前为 1–1024）；默认 1；Excel 导入时取首行「信道号」 */
 let writefreqTableBaseChannel = 1;
 /** 内存中 N 条信道数据；界面仅渲染一页 WRITE_FREQ_PAGE_SIZE 行 */
 const WRITE_FREQ_PAGE_SIZE = 10;
@@ -1132,6 +1222,48 @@ const WRITE_FREQ_HZ_UNSET = 0xffffffff;
 const WRITE_FREQ_STORE_STEP_HZ = 10;
 
 /**
+ * MR 块首 uint32 为接收频率存储值（步长 10 Hz）；0xFFFFFFFF 表示未设置。
+ * @param {number} rxStored
+ * @returns {boolean}
+ */
+function writefreqIsRxStoredMeaningful(rxStored) {
+  const rawUnsigned = rxStored >>> 0;
+  if (rawUnsigned === WRITE_FREQ_HZ_UNSET) {
+    return false;
+  }
+  if (rawUnsigned === 0) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 与 App/frequencies.c RX_freq_check 一致：Frequency 与 MR Flash 相同为 Hz/10（rxStored）。
+ * BK4819 覆盖两段频段，630–840 MHz（Hz/10）之间芯片不工作，须排除。
+ * @param {number} rxStored
+ * @returns {boolean}
+ */
+function writefreqRxStoredPassesFirmwareRxCheck(rxStored) {
+  const rawUnsigned = rxStored >>> 0;
+  const meaningful = writefreqIsRxStoredMeaningful(rawUnsigned);
+  if (!meaningful) {
+    return false;
+  }
+  const band1Lower = 1800000;
+  const band2Upper = 130000000;
+  if (rawUnsigned < band1Lower || rawUnsigned > band2Upper) {
+    return false;
+  }
+  const gapLower = 63000000;
+  const gapUpper = 84000000;
+  const inDeadGap = rawUnsigned >= gapLower && rawUnsigned < gapUpper;
+  if (inDeadGap) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * @param {number} rxStored Flash MR 块内接收频率 uint32（步长 10 Hz）
  * @returns {number} FREQUENCY_Band_t 枚举 0…6（与 firmware 自高到低扫描一致）
  */
@@ -1156,6 +1288,28 @@ function writefreqUint16ToLeBytes(valueU16) {
   const dataView = new DataView(outBuf.buffer);
   dataView.setUint16(0, valueU16, true);
   return outBuf;
+}
+
+/**
+ * 与 radio.c / misc.c 一致：信道属性擦除态 0xFFFF 表示该 MR 槽未使用。
+ * @param {Uint8Array|null} attrTwoBytes
+ * @returns {boolean}
+ */
+function writefreqIsMrAttrUnused(attrTwoBytes) {
+  if (attrTwoBytes === null || attrTwoBytes === undefined) {
+    return true;
+  }
+  if (attrTwoBytes.length !== 2) {
+    return true;
+  }
+  const attrView = new DataView(
+    attrTwoBytes.buffer,
+    attrTwoBytes.byteOffset,
+    attrTwoBytes.byteLength
+  );
+  const attrVal = attrView.getUint16(0, true);
+  const isUnused = attrVal === 0xffff;
+  return isUnused;
 }
 
 /**
@@ -2359,6 +2513,49 @@ function wfBlock16ToRowFields(block16) {
   return row;
 }
 
+/**
+ * 从设备读取：剔除 MR 块/属性不一致或随机 Flash 残留（界面会出现异常 MHz、「请选择功率」等）。
+ * 条件：RX 通过 BK4819/RX 校验；功率字节解出为 LOW1–HIGH；属性低 3 位 band 与按频率推导的 band 一致；收发亚音可解析。
+ * @param {Uint8Array} block16
+ * @param {Uint8Array} attrTwoBytes
+ * @returns {boolean}
+ */
+function writefreqMrSlotPassesReadQualityGate(block16, attrTwoBytes) {
+  const byteLen = block16.byteLength;
+  const safeLen = byteLen < 16 ? byteLen : 16;
+  const dv = new DataView(block16.buffer, block16.byteOffset, safeLen);
+  const rxStored = dv.getUint32(0, true);
+  const rxFreqOk = writefreqRxStoredPassesFirmwareRxCheck(rxStored);
+  if (!rxFreqOk) {
+    return false;
+  }
+  const decoded = wfDecodeChannelFields(block16);
+  const powerInRange = decoded.power >= 1 && decoded.power <= 7;
+  if (!powerInRange) {
+    return false;
+  }
+  const attrView = new DataView(
+    attrTwoBytes.buffer,
+    attrTwoBytes.byteOffset,
+    attrTwoBytes.byteLength
+  );
+  const attrVal = attrView.getUint16(0, true);
+  const bandFromAttr = attrVal & 7;
+  const bandFromRx = writefreqBandEnumFromRxStored(rxStored);
+  const bandsAligned = bandFromAttr === bandFromRx;
+  if (!bandsAligned) {
+    return false;
+  }
+  const rowProbe = wfBlock16ToRowFields(block16);
+  try {
+    wfParseToneSide(rowProbe.rxCtcss, rowProbe.rxDcs, 'MR');
+    wfParseToneSide(rowProbe.txCtcss, rowProbe.txDcs, 'MR');
+  } catch (e) {
+    return false;
+  }
+  return true;
+}
+
 function writefreqUpdatePaginationUI() {
   writefreqFlushDomToModel();
   const infoEl = $('writefreqPageInfo');
@@ -2679,14 +2876,40 @@ async function writefreqReadFromDevice() {
     const sessionTs = session.timestamp;
     writefreqTableBaseChannel = 1;
     writefreqEnsureModelInit();
+    let clearIdx = 0;
+    for (; clearIdx < WRITE_FREQ_MR_MAX; clearIdx++) {
+      writefreqRowsData[clearIdx] = writefreqEmptyRowFields();
+    }
+    writefreqShowCurrentPage();
+    let validReadCount = 0;
     let chIdx = 0;
     for (; chIdx < WRITE_FREQ_MR_MAX; chIdx++) {
       const chIndex0 = chIdx;
+      const attrAddr = WRITE_FREQ_ATTR_BASE + chIndex0 * 2;
+      const attrRaw = await spiFlashReadChunk(sessionTs, attrAddr, 2);
+      if (!attrRaw || attrRaw.length !== 2) {
+        throw new Error('读取信道属性失败 @ CH ' + (chIndex0 + 1));
+      }
+      const slotUnused = writefreqIsMrAttrUnused(attrRaw);
+      if (slotUnused) {
+        const pctSkip = ((chIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
+        updateProgress(pctSkip);
+        await sleep(2);
+        continue;
+      }
       const baseAddr = chIndex0 * 16;
       const block = await spiFlashReadChunk(sessionTs, baseAddr, 16);
       if (!block || block.length !== 16) {
         throw new Error('读取信道数据失败 @ 0x' + baseAddr.toString(16));
       }
+      const gateOk = writefreqMrSlotPassesReadQualityGate(block, attrRaw);
+      if (!gateOk) {
+        const pctGate = ((chIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
+        updateProgress(pctGate);
+        await sleep(2);
+        continue;
+      }
+      validReadCount++;
       const enAddr = WRITE_FREQ_ADDR_EN_BASE + chIndex0 * 16;
       const cnAddr = WRITE_FREQ_ADDR_CN_BASE + chIndex0 * 16;
       const enRaw = await spiFlashReadChunk(sessionTs, enAddr, 16);
@@ -2712,7 +2935,14 @@ async function writefreqReadFromDevice() {
     }
     writefreqShowCurrentPage();
     updateProgress(100);
-    log('已从设备读取 MR CH1–CH' + WRITE_FREQ_MR_MAX + '（共 ' + WRITE_FREQ_MR_MAX + ' 槽）；其余 MR 信道未读取', 'success');
+    log(
+      '表格已清空后，已从设备填入 ' +
+        validReadCount +
+        ' 条（已跳过未使用槽，以及不符合完整校验的槽：RX 范围、有效功率、属性 band 与频率一致、亚音可解析）；已扫描 ' +
+        WRITE_FREQ_MR_MAX +
+        ' 槽',
+      'success'
+    );
     writefreqShowValidation('', false);
   } catch (e) {
     log('写频读取失败: ' + e.message, 'error');
@@ -2818,8 +3048,9 @@ async function writefreqWriteToDevice() {
     const session = await requestDeviceInfoForCalib();
     const sessionTs = session.timestamp;
     let rowIdx = 0;
+    let programmedCount = 0;
     for (; rowIdx < WRITE_FREQ_MR_MAX; rowIdx++) {
-      /** 与读取一致：表格第 i 行对应 Flash MR 槽 i（CH i+1），与起始信道号显示无关，仅覆盖前 200 槽 */
+      /** 表格第 i 行对应 Flash MR 槽 i（CH i+1）：已填写接收频率则写入；否则将该槽擦除为未使用 */
       const chIndex0 = rowIdx;
       const fields = writefreqRowsData[rowIdx];
       const rxTrimmedWrite = writefreqSafeRxTrim(fields);
@@ -2848,11 +3079,12 @@ async function writefreqWriteToDevice() {
         if (!attrEraseOk) {
           throw new Error('覆盖写入信道属性（标记未使用）失败 @ CH ' + (chIndex0 + 1));
         }
-        const pctErase = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
-        updateProgress(pctErase);
+        const pctEraseStep = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
+        updateProgress(pctEraseStep);
         await sleep(40);
         continue;
       }
+      programmedCount++;
       const chLabel = 'CH ' + (chIndex0 + 1);
       const rxStored = writefreqParseMHzOrThrow(chLabel + ' 接收频率(MHz)', fields.rxText);
       const offsetClosedWrite = writefreqIsOffsetDirectionClosed(fields);
@@ -2902,19 +3134,18 @@ async function writefreqWriteToDevice() {
       if (!attrOk) {
         throw new Error('写入信道属性失败 @ CH ' + (chIndex0 + 1));
       }
-      const pct = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
-      updateProgress(pct);
+      const pctProgramStep = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
+      updateProgress(pctProgramStep);
       await sleep(40);
     }
     updateProgress(100);
+    const clearedSlotCount = WRITE_FREQ_MR_MAX - programmedCount;
     log(
-      '已按表格覆盖设备 MR CH1–CH' +
-        WRITE_FREQ_MR_MAX +
-        '（共 ' +
-        WRITE_FREQ_MR_MAX +
-        ' 槽；含 MR 数据区、信道名区、信道属性 0x8000；无接收频率的槽已擦除）。第 ' +
-        (WRITE_FREQ_MR_MAX + 1) +
-        ' 个及以后 MR 未修改。请先确认固件与备份。',
+      '已按表格写入 ' +
+        programmedCount +
+        ' 个已填写信道；其余 ' +
+        clearedSlotCount +
+        ' 个槽已在 Flash 中清空为未使用（MR/命名/属性）。请先确认固件与备份。',
       'success'
     );
     log('正在重启设备以加载新信道数据…', 'info');
@@ -3168,10 +3399,16 @@ function writefreqExportSheet() {
   ];
   const rows = [];
   rows.push(header);
+  let exportRowCount = 0;
   let ri = 0;
   for (; ri < WRITE_FREQ_MR_MAX; ri++) {
-    const chNum = startCh + ri;
     const fields = writefreqRowsData[ri];
+    const rxTrimmedExport = writefreqSafeRxTrim(fields);
+    if (rxTrimmedExport === '') {
+      continue;
+    }
+    exportRowCount++;
+    const chNum = startCh + ri;
     const row = [
       chNum,
       fields.rxText.trim(),
@@ -3207,14 +3444,14 @@ function writefreqExportSheet() {
     a.href = URL.createObjectURL(csvBlob);
     a.download = exportBasename + '.csv';
     a.click();
-    log('已导出 CSV（MR CH1–CH' + WRITE_FREQ_MR_MAX + '，共 ' + WRITE_FREQ_MR_MAX + ' 行）', 'success');
+    log('已导出 CSV（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）', 'success');
     return;
   }
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'MR信道');
   XLSX.writeFile(wb, exportBasename + '.xlsx');
-  log('已导出 Excel（MR CH1–CH' + WRITE_FREQ_MR_MAX + '，共 ' + WRITE_FREQ_MR_MAX + ' 行）', 'success');
+  log('已导出 Excel（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）', 'success');
 }
 
 function writefreqImportSheet(rowsAoA) {
@@ -3260,20 +3497,7 @@ function writefreqImportSheet(rowsAoA) {
     );
     return;
   }
-  if (idxCh >= 0) {
-    const firstDataRow = rowsAoA[1];
-    const chFirstCell = firstDataRow[idxCh];
-    const chFirst = parseInt(String(chFirstCell), 10);
-    if (!Number.isFinite(chFirst)) {
-      log('首行数据信道号无效', 'error');
-      return;
-    }
-    if (chFirst !== 1) {
-      log('首行信道号须为 1（第一行数据对应 MR CH1），当前为 ' + chFirst + '，已取消导入', 'error');
-      return;
-    }
-  }
-  /** 与 Flash 槽 0…199 对齐：界面固定显示 CH1–CH200 */
+  /** 与 Flash 槽 0…1023 对齐：界面固定显示 CH1–CH1024 */
   writefreqTableBaseChannel = 1;
   writefreqEnsureModelInit();
   let resetIdx = 0;
@@ -3281,6 +3505,24 @@ function writefreqImportSheet(rowsAoA) {
     writefreqRowsData[resetIdx] = writefreqEmptyRowFields();
   }
   const dataRowCount = rowsAoA.length - 1;
+  if (idxCh >= 0 && dataRowCount > 0) {
+    const firstDataRow = rowsAoA[1];
+    const chFirstCell = firstDataRow && firstDataRow[idxCh];
+    const chFirst = Number.parseInt(String(chFirstCell).trim(), 10);
+    if (!Number.isFinite(chFirst)) {
+      log('首行数据信道号无效', 'error');
+      return;
+    }
+    if (chFirst !== 1) {
+      log(
+        '首行信道号须为 1（导入从 MR CH1 算起），当前为 ' +
+          chFirst +
+          '，已取消导入',
+        'error'
+      );
+      return;
+    }
+  }
   const cellStrFactory = function cellStrFactory(rowArr) {
     return function cellStr(idx) {
       if (idx < 0) {
@@ -3294,9 +3536,34 @@ function writefreqImportSheet(rowsAoA) {
     };
   };
   let di = 0;
-  for (; di < dataRowCount && di < WRITE_FREQ_MR_MAX; di++) {
+  for (; di < dataRowCount; di++) {
     const src = rowsAoA[di + 1];
     const cellStr = cellStrFactory(src);
+    let destSlot = di;
+    if (idxCh >= 0) {
+      const chCellRaw = cellStr(idxCh);
+      const chNumParsed = Number.parseInt(String(chCellRaw).trim(), 10);
+      if (!Number.isFinite(chNumParsed)) {
+        log('第 ' + (di + 1) + ' 行数据：信道号无效', 'error');
+        return;
+      }
+      if (chNumParsed < 1 || chNumParsed > WRITE_FREQ_MR_MAX) {
+        log(
+          '第 ' + (di + 1) + ' 行数据：信道号须在 1–' + WRITE_FREQ_MR_MAX + ' 之间',
+          'error'
+        );
+        return;
+      }
+      destSlot = chNumParsed - writefreqTableBaseChannel;
+    } else {
+      if (di >= WRITE_FREQ_MR_MAX) {
+        break;
+      }
+    }
+    if (destSlot < 0 || destSlot >= WRITE_FREQ_MR_MAX) {
+      log('第 ' + (di + 1) + ' 行数据：信道号映射越界', 'error');
+      return;
+    }
     const merged = writefreqEmptyRowFields();
     if (hasNew) {
       merged.rxText = cellStr(idxRx);
@@ -3349,7 +3616,7 @@ function writefreqImportSheet(rowsAoA) {
         merged.offsetText = (offAbs / 1e6).toFixed(6);
       }
     }
-    writefreqRowsData[di] = merged;
+    writefreqRowsData[destSlot] = merged;
   }
   writefreqPageIndex = 0;
   writefreqRebuildRows();
