@@ -119,7 +119,7 @@ PINYIN_MAP = {
     '个': 'ge', '国': 'guo', '到': 'dao', '说': 'shuo', '们': 'men',
     '为': 'wei', '子': 'zi', '和': 'he', '你': 'ni', '地': 'di',
     '会': 'hui', '出': 'chu', '也': 'ye', '时': 'shi2', '要': 'yao',
-    '就': 'jiu', '能': 'neng', '下': 'xia', '行': 'xing', '对': 'dui',
+    '就': 'jiu', '能': 'neng', '下': 'xia', '行': 'xing,hang2', '对': 'dui',
     '着': 'zhe2', '生': 'sheng', '里': 'li', '年': 'nian', '前': 'qian',
     '面': 'mian', '后': 'hou', '东': 'dong', '西': 'xi', '南': 'nan',
     '北': 'bei', '小': 'xiao', '高': 'gao', '多': 'duo', '少': 'shao',
@@ -215,7 +215,7 @@ PINYIN_MAP = {
     '电': 'dian3',
     # 扩展
     '级': 'ji7', '种': 'zhong3', '类': 'lei', '样': 'yang3',
-    '飞': 'fei', '行': 'hang2', '潜': 'qian5', '爬': 'pa',
+    '飞': 'fei', '潜': 'qian5', '爬': 'pa',
     '跳': 'tiao', '跑': 'pao', '立': 'li2', '坐': 'zuo3',
     '卧': 'wo', '倒': 'dao4', '拿': 'na', '放': 'fang2',
     '送': 'song2', '迎': 'ying', '还': 'huan2', '买': 'mai',

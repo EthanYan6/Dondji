@@ -2,3 +2,4 @@
 # 与 gen_cn_font.py 中 CN_CHARS_500 拼接后按首次出现顺序去重。
 # 也可用仓库根目录：python update_cn_font.py --append "要加的字"
 司窦客
+苹卓软件脑
