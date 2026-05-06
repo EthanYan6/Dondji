@@ -1181,7 +1181,7 @@ function timelineReleaseMarkdownToSafeHtml(rawMarkdown) {
 const WRITE_FREQ_MR_MAX = 1024;
 /** 写频表导出文件名的前缀（如 Dondji_channels_export.xlsx） */
 const WRITE_FREQ_EXPORT_FILE_PREFIX = 'Dondji';
-/** 表格第 1 行对应的 MR 信道号（与 WRITE_FREQ_MR_MAX 一致，当前为 1–1024）；默认 1；Excel 导入时取首行「信道号」 */
+/** 表格第 1 行对应的 MR 信道号（与 WRITE_FREQ_MR_MAX 一致，当前为 1–1024）；默认 1；Excel 导入表头须含「信道号」列 */
 let writefreqTableBaseChannel = 1;
 /** 内存中 N 条信道数据；界面仅渲染一页 WRITE_FREQ_PAGE_SIZE 行 */
 const WRITE_FREQ_PAGE_SIZE = 10;
@@ -2433,6 +2433,26 @@ function writefreqFlushDomToModel() {
   }
 }
 
+function writefreqClearCurrentRowFromUi(tr) {
+  const chIdxRaw = tr.dataset.writefreqChIdx;
+  if (chIdxRaw === undefined || chIdxRaw === '') {
+    return;
+  }
+  const chIdxParsed = Number.parseInt(chIdxRaw, 10);
+  const chIdxInRange =
+    Number.isFinite(chIdxParsed) &&
+    chIdxParsed >= 0 &&
+    chIdxParsed < WRITE_FREQ_MR_MAX;
+  if (!chIdxInRange) {
+    return;
+  }
+  writefreqEnsureModelInit();
+  const clearedFields = writefreqEmptyRowFields();
+  writefreqRowsData[chIdxParsed] = clearedFields;
+  writefreqApplyFieldsToTr(tr, clearedFields);
+  writefreqUpdatePaginationUI();
+}
+
 function writefreqApplyFieldsToTr(tr, fields) {
   const rxIn = tr.querySelector('.wf-rx');
   const offsetEl = tr.querySelector('.wf-offset');
@@ -2731,6 +2751,16 @@ function writefreqRebuildRows() {
     tdN.className = 'ch-num';
     tdN.textContent = '—';
 
+    const tdName = document.createElement('td');
+    const inName = document.createElement('input');
+    inName.type = 'text';
+    inName.className = 'wf-channel-name';
+    inName.placeholder = 'ASCII 或汉字等，≤15 字节 UTF-8';
+    inName.addEventListener('blur', function writefreqChannelNameBlurHandler() {
+      writefreqApplyChannelNameBlur(inName);
+    });
+    tdName.appendChild(inName);
+
     const tdRx = document.createElement('td');
     const inRx = document.createElement('input');
     inRx.type = 'text';
@@ -2814,18 +2844,20 @@ function writefreqRebuildRows() {
     }
     tdMod.appendChild(selMod);
 
-    const tdName = document.createElement('td');
-    const inName = document.createElement('input');
-    inName.type = 'text';
-    inName.className = 'wf-channel-name';
-    inName.placeholder = 'ASCII 或汉字等，≤15 字节 UTF-8';
-    inName.addEventListener('blur', function writefreqChannelNameBlurHandler() {
-      writefreqApplyChannelNameBlur(inName);
-    });
-    tdName.appendChild(inName);
+    const tdDelete = document.createElement('td');
+    tdDelete.className = 'wf-delete-cell';
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'wf-row-delete-btn';
+    deleteBtn.title = '清空本行';
+    deleteBtn.setAttribute('aria-label', '清空本行');
+    deleteBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+    tdDelete.appendChild(deleteBtn);
 
     tr.appendChild(tdDrag);
     tr.appendChild(tdN);
+    tr.appendChild(tdName);
     tr.appendChild(tdRx);
     tr.appendChild(tdPwr);
     tr.appendChild(tdRxDcs);
@@ -2835,7 +2867,7 @@ function writefreqRebuildRows() {
     tr.appendChild(tdSft);
     tr.appendChild(tdOff);
     tr.appendChild(tdMod);
-    tr.appendChild(tdName);
+    tr.appendChild(tdDelete);
     tbody.appendChild(tr);
   }
   writefreqShowCurrentPage();
@@ -3492,7 +3524,7 @@ function writefreqImportSheet(rowsAoA) {
   const hasLegacy = idxRx >= 0 && legacyTx >= 0 && legacyEn >= 0 && legacyCn >= 0;
   if (!hasNew && !hasLegacy) {
     log(
-      '表头不匹配：请使用新版导出列名（含「信道名」），或旧版完整列（接收频率_MHz / 发射频率_MHz / 英文信道名 / 中文信道名）',
+      '表头不匹配：请使用新版导出列名（含「信道号」「信道名」），或旧版完整列（接收频率_MHz / 发射频率_MHz / 英文信道名 / 中文信道名）',
       'error'
     );
     return;
@@ -3718,6 +3750,23 @@ if (writefreqTbodyEl) {
   });
   writefreqTbodyEl.addEventListener('change', function writefreqTbodyChangeSyncPagination() {
     writefreqUpdatePaginationUI();
+  });
+  writefreqTbodyEl.addEventListener('click', function writefreqTbodyDeleteRowClick(ev) {
+    const rawTarget = ev.target;
+    if (!rawTarget || typeof rawTarget.closest !== 'function') {
+      return;
+    }
+    const deleteBtn = rawTarget.closest('.wf-row-delete-btn');
+    if (!deleteBtn) {
+      return;
+    }
+    const tr = deleteBtn.closest('tr');
+    if (!tr) {
+      return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    writefreqClearCurrentRowFromUi(tr);
   });
 }
 

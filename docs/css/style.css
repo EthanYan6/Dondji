@@ -658,6 +658,59 @@ button.btn-with-icon {
 .writefreq-table select.wf-rx-dcs,
 .writefreq-table select.wf-tx-dcs { min-width: 88px; max-width: 120px; font-size: 0.8em; }
 .writefreq-table td.ch-num { color: var(--text-muted); text-align: center; width: 52px; }
+/* 写频表：删除列固定在表格右侧，横向滚动时始终可见 */
+.writefreq-table thead th.wf-delete-th,
+.writefreq-table tbody td.wf-delete-cell {
+  position: sticky;
+  right: 0;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  text-align: center;
+  vertical-align: middle;
+  padding-left: 4px;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+.writefreq-table thead th.wf-delete-th {
+  z-index: 4;
+  background: var(--bg-elevated);
+  box-shadow: -8px 0 12px -8px var(--shadow-kicker);
+}
+.writefreq-table tbody td.wf-delete-cell {
+  z-index: 3;
+  background: var(--bg-page);
+  box-shadow: -8px 0 12px -8px var(--shadow-kicker);
+}
+.writefreq-table .wf-row-delete-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.writefreq-table .wf-row-delete-btn:hover {
+  color: #f85149;
+  border-color: var(--border-strong);
+  background: var(--bg-muted);
+}
+.writefreq-table .wf-row-delete-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.writefreq-table .wf-row-delete-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
+}
 .writefreq-table th.wf-drag-th,
 .writefreq-table td.wf-drag-handle {
   width: 36px;
