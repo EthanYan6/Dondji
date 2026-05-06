@@ -177,6 +177,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     $(tab.dataset.tab + '-content').classList.add('active');
     syncWritefreqFullLayoutClass();
     syncLogDockPlacement();
+    window.requestAnimationFrame(() => {
+      flashStepsBarApplyOverflowPolicy();
+    });
   });
 });
 syncWritefreqFullLayoutClass();
@@ -689,7 +692,7 @@ $('fetchLatestBtn').addEventListener('click', async () => {
     log('加载失败: ' + messageText, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '从页面加载 Fusion 固件';
+    btn.textContent = '远程获取';
   }
 });
 
@@ -729,7 +732,7 @@ $('fetchFontBtn').addEventListener('click', async () => {
     log('加载失败: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '从仓库加载字库';
+    btn.textContent = '远程获取';
   }
 });
 
@@ -994,6 +997,50 @@ if (!('serial' in navigator)) {
 }
 
 // ========== VERSION TIMELINE ==========
+function timelineEscapeHtml(rawText) {
+  const s = String(rawText);
+  const stepAmp = s.replace(/&/g, '&amp;');
+  const stepLt = stepAmp.replace(/</g, '&lt;');
+  const stepGt = stepLt.replace(/>/g, '&gt;');
+  const stepQuot = stepGt.replace(/"/g, '&quot;');
+  return stepQuot;
+}
+
+function timelineReleaseMarkdownToSafeHtml(rawMarkdown) {
+  const sourceText = rawMarkdown || '';
+  const trimmedText = sourceText.trim();
+  if (trimmedText.length === 0) {
+    return '';
+  }
+  const hasMarked = typeof marked !== 'undefined' && typeof marked.parse === 'function';
+  const hasPurify = typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function';
+  if (!hasMarked || !hasPurify) {
+    const escapedPlain = timelineEscapeHtml(trimmedText);
+    const fallbackHtml = escapedPlain.replace(/\n/g, '<br>');
+    return fallbackHtml;
+  }
+  let parsedHtml = '';
+  try {
+    parsedHtml = marked.parse(trimmedText);
+  } catch {
+    const escapedPlain = timelineEscapeHtml(trimmedText);
+    const fallbackHtml = escapedPlain.replace(/\n/g, '<br>');
+    return fallbackHtml;
+  }
+  const safeHtml = DOMPurify.sanitize(parsedHtml);
+  return safeHtml;
+}
+
+(function configureTimelineMarked() {
+  if (typeof marked === 'undefined' || typeof marked.setOptions !== 'function') {
+    return;
+  }
+  marked.setOptions({
+    breaks: true,
+    gfm: true,
+  });
+})();
+
 (async function loadTimeline() {
   const container = $('timeline');
   try {
@@ -1003,18 +1050,32 @@ if (!('serial' in navigator)) {
     if (!releases.length) { container.innerHTML = '<div class="timeline-loading">暂无发布版本</div>'; return; }
 
     container.innerHTML = releases.map(r => {
-      const date = new Date(r.published_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-      const body = (r.body || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>');
+      const publishedAtDate = new Date(r.published_at);
+      const dateTimeLocaleOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      };
+      const dateTimeText = publishedAtDate.toLocaleString('zh-CN', dateTimeLocaleOptions);
+      const bodyHtml = timelineReleaseMarkdownToSafeHtml(r.body || '');
+      const tagEscaped = timelineEscapeHtml(r.tag_name);
+      const nameEscaped = r.name ? timelineEscapeHtml(r.name) : '';
       const pre = r.prerelease ? '<span class="timeline-prerelease">Pre-release</span>' : '';
+      const bodyBlock = bodyHtml.length > 0 ? `<div class="timeline-body">${bodyHtml}</div>` : '';
+      const nameBlock = nameEscaped.length > 0 ? `<div class="timeline-name">${nameEscaped}</div>` : '';
       return `<div class="timeline-item">
         <div class="timeline-dot"></div>
         <div class="timeline-header">
-          <a class="timeline-tag" href="${r.html_url}" target="_blank">${r.tag_name}</a>
+          <a class="timeline-tag" href="${r.html_url}" target="_blank">${tagEscaped}</a>
           ${pre}
-          <span class="timeline-date">${date}</span>
+          <span class="timeline-date">${dateTimeText}</span>
         </div>
-        ${r.name ? `<div class="timeline-name">${r.name}</div>` : ''}
-        ${body ? `<div class="timeline-body">${body}</div>` : ''}
+        ${nameBlock}
+        ${bodyBlock}
       </div>`;
     }).join('');
   } catch (e) {
@@ -3371,3 +3432,150 @@ if (writefreqTbodyEl) {
 }
 
 writefreqRebuildRows();
+
+// ========== 刷机步骤条：仅在内容横向溢出时启用横向滚动（避免“装得下仍出现滚动条”） ==========
+function flashStepsBarApplyOverflowPolicy() {
+  const scroll = document.querySelector('.flash-steps-scroll');
+  const inner = document.querySelector('.flash-steps-inner');
+  if (!scroll || !inner) {
+    return;
+  }
+  /*
+   * 绝对定位的提示框（min-width 较大）会横向伸出步骤区域，仍会计入 scrollWidth，
+   * 导致「一行已放下」却出现横向滚动条。测量时临时去掉提示框占位，只按步骤行是否超出内容区判断。
+   */
+  const tooltipNodeList = inner.querySelectorAll('.flash-step-tooltip');
+  const tooltipCount = tooltipNodeList.length;
+  let tooltipHideIndex = 0;
+  for (; tooltipHideIndex < tooltipCount; tooltipHideIndex++) {
+    tooltipNodeList[tooltipHideIndex].style.display = 'none';
+  }
+  scroll.style.overflowX = 'hidden';
+  void scroll.offsetWidth;
+  const contentAreaWidthPx = scroll.clientWidth;
+  const rowScrollWidthPx = inner.scrollWidth;
+  const epsilonPx = 4;
+  const overflowPx = rowScrollWidthPx - contentAreaWidthPx;
+  const needsHorizontalScroll = overflowPx > epsilonPx;
+  let tooltipRestoreIndex = 0;
+  for (; tooltipRestoreIndex < tooltipCount; tooltipRestoreIndex++) {
+    tooltipNodeList[tooltipRestoreIndex].style.removeProperty('display');
+  }
+  if (needsHorizontalScroll) {
+    scroll.style.overflowX = 'auto';
+  } else {
+    scroll.style.overflowX = 'hidden';
+  }
+}
+
+(function setupFlashStepsBarOverflowBehavior() {
+  function scheduleFlashStepsBarOverflowUpdate() {
+    window.requestAnimationFrame(() => {
+      flashStepsBarApplyOverflowPolicy();
+    });
+  }
+  scheduleFlashStepsBarOverflowUpdate();
+  window.addEventListener('resize', scheduleFlashStepsBarOverflowUpdate);
+  const flashStepsScrollEl = document.querySelector('.flash-steps-scroll');
+  if (flashStepsScrollEl && typeof ResizeObserver !== 'undefined') {
+    const resizeObserver = new ResizeObserver(scheduleFlashStepsBarOverflowUpdate);
+    resizeObserver.observe(flashStepsScrollEl);
+  }
+  const mainColumnEl = document.querySelector('.main-column');
+  if (mainColumnEl && typeof ResizeObserver !== 'undefined') {
+    const mainColumnObserver = new ResizeObserver(scheduleFlashStepsBarOverflowUpdate);
+    mainColumnObserver.observe(mainColumnEl);
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleFlashStepsBarOverflowUpdate);
+  }
+})();
+
+// ========== 刷机步骤提示框：fixed 定位，避免落在 .flash-steps-scroll 内被 overflow 裁切 ==========
+function flashStepsApplyTooltipPosition(stepItem) {
+  const tip = stepItem.querySelector('.flash-step-tooltip');
+  if (!tip) {
+    return;
+  }
+  const itemRect = stepItem.getBoundingClientRect();
+  const gapPx = 8;
+  const edgeMarginPx = 12;
+  const viewportWidthPx = window.innerWidth;
+  const centerXFromItem = itemRect.left + itemRect.width / 2;
+  const topFromViewport = itemRect.bottom + gapPx;
+  tip.style.position = 'fixed';
+  tip.style.left = centerXFromItem + 'px';
+  tip.style.top = topFromViewport + 'px';
+  tip.style.transform = 'translateX(-50%)';
+  tip.style.right = 'auto';
+  tip.style.bottom = 'auto';
+  tip.classList.add('flash-step-tooltip--open');
+  window.requestAnimationFrame(() => {
+    const tipRectAfterLayout = tip.getBoundingClientRect();
+    let adjustedCenterX = centerXFromItem;
+    if (tipRectAfterLayout.right > viewportWidthPx - edgeMarginPx) {
+      const overflowRightPx = tipRectAfterLayout.right - (viewportWidthPx - edgeMarginPx);
+      adjustedCenterX = adjustedCenterX - overflowRightPx;
+    }
+    if (tipRectAfterLayout.left < edgeMarginPx) {
+      const overflowLeftPx = edgeMarginPx - tipRectAfterLayout.left;
+      adjustedCenterX = adjustedCenterX + overflowLeftPx;
+    }
+    tip.style.left = adjustedCenterX + 'px';
+  });
+}
+
+function flashStepsClearTooltip(stepItem) {
+  const tip = stepItem.querySelector('.flash-step-tooltip');
+  if (!tip) {
+    return;
+  }
+  tip.classList.remove('flash-step-tooltip--open');
+  tip.style.position = '';
+  tip.style.left = '';
+  tip.style.top = '';
+  tip.style.transform = '';
+  tip.style.right = '';
+  tip.style.bottom = '';
+}
+
+function flashStepsFindOpenTooltipStepItem() {
+  const openTip = document.querySelector('.flash-step-tooltip.flash-step-tooltip--open');
+  if (!openTip) {
+    return null;
+  }
+  const parentStep = openTip.closest('.flash-step-item');
+  return parentStep;
+}
+
+function flashStepsInitFloatingTooltips() {
+  const stepItems = document.querySelectorAll('.flash-step-item');
+  stepItems.forEach(stepItem => {
+    stepItem.addEventListener('mouseenter', () => {
+      flashStepsApplyTooltipPosition(stepItem);
+    });
+    stepItem.addEventListener('mouseleave', () => {
+      flashStepsClearTooltip(stepItem);
+    });
+    stepItem.addEventListener('focusin', () => {
+      flashStepsApplyTooltipPosition(stepItem);
+    });
+    stepItem.addEventListener('focusout', () => {
+      flashStepsClearTooltip(stepItem);
+    });
+  });
+  window.addEventListener('resize', () => {
+    const openItem = flashStepsFindOpenTooltipStepItem();
+    if (openItem) {
+      flashStepsApplyTooltipPosition(openItem);
+    }
+  });
+  window.addEventListener('scroll', () => {
+    const openItem = flashStepsFindOpenTooltipStepItem();
+    if (openItem) {
+      flashStepsApplyTooltipPosition(openItem);
+    }
+  }, true);
+}
+
+flashStepsInitFloatingTooltips();

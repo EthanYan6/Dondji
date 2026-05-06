@@ -27,16 +27,52 @@
     </svg>
   </button>
   <div id="appToastRoot" class="app-toast-root" aria-live="polite"></div>
+  <div class="subtitle-chips" aria-label="社交平台账号">
+    <span class="subtitle-chip subtitle-chip--douyin" title="抖音 · 小闫连不上">
+      <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 3v9.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+      </svg>
+      <span class="subtitle-chip-label">抖音</span>
+      <span class="subtitle-chip-name">小闫连不上</span>
+    </span>
+    <span class="subtitle-chip subtitle-chip--bili" title="哔哩哔哩 · 小闫同学啊">
+      <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M6 8l2 3h8l2-3"/>
+        <path d="M9.5 15h5"/>
+      </svg>
+      <span class="subtitle-chip-label">B站</span>
+      <span class="subtitle-chip-name">小闫同学啊</span>
+    </span>
+    <span class="subtitle-chip subtitle-chip--redbook" title="小红书 · 小闫同学">
+      <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        <path d="M8 7h8M8 11h6"/>
+      </svg>
+      <span class="subtitle-chip-label">小红书</span>
+      <span class="subtitle-chip-name">小闫同学</span>
+    </span>
+    <span class="subtitle-chip subtitle-chip--weixin" title="微信视频号 · 小闫连不上">
+      <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M10 9.5L15 12l-5 2.5V9.5z" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="subtitle-chip-label">微信视频号</span>
+      <span class="subtitle-chip-name">小闫连不上</span>
+    </span>
+  </div>
   <div class="page-layout">
     <!-- VERSION TIMELINE SIDEBAR -->
     <aside class="timeline-sidebar" id="timelineSidebar">
-      <h2 class="timeline-title">版本历史</h2>
+      <h2 class="timeline-title">叮咚鸡（Dondji）版本历史</h2>
       <div class="timeline" id="timeline">
         <div class="timeline-loading">加载中...</div>
       </div>
     </aside>
 
-    <main class="container">
+    <main class="main-column">
+    <div class="container">
     <header class="header">
       <h1 class="h1">UV-K1 / UV-K5(K6) V3 Web Tool</h1>
     </header>
@@ -49,43 +85,64 @@
         </svg>
         <span>由 <strong class="subtitle-call">BD1AHN</strong> 开发</span>
       </div>
-      <div class="subtitle-chips">
-        <span class="subtitle-chip subtitle-chip--douyin" title="抖音">
-          <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3v9.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+    </div>
+    </div>
+
+    <!-- 刷机步骤条（横向占满主栏，与写频表格同宽） -->
+    <div class="flash-steps-bar">
+      <div class="flash-steps-scroll">
+        <div class="flash-steps-inner">
+        <div class="flash-steps-heading">
+          <svg class="flash-steps-heading-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <span class="subtitle-chip-label">抖音</span>
-          <span class="subtitle-chip-name">小闫连不上</span>
-        </span>
-        <span class="subtitle-chip subtitle-chip--bili" title="哔哩哔哩">
-          <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2"/>
-            <path d="M6 8l2 3h8l2-3"/>
-            <path d="M9.5 15h5"/>
-          </svg>
-          <span class="subtitle-chip-label">B站</span>
-          <span class="subtitle-chip-name">小闫同学啊</span>
-        </span>
-        <span class="subtitle-chip subtitle-chip--redbook" title="小红书">
-          <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            <path d="M8 7h8M8 11h6"/>
-          </svg>
-          <span class="subtitle-chip-label">小红书</span>
-          <span class="subtitle-chip-name">小闫同学</span>
-        </span>
-        <span class="subtitle-chip subtitle-chip--weixin" title="微信视频号">
-          <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2"/>
-            <path d="M10 9.5L15 12l-5 2.5V9.5z" fill="currentColor" stroke="none"/>
-          </svg>
-          <span class="subtitle-chip-label">微信视频号</span>
-          <span class="subtitle-chip-name">小闫连不上</span>
-        </span>
+          <span class="flash-steps-label">刷机步骤</span>
+        </div>
+        <ol class="flash-steps-list" aria-label="推荐刷机顺序">
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">1</span>
+            <span class="flash-step-name">备份校准</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">开机状态下备份。</span>
+          </li>
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">2</span>
+            <span class="flash-step-name">刷固件</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">关机后，按住PTT键后再开机，进入刷机模式。</span>
+          </li>
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">3</span>
+            <span class="flash-step-name">清除数据</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">关机后，按PTT和PTT下边的侧键，一起按下后，再开机，解锁全部按键。在“其它”中“恢复出厂”里选择全部。重置设备存储的信道与配置。</span>
+          </li>
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">4</span>
+            <span class="flash-step-name">刷字库</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">开机状态下刷入字库，每个版本的固件配合每个固件的中文字库，不要混用！</span>
+          </li>
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">5</span>
+            <span class="flash-step-name">恢复校准</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">开机状态下进行，注意：只有本网站以及uvtools2网站的校准文件支持恢复，其它网站不支持。</span>
+          </li>
+          <li class="flash-step-item" tabindex="0">
+            <span class="flash-step-index">6</span>
+            <span class="flash-step-name">写频</span>
+            <span class="flash-step-help" aria-hidden="true">?</span>
+            <span class="flash-step-tooltip" role="tooltip">开机状态下进行，读取或者写入后都会断开连接，是正常现象，防止长时间占用端口，期间误操作/误碰。</span>
+          </li>
+        </ol>
+        </div>
       </div>
     </div>
 
+    <div class="container">
     <!-- TABS -->
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="flash" id="tabFlash">刷固件</button>
@@ -98,19 +155,20 @@
     <!-- FLASH FIRMWARE TAB -->
     <div class="tab-content active" id="flash-content">
       <section class="section">
-        <button class="btn-fetch" id="fetchLatestBtn">从远程加载最新固件</button>
-        <div id="fwReleaseInfo" class="fw-info" style="display:none"></div>
-      </section>
-
-      <section class="section">
-        <label>或选择本地固件文件 (.bin)</label>
-        <div class="file-input-wrapper">
-          <input type="file" id="firmwareFile" accept=".bin">
+        <label>固件文件 (.bin)</label>
+        <div class="file-input-wrapper file-input-wrapper--dual">
           <div class="file-input-label" id="fileLabel">
             <span class="file-name" id="fileName">未选择文件</span>
-            <span class="file-button">选择文件</span>
+            <div class="file-input-actions">
+              <button type="button" class="btn-fetch file-action-remote" id="fetchLatestBtn">远程获取</button>
+              <div class="file-local-trigger">
+                <input type="file" id="firmwareFile" accept=".bin" aria-label="选择本地固件文件">
+                <span class="file-button">本地选择</span>
+              </div>
+            </div>
           </div>
         </div>
+        <div id="fwReleaseInfo" class="fw-info" style="display:none"></div>
       </section>
 
       <button id="flashBtn" disabled>刷入固件</button>
@@ -129,19 +187,23 @@
         <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
           ⚠️ 请先<strong>正常开机进入使用界面</strong>后再连接 USB 刷字库（与备份/恢复校准相同，无需 BOOT 模式）。
         </p>
-        <button class="btn-fetch" id="fetchFontBtn">从远程加载最新字库</button>
-        <div id="fontInfo" class="fw-info" style="display:none"></div>
       </section>
 
       <section class="section">
-        <label>或选择本地字库文件 (.bin)</label>
-        <div class="file-input-wrapper">
-          <input type="file" id="fontFile" accept=".bin">
+        <label>字库文件 (.bin)</label>
+        <div class="file-input-wrapper file-input-wrapper--dual">
           <div class="file-input-label" id="fontFileLabel">
             <span class="file-name" id="fontFileName">未选择文件</span>
-            <span class="file-button">选择文件</span>
+            <div class="file-input-actions">
+              <button type="button" class="btn-fetch file-action-remote" id="fetchFontBtn">远程获取</button>
+              <div class="file-local-trigger">
+                <input type="file" id="fontFile" accept=".bin" aria-label="选择本地字库文件">
+                <span class="file-button">本地选择</span>
+              </div>
+            </div>
           </div>
         </div>
+        <div id="fontInfo" class="fw-info" style="display:none"></div>
       </section>
 
       <button id="fontFlashBtn" disabled>刷入字库</button>
@@ -285,11 +347,14 @@
       &middot; Based on <a href="https://github.com/armel/uv-k1-k5v3-firmware-custom" target="_blank">UVTools2</a>
       &middot; <a href="https://github.com/EthanYan6/Dondji" target="_blank">GitHub</a>
     </footer>
+    </div>
   </main>
   </div>
 
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="js/flash.js"></script>
 </body>
 </html>
