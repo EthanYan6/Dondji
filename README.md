@@ -113,7 +113,7 @@
 | 功能 | 说明 |
 |------|------|
 | 刷固件 | 从 GitHub Releases 拉取最新固件，或选择本地 .bin 文件刷入 |
-| 刷字库 | 将 1259 个中文字符字库写入 SPI Flash，支持信道中文命名 |
+| 刷字库 | 将 1262 个中文字符字库写入 SPI Flash，支持信道中文命名 |
 | 备份校准 | 导出设备校准数据备份 |
 | 恢复校准 | 从备份文件恢复校准数据 |
 
@@ -131,8 +131,8 @@
 |------|------|
 | 字库文件 | `docs/font/cn_font.bin` |
 | SPI Flash 起始地址 | `0x010200` |
-| 字符数量 | 1259 个 |
-| 字库大小 | 39,418 字节 (约 38.5 KB) |
+| 字符数量 | 1262 个 |
+| 字库大小 | 39,568 字节 (约 38.6 KB) |
 | SPI Flash 占用 | 1.88% (总容量 2MB) |
 
 ### 技术说明
@@ -148,5 +148,6 @@
 
 ```bash
 git checkout motorola_r7
-./compile-with-docker.sh Fusion
+python update_cn_font.py --append "新字若干"
+./compile-with-docker.sh Fusion -DAUTHOR_STRING_2=BD1AHN
 ```

@@ -27,11 +27,11 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 39477;
+const CN_FONT_VERSION_OFFSET = 39567;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_BITMAP_SIZE = 30216;
+const CN_FONT_BITMAP_SIZE = 30288;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_CHAR_COUNT = 1259;
+const CN_FONT_CHAR_COUNT = 1262;
 const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
@@ -903,10 +903,23 @@ $('fontFlashBtn').addEventListener('click', async () => {
       await sleep(50);
     }
 
-    // Write version marker
+    // 版本字节必须与 cn_font.bin 最后一字节同一地址。仅用 CN_FONT_VERSION_OFFSET 若与 bin 长度不一致，
+    // 会把 1 字节写到拼音表/索引区内，表现为拼音检索整体失效（如 zhong 无候选）。
+    const expectedFontByteLength = CN_FONT_VERSION_OFFSET + 1;
+    if (fontData.length !== expectedFontByteLength) {
+      log(
+        '警告：字库文件 ' + fontData.length + ' 字节，与 CN_FONT_VERSION_OFFSET+1=' +
+          expectedFontByteLength +
+          ' 不一致（多为浏览器缓存了旧 flash.js）。将以 bin 实际末尾地址写入版本字节。',
+        'warn'
+      );
+    }
+    const versionByteFlashAddr = CN_FONT_FLASH_BASE + fontData.length - 1;
+
+    // Write version marker（地址固定为当前加载的 bin 最后一字节，避免常量滞后破坏 Flash）
     const verMsg = createMessage(MSG_SPI_FLASH_WRITE, 12 + 1);
     const vv = new DataView(verMsg.buffer);
-    vv.setUint32(4, CN_FONT_FLASH_BASE + CN_FONT_VERSION_OFFSET, true);
+    vv.setUint32(4, versionByteFlashAddr, true);
     vv.setUint16(8, 1, true);
     vv.setUint16(10, 0, true);
     vv.setUint32(12, ts, true);

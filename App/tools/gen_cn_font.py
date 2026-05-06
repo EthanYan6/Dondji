@@ -11,6 +11,30 @@ import sys
 from collections import Counter
 from pypinyin import pinyin, Style
 
+
+def load_cn_chars_append(script_dir):
+    """
+    追加字表：UTF-8 文本，与 CN_CHARS_500 拼接后参与去重排序。
+    以 # 开头的行视为注释；可多行或一行连续写汉字。
+    """
+    append_path = os.path.join(script_dir, "cn_chars_append.txt")
+    if not os.path.isfile(append_path):
+        return ""
+    raw_text = ""
+    with open(append_path, "r", encoding="utf-8") as append_file:
+        raw_text = append_file.read()
+    kept_segments = []
+    for single_line in raw_text.splitlines():
+        stripped_line = single_line.strip()
+        if not stripped_line:
+            continue
+        if stripped_line.startswith("#"):
+            continue
+        kept_segments.append(stripped_line)
+    append_segment = "".join(kept_segments)
+    return append_segment
+
+
 # ── 中文频道名字表：按首次出现顺序去重（与既有 SPI 字序一致）──
 CN_CHARS_500 = (
     "的是一不了在人有我他这中大来上个国到说们为子和你地出会也时要就能下行对着生里年前面后东西南北小高多少长短快慢好新旧远近安危黑吉辽冀鲁豫晋陕甘川鄂湘皖赣苏浙闽"
@@ -522,8 +546,11 @@ def main():
     else:
         print("字表源串: %d 个汉字，无重复" % len(han_in_source))
 
-    # 按 Unicode 顺序遍历字表（tuple 内可为多段字符串拼接成一条）
-    combined_source_text = ''.join(CN_CHARS_500)
+    # 按 Unicode 顺序遍历字表（tuple 内可为多段字符串拼接成一条）+ 追加字表文件
+    append_segment = load_cn_chars_append(script_dir)
+    if append_segment:
+        print("追加字表 cn_chars_append.txt: %d 个字符（拼接在去重前）" % len(append_segment))
+    combined_source_text = "".join(CN_CHARS_500) + append_segment
     seen = set()
     unique_chars = []
     for single_character in combined_source_text:
