@@ -2172,6 +2172,12 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 #ifdef ENABLE_FEAT_F4HWN // For F + SIDE1 or F + SIDE2
             || (gWasFKeyPressed && (Key == KEY_SIDE1 || Key == KEY_SIDE2))
 #endif
+            || (gScreenToDisplay == DISPLAY_MENU &&
+                UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME &&
+                gIsInSubMenu &&
+                edit_index >= 0 &&
+                gMemNameInputMode == MEM_NAME_INPUT_SYMBOL &&
+                (Key == KEY_SIDE1 || Key == KEY_SIDE2))
     )) {
         ProcessKeysFunctions[gScreenToDisplay](Key, bKeyPressed, bKeyHeld);
     }

@@ -58,8 +58,11 @@ static bool gMenuSecondPageLastValid[8];
 static uint8_t gMenuSecondPageLastMenuId[8];
 uint8_t gMemNameInputMode = MEM_NAME_INPUT_LOWER;
 uint8_t gMemNameCandidateCount;
-char gMemNameCandidates[5];
+char gMemNameCandidates[6];
 uint8_t gMemNameSymbolPage;
+
+const char gMemNameSymbolCharset[] = ".,!?@#$%&*+-/=_:;()[]{}<>\"'\\|~^`";
+const uint8_t gMemNameSymbolCharsetCount = (uint8_t)(sizeof(gMemNameSymbolCharset) - 1u);
 
 #ifdef ENABLE_CHINESE
 char     gPinyinBuffer[PINYIN_MAX_LEN + 1];
@@ -137,25 +140,64 @@ static void MENU_BuildMemNameCandidatesFromKey(const KEY_Code_t key)
 
 static void MENU_BuildMemNameSymbolCandidates(void)
 {
-    static const char symbols[] = ".,!?@#$%&*+-/=_:;()[]{}<>\"'\\|~^`";
-    const uint8_t per_page = ARRAY_SIZE(gMemNameCandidates);
-    const uint8_t total = (uint8_t)(sizeof(symbols) - 1u);
-    const uint8_t pages = (uint8_t)((total + per_page - 1u) / per_page);
+    static const uint8_t per_page = 6u;
+    const uint8_t total = gMemNameSymbolCharsetCount;
+    const uint8_t pages = (total > 0u) ? (uint8_t)((total + per_page - 1u) / per_page) : 0u;
     const uint8_t base = (uint8_t)(gMemNameSymbolPage * per_page);
+
     gMemNameCandidateCount = 0;
 
     if (pages == 0u)
-        return;
-    if (gMemNameSymbolPage >= pages)
-        gMemNameSymbolPage = 0u;
-
-    for (uint8_t i = 0; i < per_page; i++)
     {
-        const uint8_t idx = (uint8_t)(base + i);
-        if (idx >= total)
-            break;
-        gMemNameCandidates[gMemNameCandidateCount++] = symbols[idx];
+        return;
     }
+    if (gMemNameSymbolPage >= pages)
+    {
+        gMemNameSymbolPage = 0u;
+    }
+
+    {
+        uint8_t i;
+
+        for (i = 0; i < per_page; i++)
+        {
+            const uint8_t idx = (uint8_t)(base + i);
+
+            if (idx >= total)
+            {
+                break;
+            }
+            gMemNameCandidates[gMemNameCandidateCount] = gMemNameSymbolCharset[idx];
+            gMemNameCandidateCount++;
+        }
+    }
+}
+
+static void MENU_MemNameFlipSymbolPage(int8_t delta)
+{
+    const uint8_t per_page = 6u;
+    const uint8_t total = gMemNameSymbolCharsetCount;
+    uint8_t pages;
+
+    if (total == 0u)
+    {
+        return;
+    }
+
+    pages = (uint8_t)((total + per_page - 1u) / per_page);
+    if (pages <= 1u)
+    {
+        return;
+    }
+
+    {
+        const int8_t step = (delta > 0) ? 1 : -1;
+        const uint8_t last_page = (uint8_t)(pages - 1u);
+
+        gMemNameSymbolPage =
+            (uint8_t)NUMBER_AddWithWraparound(gMemNameSymbolPage, step, 0, last_page);
+    }
+    MENU_BuildMemNameSymbolCandidates();
 }
 
 static void MENU_MemNameAdvanceAfterInput(void)
@@ -2047,6 +2089,24 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 return;
             }
 
+            if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+            {
+                if (Key >= KEY_1 && Key <= KEY_6 && gMemNameCandidateCount > 0u)
+                {
+                    const uint8_t idx = (uint8_t)(Key - KEY_1);
+
+                    if (idx < gMemNameCandidateCount)
+                    {
+                        edit[edit_index] = gMemNameCandidates[idx];
+                        MENU_MemNameAdvanceAfterInput();
+                        gRequestDisplayScreen = DISPLAY_MENU;
+                        return;
+                    }
+                }
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
+
             if (Key == KEY_0)
             {
                 if (gCNCandidateCount > 0)
@@ -2178,9 +2238,10 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
             }
             if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
             {
-                if (Key >= KEY_1 && Key <= KEY_5 && gMemNameCandidateCount > 0u)
+                if (Key >= KEY_1 && Key <= KEY_6 && gMemNameCandidateCount > 0u)
                 {
                     const uint8_t idx = (uint8_t)(Key - KEY_1);
+
                     if (idx < gMemNameCandidateCount)
                     {
                         edit[edit_index] = gMemNameCandidates[idx];
@@ -2641,7 +2702,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 #ifdef ENABLE_CHINESE
         if (gUiLanguage == UI_LANGUAGE_CN)
         {
-            if (gMemNameCandidateCount > 0)
+            if (gMemNameCandidateCount > 0 && gMemNameInputMode != MEM_NAME_INPUT_SYMBOL)
             {
                 gMemNameCandidateCount = 0;
                 gRequestDisplayScreen = DISPLAY_MENU;
@@ -2840,18 +2901,11 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 #endif
 
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && edit_index >= 0)
-    {   // symbol mode uses up/down to page candidates
+    {   /* symbol mode: up/down flips pages (same as side keys) */
         if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL && bKeyPressed && Direction != 0)
         {
-            static const uint8_t per_page = ARRAY_SIZE(gMemNameCandidates);
-            static const uint8_t total_symbols = sizeof(".,!?@#$%&*+-/=_:;()[]{}<>\"'\\|~^`") - 1u;
-            const uint8_t pages = (uint8_t)((total_symbols + per_page - 1u) / per_page);
-            if (pages > 0u)
-            {
-                gMemNameSymbolPage = NUMBER_AddWithWraparound(gMemNameSymbolPage, Direction > 0 ? 1 : -1, 0, pages - 1u);
-                MENU_BuildMemNameSymbolCandidates();
-                gRequestDisplayScreen = DISPLAY_MENU;
-            }
+            MENU_MemNameFlipSymbolPage((int8_t)Direction);
+            gRequestDisplayScreen = DISPLAY_MENU;
             return;
         }
         // keep old behavior as fallback
@@ -3014,6 +3068,31 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         case KEY_MENU:
             MENU_Key_MENU(bKeyPressed, bKeyHeld);
             break;
+        case KEY_SIDE1:
+        case KEY_SIDE2:
+            if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && edit_index >= 0 &&
+                gMemNameInputMode == MEM_NAME_INPUT_SYMBOL && !bKeyHeld && bKeyPressed)
+            {
+                int8_t delta;
+
+                if (Key == KEY_SIDE2)
+                {
+                    delta = 1;
+                }
+                else
+                {
+                    delta = -1;
+                }
+                gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+                MENU_MemNameFlipSymbolPage(delta);
+                gRequestDisplayScreen = DISPLAY_MENU;
+                break;
+            }
+            if (!bKeyHeld && bKeyPressed)
+            {
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+            }
+            break;
         case KEY_UP:
         case KEY_DOWN:
             MENU_Key_UP_DOWN(bKeyPressed, bKeyHeld, Key == KEY_UP ? 1 : -1);
@@ -3035,20 +3114,32 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                     {
                         MENU_PinyinReset();
                         gMemNameCandidateCount = 0;
+                        /* # 顺序：PY → a → A → 1 → , → PY */
                         switch (gMemNameInputMode)
                         {
                             case MEM_NAME_INPUT_PINYIN:
-                                gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
-                                break;
-                            case MEM_NAME_INPUT_DIGIT:
                                 gMemNameInputMode = MEM_NAME_INPUT_LOWER;
                                 break;
                             case MEM_NAME_INPUT_LOWER:
                                 gMemNameInputMode = MEM_NAME_INPUT_UPPER;
                                 break;
+                            case MEM_NAME_INPUT_UPPER:
+                                gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
+                                break;
+                            case MEM_NAME_INPUT_DIGIT:
+                                gMemNameInputMode = MEM_NAME_INPUT_SYMBOL;
+                                break;
+                            case MEM_NAME_INPUT_SYMBOL:
+                                gMemNameInputMode = MEM_NAME_INPUT_PINYIN;
+                                break;
                             default:
                                 gMemNameInputMode = MEM_NAME_INPUT_PINYIN;
                                 break;
+                        }
+                        if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+                        {
+                            gMemNameSymbolPage = 0;
+                            MENU_BuildMemNameSymbolCandidates();
                         }
                     }
                     else
@@ -3057,7 +3148,10 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                         gMemNameInputMode = (uint8_t)((gMemNameInputMode + 1u) % 4u);
                         gMemNameCandidateCount = 0;
                         if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+                        {
+                            gMemNameSymbolPage = 0;
                             MENU_BuildMemNameSymbolCandidates();
+                        }
                     }
                     gRequestDisplayScreen = DISPLAY_MENU;
                 }

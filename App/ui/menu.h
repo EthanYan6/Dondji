@@ -251,8 +251,10 @@ enum {
 };
 extern uint8_t           gMemNameInputMode;
 extern uint8_t           gMemNameCandidateCount;
-extern char              gMemNameCandidates[5];
+extern char              gMemNameCandidates[6];
 extern uint8_t           gMemNameSymbolPage;
+extern const char        gMemNameSymbolCharset[];
+extern const uint8_t     gMemNameSymbolCharsetCount;
 
 #ifdef ENABLE_CHINESE
 // Pinyin input state for CN channel name

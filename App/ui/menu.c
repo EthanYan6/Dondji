@@ -937,6 +937,77 @@ static void UI_MENU_DrawMemNameCandidates(unsigned int x1, unsigned int x2)
     }
 }
 
+/* 符号模式：固定 6 格均匀分布（与候选条相同纵坐标），数字 1–6 + 对应符号；未满格符号为空 */
+static void UI_MENU_DrawMemNameSymbolSixPack(unsigned int x1, unsigned int x2)
+{
+    static const uint8_t slot_total = 6u;
+    const uint8_t n = gMemNameCandidateCount;
+    const unsigned int y_strip_top = 50u;
+    const unsigned int y_strip_bot = 57u;
+    uint8_t slot_index;
+
+    if (x2 <= x1)
+    {
+        return;
+    }
+
+    {
+        const unsigned int avail = (unsigned int)((x2 - x1) + 1u);
+        const unsigned int w_num = 6u;
+        const unsigned int w_sym = 6u;
+        const unsigned int gap_num_sym = 4u;
+
+        for (slot_index = 0; slot_index < slot_total; slot_index++)
+        {
+            char num_str[2];
+            char sym_str[2];
+            unsigned int slot_l;
+            unsigned int slot_r;
+            unsigned int slot_w;
+            unsigned int token_w;
+            unsigned int token_x;
+            unsigned int sym_x;
+
+            slot_l = x1 + (avail * (unsigned int)slot_index) / (unsigned int)slot_total;
+            slot_r = x1 + (avail * ((unsigned int)slot_index + 1u)) / (unsigned int)slot_total - 1u;
+
+            if (slot_r >= slot_l)
+            {
+                slot_w = slot_r - slot_l + 1u;
+            }
+            else
+            {
+                slot_w = 0u;
+            }
+
+            token_w = w_num + gap_num_sym + w_sym;
+            token_x = slot_l;
+            if (slot_w > token_w)
+            {
+                token_x = slot_l + (slot_w - token_w) / 2u;
+            }
+
+            num_str[0] = (char)('1' + slot_index);
+            num_str[1] = 0;
+            UI_PrintStringSmallAtPixel(num_str, token_x, token_x, y_strip_top, y_strip_bot, 0u);
+
+            sym_x = token_x + w_num + gap_num_sym;
+
+            if (slot_index < n)
+            {
+                sym_str[0] = gMemNameCandidates[slot_index];
+                sym_str[1] = 0;
+            }
+            else
+            {
+                sym_str[0] = ' ';
+                sym_str[1] = 0;
+            }
+            UI_PrintStringSmallAtPixel(sym_str, sym_x, sym_x, y_strip_top, y_strip_bot, 0u);
+        }
+    }
+}
+
 #ifdef ENABLE_CHINESE
 static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int sub_val_x2)
 {
@@ -956,6 +1027,9 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
             break;
         case MEM_NAME_INPUT_UPPER:
             UI_PrintStringSmallAtPixel("A", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+            break;
+        case MEM_NAME_INPUT_SYMBOL:
+            UI_PrintStringSmallAtPixel(",", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
             break;
         default:
             if (gPinyinLen > 0 && gCNCandidateCount == 0)
@@ -1117,6 +1191,10 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
             UI_PrintStringSmallAtPixel(utf8, (uint8_t)(cx + 8u), (uint8_t)(cx + 20u), y_strip, (uint8_t)(y_strip + 11u), 0u);
         }
     }
+    else if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+    {
+        UI_MENU_DrawMemNameSymbolSixPack(sub_val_x1, sub_val_x2);
+    }
     else if (gMemNameCandidateCount > 0)
     {
         const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
@@ -1159,7 +1237,8 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
                 UI_PrintStringSmallAtPixel(hint_py, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_strip, (uint8_t)(y_strip + 7u), 0u);
             }
         }
-        else if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0)
+        else if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0 &&
+                 gMemNameInputMode != MEM_NAME_INPUT_SYMBOL)
         {
             UI_PrintStringSmallAtPixel((gUiLanguage == UI_LANGUAGE_CN) ? "#\xe5\x88\x87\xe6\x8d\xa2 EXIT\xe5\x9b\x9e\xe9\x80\x80"
                                                                        : "#switch EXIT back",
@@ -2224,7 +2303,11 @@ void UI_DisplayMenu(void)
                                 gFrameBuffer[underline_fb_row][underline_x + c] |= 0x01u;
                     }
                 }
-                if (gMemNameCandidateCount > 0u)
+                if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
+                {
+                    UI_MENU_DrawMemNameSymbolSixPack((uint8_t)sub_val_x1, (uint8_t)sub_val_x2);
+                }
+                else if (gMemNameCandidateCount > 0u)
                 {
                     UI_MENU_DrawMemNameCandidates((uint8_t)sub_val_x1, (uint8_t)sub_val_x2);
                 }
