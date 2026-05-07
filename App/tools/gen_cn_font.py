@@ -283,6 +283,9 @@ PINYIN_MAP = {
     '克': 'ke', '拟': 'ni', '背': 'bei3', '语': 'yu', '调': 'tiao3',
     '字': 'zi', '数': 'shu', '方': 'fang', '用': 'yong', '省': 'sheng',
     '迪': 'di',
+    '儿': 'er',
+    '韵': 'yun',
+    '体': 'ti',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
