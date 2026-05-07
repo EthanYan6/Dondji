@@ -50,8 +50,8 @@ void UI_DisplayScanner(void)
         } else {
             pPrintStr = "\xe9\xa2\x91\xe7\x8e\x87:**.*****";
         }
-        /* NOTE: y<8 gets clamped in helper; use >=8 to make downward movement effective */
-        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 11u, 23u, 3u);
+        /* y 起点 >=8：避免 helper 顶边钳位；混排 latin_down 与 FM 一致用 0，否则数字/Hz 在本带内偏下 */
+        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 11u, 23u, 0u);
 
         if (gScanCssState < SCAN_CSS_STATE_FOUND || !gScanUseCssResult) {
             pPrintStr = "\xe4\xba\x9a\xe9\x9f\xb3:******";
@@ -64,20 +64,20 @@ void UI_DisplayScanner(void)
             sprintf(String, "DCS:D%03oN", DCS_Options[gScanCssResultCode]);
             pPrintStr = String;
         }
-        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 25u, 37u, 3u);
+        UI_PrintStringSmallAtPixel(pPrintStr, 2u, 2u, 25u, 37u, 0u);
 
         memset(String, 0, sizeof(String));
         if (gScannerSaveState == SCAN_SAVE_CHANNEL) {
             /* 与 FM 中文「保存?」相同：汉字 + ASCII ? */
             pPrintStr = "\xe4\xbf\x9d\xe5\xad\x98?";
-            UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
+            UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
         } else if (gScannerSaveState == SCAN_SAVE_CHAN_SEL) {
             /* 「保存:」+ 信道号，与上方「保存?」确认语义一致；前缀 UTF-8 共 7 字节 */
             static const char save_chan_prefix_cn[] = "\xe4\xbf\x9d\xe5\xad\x98:";
             const size_t save_chan_prefix_len = sizeof(save_chan_prefix_cn) - 1u;
             memcpy(String, save_chan_prefix_cn, save_chan_prefix_len);
             UI_GenerateChannelStringEx(String + save_chan_prefix_len, gShowChPrefix, gScanChannel);
-            UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
+            UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
         } else if (gScanCssState < SCAN_CSS_STATE_FOUND) {
             static const char scan_cn[] = "\xe6\x89\xab\xe6\x8f\x8f\xe4\xb8\xad";
             memcpy(String, scan_cn, sizeof(scan_cn) - 1u);
@@ -87,7 +87,7 @@ void UI_DisplayScanner(void)
                 memset(String + off, '.', n);
                 String[off + n] = '\0';
             }
-            UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 3u);
+            UI_PrintStringSmallAtPixel(String, 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
         } else if (gScanCssState == SCAN_CSS_STATE_FOUND) {
             /* 扫描完成 */
             UI_PrintStringSmallAtPixel(
@@ -96,7 +96,7 @@ void UI_DisplayScanner(void)
                 LCD_WIDTH - 1u,
                 40u,
                 54u,
-                3u);
+                0u);
         } else {
             UI_PrintStringSmallAtPixel("SCAN FAIL.", 0u, LCD_WIDTH - 1u, 40u, 54u, 0u);
         }
