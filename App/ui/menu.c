@@ -3449,7 +3449,7 @@ void UI_DisplayMenu(void)
             else if (len > 0u && lines >= 2u && lines <= 3u &&
                      UI_MENU_GetCurrentMenuId() == MENU_F_LOCK &&
                      gUiLanguage == UI_LANGUAGE_CN)
-            {   /* 频段锁 2～3 行值：行间 2px */
+            {   /* 锁定频段 2～3 行值：行间 2px */
                 const uint8_t ld_mix = 0u;
                 uint8_t yp = (uint8_t)(y * 8u);
                 i = 0;

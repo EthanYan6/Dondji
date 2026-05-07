@@ -138,7 +138,7 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_SET_NAV:      return "\xe5\xaf\xbc\xe8\x88\xaa\xe9\x94\xae";
 #endif
     case MENU_RESET:        return "\xe6\x81\xa2\xe5\xa4\x8d\xe5\x87\xba\xe5\x8e\x82";
-    case MENU_F_LOCK:       return "\xe9\xa2\x91\xe6\xae\xb5\xe9\x94\x81";
+    case MENU_F_LOCK:       return "\xe9\x94\x81\xe5\xae\x9a\xe9\xa2\x91\xe6\xae\xb5";
 #ifndef ENABLE_FEAT_F4HWN
     case MENU_200TX:        return "Tx200";
     case MENU_350TX:        return "Tx350";
