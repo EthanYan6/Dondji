@@ -34,6 +34,51 @@
 
 #ifdef ENABLE_FEAT_F4HWN
 #include "ui/boot_logo_bitmap.h"
+#include "ui/dualvfo_u8g2_freq.h"
+
+/** Logo 下方一整页（gFrameBuffer[6]）：「电压 + 三空格 + Dondji + 版本」整串居中（VERSION_STRING_2，无呼号）；不改变底部开机提示 */
+static void UI_Welcome_DrawLogoBelowU8g2InfoLine(void)
+{
+    const uint8_t logo_below_row_index = BOOT_LOGO_FRAME_LINES;
+    const uint8_t info_line_y_top      = 44u;
+
+    char combined_info_line_buf[64];
+    uint32_t voltage_whole_volts;
+    uint32_t voltage_frac_two_digits;
+    uint8_t combined_line_width_px;
+    uint16_t lcd_width_u16;
+    uint16_t side_margin_u16;
+    uint8_t centered_text_left_x;
+
+    memset(gFrameBuffer[logo_below_row_index], 0, LCD_WIDTH);
+
+    voltage_whole_volts = (uint32_t)gBatteryVoltageAverage / 100u;
+    voltage_frac_two_digits = (uint32_t)gBatteryVoltageAverage % 100u;
+
+    sprintf(combined_info_line_buf, "%u.%02uV   Dondji %s",
+            (unsigned)voltage_whole_volts,
+            (unsigned)voltage_frac_two_digits,
+            VERSION_STRING_2);
+
+    combined_line_width_px = DualVfoU8g2_GetSmallTextWidth(combined_info_line_buf);
+    if (combined_line_width_px == 0u)
+    {
+        return;
+    }
+
+    lcd_width_u16 = (uint16_t)LCD_WIDTH;
+    if ((uint16_t)combined_line_width_px >= lcd_width_u16)
+    {
+        centered_text_left_x = 0u;
+    }
+    else
+    {
+        side_margin_u16 = (uint16_t)(lcd_width_u16 - (uint16_t)combined_line_width_px);
+        centered_text_left_x = (uint8_t)(side_margin_u16 / 2u);
+    }
+
+    DualVfoU8g2_DrawSmallText(combined_info_line_buf, centered_text_left_x, info_line_y_top, true);
+}
 
 static void UI_Welcome_CopyLogoToFrameBuffer(void)
 {
@@ -48,11 +93,9 @@ static void UI_Welcome_CopyLogoToFrameBuffer(void)
 
 static void UI_Welcome_DrawBootHintBottom(void)
 {
-    /* 开机提示再下移 7 像素：英文用语义明确的像素下移（小号字 Line6 + vOffset7） */
-    const uint8_t boot_hint_bottom_y_start = 57u;
+    /* 中文开机提示带下移 1px（57→58）；英文与中文同像素带，避免 VOffset 跨两行拆字 */
+    const uint8_t boot_hint_bottom_y_start = 58u;
     const uint8_t boot_hint_bottom_y_end = 63u;
-    const uint8_t boot_hint_english_line = 6u;
-    const uint8_t boot_hint_english_down_px = 7u;
 
 #ifdef ENABLE_CHINESE
     if (gUiLanguage == UI_LANGUAGE_CN)
@@ -73,21 +116,42 @@ static void UI_Welcome_DrawBootHintBottom(void)
     else
 #endif
     {
+#ifdef ENABLE_CHINESE
         if (gSetting_boot_hint == 0)
         {
-            UI_PrintStringSmallNormalVOffset(
-                "Dondji", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+            UI_PrintStringSmallAtPixel(
+                "Dondji", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 0u);
         }
         else if (gSetting_boot_hint == 1)
         {
-            UI_PrintStringSmallNormalVOffset(
-                "Beautiful BJ", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+            UI_PrintStringSmallAtPixel(
+                "Beautiful BJ", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 0u);
         }
         else
         {
-            UI_PrintStringSmallNormalVOffset(
-                "happy 55th", 0, 127, boot_hint_english_line, boot_hint_english_down_px);
+            UI_PrintStringSmallAtPixel(
+                "happy 55th", 0, 127, boot_hint_bottom_y_start, boot_hint_bottom_y_end, 0u);
         }
+#else
+        /* 无 ENABLE_CHINESE：单行底对齐于最后一页 */
+        const uint8_t boot_hint_english_single_row = 7u;
+
+        if (gSetting_boot_hint == 0)
+        {
+            UI_PrintStringSmallNormalBottomInRow(
+                "Dondji", 0, 127, boot_hint_english_single_row);
+        }
+        else if (gSetting_boot_hint == 1)
+        {
+            UI_PrintStringSmallNormalBottomInRow(
+                "Beautiful BJ", 0, 127, boot_hint_english_single_row);
+        }
+        else
+        {
+            UI_PrintStringSmallNormalBottomInRow(
+                "happy 55th", 0, 127, boot_hint_english_single_row);
+        }
+#endif
     }
 }
 #endif
@@ -223,8 +287,9 @@ void UI_DisplayWelcome(void)
         UI_PrintStringSmallNormal(Version, 0, 127, 6);
 
 #else
-        /* F4HWN：顶部 Mini Kong Logo，最下行显示菜单「开机提示」当前选项（与 menu 子项文案一致） */
+        /* F4HWN：顶部 Mini Kong Logo，Logo 下一行 u8g2 电压/版本，最下行仍为菜单「开机提示」 */
         UI_Welcome_CopyLogoToFrameBuffer();
+        UI_Welcome_DrawLogoBelowU8g2InfoLine();
         UI_Welcome_DrawBootHintBottom();
 #endif
 
