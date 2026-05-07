@@ -286,6 +286,7 @@ PINYIN_MAP = {
     '儿': 'er',
     '韵': 'yun',
     '体': 'ti',
+    '情': 'qing',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
