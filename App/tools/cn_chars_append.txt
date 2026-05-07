@@ -3,3 +3,4 @@
 # 也可用仓库根目录：python update_cn_font.py --append "要加的字"
 司窦客
 苹卓软件脑
+单

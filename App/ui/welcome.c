@@ -105,8 +105,8 @@ void UI_DisplayReleaseKeys(void)
 
 #ifdef ENABLE_CHINESE
     if (gUiLanguage == UI_LANGUAGE_CN) {
-        line_one_text = "解锁";
-        line_two_text = "全部按键";
+        line_one_text = "松开按键";
+        line_two_text = "解锁全部菜单";
     }
 #endif
 
