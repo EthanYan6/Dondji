@@ -17,11 +17,20 @@
 #ifndef UI_STATUS_H
 #define UI_STATUS_H
 
+#include <stddef.h>
+#include <stdbool.h>
+
 void UI_DisplayStatus();
 void UI_DisplayMainOnlyStatusBar(void);
 
 /* 频谱顶栏：仅左侧 dB 范围小字 + 右侧电池与百分比（不写 gStatusLine 外；不 Blit，由调用方 Blit） */
 void UI_SpectrumDrawStatusLineDbRangeAndBattery(const char *db_range_text);
+
+/*
+ * 根据菜单 BatTxt（gSetting_battery_text）格式化电池图标旁小字。
+ * 返回 false 表示「无」档不绘制旁路文字（开机页请勿调用本函数）。
+ */
+bool UI_FormatBatteryStatusSideText(char *out, size_t out_sz);
 
 #endif
 

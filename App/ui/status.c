@@ -14,6 +14,7 @@
  *     limitations under the License.
  */
 
+#include <stddef.h>
 #include <string.h>
 
 #include "app/chFrScanner.h"
@@ -40,6 +41,40 @@
 
 /* 顶栏：电压/百分比小字与电池图标左缘水平间隔（像素） */
 #define STATUS_BAT_TEXT_TO_ICON_GAP_PX 3u
+
+bool UI_FormatBatteryStatusSideText(char *out, size_t out_sz)
+{
+    char *const      buffer = out;
+    const size_t     capacity = out_sz;
+    const unsigned int mode = (unsigned int)gSetting_battery_text;
+
+    if (buffer == NULL || capacity == 0u) {
+        return false;
+    }
+
+    buffer[0] = '\0';
+
+    if (mode == 0u) {
+        return false;
+    }
+
+    if (mode == 1u) {
+        const uint16_t voltage_raw = gBatteryVoltageAverage;
+        const uint16_t voltage_clamped = (voltage_raw <= 999u) ? voltage_raw : 999u;
+        const unsigned int volts_whole = (unsigned int)(voltage_clamped / 100u);
+        const unsigned int volts_frac = (unsigned int)(voltage_clamped % 100u);
+
+        sprintf(buffer, "%u.%02u", volts_whole, volts_frac);
+        return true;
+    }
+
+    if (mode == 2u) {
+        sprintf(buffer, "%02u%%", (unsigned)gBatteryIconFillPercent);
+        return true;
+    }
+
+    return false;
+}
 
 #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
 #ifndef ENABLE_FEAT_F4HWN_DEBUG
@@ -173,18 +208,21 @@ void UI_DisplayMainOnlyStatusBar(void)
     }
 
     /*
-     * MAIN ONLY / 菜单顶栏：电池旁固定显示整数电量百分比（与 gBatteryIconFillPercent 一致）；
-     * 图标填充由 UI_DrawBattery 使用该值，仅在 BATTERY_GetReadings 中百分比变化 1% 时更新。
+     * MAIN ONLY / 菜单顶栏 / FM / 测频(F+4)：电池旁小字由 BatTxt（无/电压/百分比）决定；
+     * 图标填充见 BATTERY_GetReadings（百分比档按 1% 更新；无/电压档按 0.1V 更新）。
      */
     {
-        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
-        const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
-        const unsigned int bat_left_u = (unsigned int)x;
-        const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
-        if (bat_left_u > gap_u + (unsigned int)text_w)
-        {
-            const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
-            DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+        const bool have_side_text = UI_FormatBatteryStatusSideText(str, sizeof(str));
+
+        if (have_side_text) {
+            const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
+            const unsigned int bat_left_u = (unsigned int)x;
+            const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+            if (bat_left_u > gap_u + (unsigned int)text_w)
+            {
+                const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
+                DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+            }
         }
     }
 
@@ -216,14 +254,17 @@ void UI_SpectrumDrawStatusLineDbRangeAndBattery(const char *db_range_text)
     }
 
     {
-        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
-        const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
-        const unsigned int bat_left_u = (unsigned int)x;
-        const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
-        if (bat_left_u > gap_u + (unsigned int)text_w)
-        {
-            const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
-            DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+        const bool have_side_text = UI_FormatBatteryStatusSideText(str, sizeof(str));
+
+        if (have_side_text) {
+            const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
+            const unsigned int bat_left_u = (unsigned int)x;
+            const unsigned int gap_u      = (unsigned int)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+            if (bat_left_u > gap_u + (unsigned int)text_w)
+            {
+                const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
+                DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+            }
         }
     }
 #else
@@ -490,37 +531,7 @@ void UI_DisplayStatus()
         memcpy(line + x2, battery_bitmap, UI_BATTERY_ICON_WIDTH);
     }
 
-    bool BatTxt = false;
-
-#ifdef ENABLE_FMRADIO
-    if (gScreenToDisplay == DISPLAY_FM)
-    {
-        sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
-        BatTxt = true;
-    }
-    else
-#endif
-    {
-        switch (gSetting_battery_text)
-        {
-        default:
-        case 0:
-            break;
-
-        case 1: {
-            const uint16_t voltage =
-                (gBatteryVoltageAverage <= 999) ? gBatteryVoltageAverage : 999;
-            sprintf(str, "%u.%02u", voltage / 100, voltage % 100);
-            BatTxt = true;
-            break;
-        }
-
-        case 2:
-            sprintf(str, "%02u%%", (unsigned)gBatteryIconFillPercent);
-            BatTxt = true;
-            break;
-        }
-    }
+    const bool BatTxt = UI_FormatBatteryStatusSideText(str, sizeof(str));
 
     if (BatTxt) {
         const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);

@@ -38,6 +38,7 @@
 #include "ui/battery.h"
 #include "ui/inputbox.h"
 #include "ui/main.h"
+#include "ui/status.h"
 #include "ui/ui.h"
 #include "audio.h"
 #include "menu.h"
@@ -917,27 +918,31 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
         memcpy(rowFb + batX, bat, batW);
 
         char pb[8];
-        sprintf(pb, "%u%%", (unsigned)gBatteryIconFillPercent);
+        const bool draw_side_text = UI_FormatBatteryStatusSideText(pb, sizeof(pb));
         {
-            const uint8_t textW = DualVfoU8g2_GetSmallTextWidth(pb);
-            const uint8_t gapRx = 2u;
-            uint8_t       pctPx;
-            if (batW >= textW)
-                pctPx = (uint8_t)(batX + (batW - textW) / 2u);
-            else
+            uint8_t pctPx;
+            if (draw_side_text) {
+                const uint8_t textW = DualVfoU8g2_GetSmallTextWidth(pb);
+                if (batW >= textW)
+                    pctPx = (uint8_t)(batX + (batW - textW) / 2u);
+                else
+                    pctPx = (uint8_t)batX;
+                if ((uint32_t)pctPx + textW > LCD_WIDTH)
+                    pctPx = (uint8_t)(LCD_WIDTH - textW);
+                if ((uint32_t)pctPx + textW + DV_BAT_PCT_SHIFT_R <= LCD_WIDTH)
+                    pctPx = (uint8_t)(pctPx + DV_BAT_PCT_SHIFT_R);
+            } else {
                 pctPx = (uint8_t)batX;
-            if ((uint32_t)pctPx + textW > LCD_WIDTH)
-                pctPx = (uint8_t)(LCD_WIDTH - textW);
-            if ((uint32_t)pctPx + textW + DV_BAT_PCT_SHIFT_R <= LCD_WIDTH)
-                pctPx = (uint8_t)(pctPx + DV_BAT_PCT_SHIFT_R);
+            }
 
+            const uint8_t gapRx = 2u;
             const char   *rxLab = DualVfoRxModeShortLabel();
             const uint8_t rxW   = DualVfoU8g2_GetSmallTextWidth(rxLab);
             const int32_t rxX = (int32_t)batX - (int32_t)gapRx - (int32_t)rxW + (int32_t)DV_BAT_MODE_SHIFT_R;
             const bool    drawRx =
                 (rxX >= (int32_t)(DUAL_VFO_FREQ_COL + 1u) && (uint32_t)rxX + (uint32_t)rxW <= (uint32_t)batX);
 
-            /* 百分比保持原位置（已在屏右侧）；仅把模式字左移，使「模式右缘」与「% 左缘」至少间隔 gap */
+            /* 旁路字（电压/百分比）保持原位置；无旁路字时仍以电池区为右边界排布 Rx 模式字 */
             int32_t       rx_draw_x = rxX;
             const uint8_t pct_draw_x = pctPx;
 
@@ -966,7 +971,8 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             memcpy(rowFb + batX, bat, batW);
             if (drawRx)
                 DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rx_draw_x, DV_Y_RXMODE, true);
-            DualVfoU8g2_DrawSmallText(pb, pct_draw_x, DV_Y_PCT, true);
+            if (draw_side_text)
+                DualVfoU8g2_DrawSmallText(pb, pct_draw_x, DV_Y_PCT, true);
             const uint8_t smeter_text_right_x =
                 (uint8_t)(DV_SMETER_SREAD_X + DualVfoU8g2_GetSmallTextWidth("+5dB"));
             uint8_t status_left_limit_x = (uint8_t)(DUAL_VFO_FREQ_COL + 1u);

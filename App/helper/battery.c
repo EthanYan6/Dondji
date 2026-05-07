@@ -162,17 +162,49 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
         }
     }
 
-    /* FM / 双守：电池图标与旁路百分比均以「整数百分比」为步进；变化 1% 才更新填充并触发界面刷新 */
+    /*
+     * 电池图标填充（gBatteryIconFillPercent）：仍按电量曲线换算为 0～100。
+     * - BatTxt=百分比：整数百分比变化 1% 时更新并触发刷新。
+     * - BatTxt=无/电压：平均电压每变化 0.1V（10×10mV）时更新并触发刷新。
+     */
     {
-        static uint8_t s_last_battery_percent_snapshot = 255u;
+        static uint8_t  s_last_battery_percent_snapshot = 255u;
+        static uint16_t s_last_voltage_bucket_for_icon = 0xFFFFu;
+        static uint8_t  s_last_battery_text_mode        = 255u;
+
+        const uint8_t bat_txt_mode = gSetting_battery_text;
+
+        if (bat_txt_mode != s_last_battery_text_mode) {
+            s_last_battery_text_mode        = bat_txt_mode;
+            s_last_battery_percent_snapshot = 255u;
+            s_last_voltage_bucket_for_icon  = 0xFFFFu;
+        }
+
         const unsigned int voltage_for_percent = gBatteryVoltageAverage;
         unsigned int       percent_snapshot_u  = BATTERY_VoltsToPercent(voltage_for_percent);
-        if (percent_snapshot_u > 100u)
+        if (percent_snapshot_u > 100u) {
             percent_snapshot_u = 100u;
+        }
         const uint8_t percent_snapshot = (uint8_t)percent_snapshot_u;
-        if (percent_snapshot != s_last_battery_percent_snapshot)
-        {
-            s_last_battery_percent_snapshot = percent_snapshot;
+
+        bool icon_fill_changed = false;
+
+        if (bat_txt_mode == 2u) {
+            if (percent_snapshot != s_last_battery_percent_snapshot) {
+                s_last_battery_percent_snapshot = percent_snapshot;
+                icon_fill_changed               = true;
+            }
+        } else {
+            const uint16_t voltage_centivolts = gBatteryVoltageAverage;
+            const uint16_t voltage_bucket     = (uint16_t)(voltage_centivolts / 10u);
+
+            if (voltage_bucket != s_last_voltage_bucket_for_icon) {
+                s_last_voltage_bucket_for_icon = voltage_bucket;
+                icon_fill_changed              = true;
+            }
+        }
+
+        if (icon_fill_changed) {
             gBatteryIconFillPercent = percent_snapshot;
             gUpdateStatus           = true;
 #ifdef ENABLE_FMRADIO
@@ -185,8 +217,9 @@ void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
 #else
             const bool is_scanner_screen = false;
 #endif
-            if (!is_fm_screen && !is_scanner_screen)
+            if (!is_fm_screen && !is_scanner_screen) {
                 gUpdateDisplay = true;
+            }
         }
     }
 

@@ -401,9 +401,7 @@ const t_menu_item MenuList[] =
     {"RxMode",      MENU_TDR           },
     {"TxTOut",      MENU_TOT           }, // was "TOT"
     {"BatSav",      MENU_SAVE          }, // was "SAVE"
-#if !defined(ENABLE_FEAT_F4HWN)
     {"BatTxt",      MENU_BAT_TXT       },
-#endif
     {"Mic",         MENU_MIC           },
     {"POnMsg",      MENU_PONMSG        },
     {"BootHnt",     MENU_BOOT_HINT     },
