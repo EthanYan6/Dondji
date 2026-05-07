@@ -856,6 +856,17 @@ static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 
 static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 {
+    if (gCurrentFunction == FUNCTION_TRANSMIT) {
+        return;
+    }
+
+    if (gInputBoxIndex > 0) {
+        if (!bKeyHeld && bKeyPressed) {
+            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        }
+        return;
+    }
+
     const bool star_key_is_pressed = bKeyPressed;
     const bool star_key_is_held = bKeyHeld;
     const bool f_shortcut_active = gWasFKeyPressed;
@@ -863,12 +874,57 @@ static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
     const bool trigger_scan_by_f_star = f_shortcut_active && star_key_is_pressed && !star_key_is_held;
     const bool should_trigger_scan = trigger_scan_by_long_press || trigger_scan_by_f_star;
 
+#ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
+    if (gEeprom.MENU_LOCK == true && should_trigger_scan) {
+        HideFKeyIcon();
+        if (f_shortcut_active) {
+            gWasFKeyPressed = false;
+        }
+        gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        return;
+    }
+#endif
+
     if (should_trigger_scan) {
         if (f_shortcut_active) {
             gWasFKeyPressed = false;
         }
 
         gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+
+        /* F + 短按 *：频率模式扫亚音；信道(MR)模式扫信道列表（与 ACTION_Scan 一致） */
+        if (trigger_scan_by_f_star) {
+            RADIO_SelectVfos();
+            const uint16_t current_channel = gTxVfo->CHANNEL_SAVE;
+
+#ifdef ENABLE_NOAA
+            if (IS_NOAA_CHANNEL(current_channel)) {
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return;
+            }
+#endif
+            if (IS_FREQ_CHANNEL(current_channel)) {
+                if (SCANNER_IsScanning()) {
+                    return;
+                }
+
+                if (gScanStateDir != SCAN_OFF) {
+                    CHFRSCANNER_Stop();
+#ifdef ENABLE_VOICE
+                    gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
+#endif
+                }
+
+                gBackup_CROSS_BAND_RX_TX  = gEeprom.CROSS_BAND_RX_TX;
+                gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
+
+                SCANNER_Start(true);
+                gRequestDisplayScreen = DISPLAY_SCANNER;
+                gUpdateStatus         = true;
+                return;
+            }
+        }
+
         ACTION_Scan(true);
         return;
     }
