@@ -2533,6 +2533,34 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                 }
             }
 
+            /* About (icon 4): EXIT from level 3 returns to level-1 launcher on About, not level-2 list */
+            if (UI_MENU_GetCurrentMenuId() == MENU_VOL &&
+                gMenuUseMainOnlyStatus &&
+                gMenuMainPageIconIndex == 4u)
+            {
+                gAskForConfirmation = 0;
+                gIsInSubMenu = false;
+                gInputBoxIndex = 0;
+                gFlagRefreshSetting = true;
+
+                #ifdef ENABLE_VOICE
+                    gAnotherVoiceID = VOICE_ID_CANCEL;
+                #endif
+
+                MENU_RecordSelectionBeforeLeaveMenuToMain();
+                gMenuMainPageLastValid = true;
+                gMenuMainPageLastIconIndex = gMenuMainPageIconIndex;
+
+                MENU_ActivateMainPage();
+                gRequestDisplayScreen = DISPLAY_MENU;
+
+                if (gEeprom.BACKLIGHT_TIME == 0)
+                {
+                    BACKLIGHT_TurnOff();
+                }
+                return;
+            }
+
             if (gInputBoxIndex == 0 || UI_MENU_GetCurrentMenuId() != MENU_OFFSET)
             {
                 gAskForConfirmation = 0;
@@ -2619,7 +2647,13 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
             gMenuCursor = 0;
         /* About (icon 4): list is only MENU_VOL (SysInf / firmware) — avoid stale cursor mapping to another group */
         if (gMenuMainPageIconIndex == 4u)
+        {
             gMenuCursor = 0;
+            /* Skip level-2 browse; open About (MENU_VOL) detail directly like a third-level screen */
+            gIsInSubMenu = true;
+            edit_index = -1;
+            gMemNameCandidateCount = 0;
+        }
         gRequestDisplayScreen = DISPLAY_MENU;
         return;
     }
