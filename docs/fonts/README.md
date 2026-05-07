@@ -8,7 +8,7 @@
 python App/tools/gen_cn_font.py
 ```
 
-会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **39731** 字节含版本字节，**1267** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
+会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **39731** 字节含版本字节，**1268** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
 
 ## 近期补充字符
 
