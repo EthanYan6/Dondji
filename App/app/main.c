@@ -90,6 +90,9 @@ static void toggle_chan_scanlist(void)
 
     if(!IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
 #ifdef ENABLE_SCAN_RANGES
+#ifdef ENABLE_FEAT_F4HWN
+        if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF)
+#endif
         CHFRSCANNER_ScanRange();
 #endif
         return;

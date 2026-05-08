@@ -548,6 +548,10 @@ void ACTION_RxMode(void)
         gEeprom.DUAL_WATCH = !gEeprom.DUAL_WATCH;
     }
 
+#ifdef ENABLE_SCAN_RANGES
+    gScanRangeStart = 0;
+#endif
+
     cycle = !cycle;
     ACTION_Update();
     /* SETTINGS_SaveSettings uses gDW/gCB when !gSaveRxMode; keep them in sync after side-key Rx mode change */

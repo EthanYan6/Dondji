@@ -2625,21 +2625,21 @@ void UI_DisplayMain(void)
             if(gScanRangeStart) {
 
 #ifdef ENABLE_FEAT_F4HWN
-                //if(IS_FREQ_CHANNEL(gEeprom.ScreenChannel[0]) && IS_FREQ_CHANNEL(gEeprom.ScreenChannel[1])) {
                 if(IS_FREQ_CHANNEL(gEeprom.ScreenChannel[activeTxVFO])) {
 
-                    uint8_t shift = 0;
+                    const uint8_t shift = isMainOnly() ? 3u : 0u;
+                    const uint8_t y0 = (uint8_t)((line + shift) * 8u + 15u);
 
-                    if (isMainOnly())
-                    {
-                        shift = 3;
-                    }
-
-                    UI_PrintString("ScnRng", 5, 0, line + shift, 8);
+#ifdef ENABLE_CHINESE
+                    if (gUiLanguage == UI_LANGUAGE_CN)
+                        UI_PrintStringSmallAtPixel("频率范围", 5, 55, y0, (uint8_t)(y0 + 7u), 0);
+                    else
+#endif
+                    UI_PrintStringSmallAtPixel("ScnRng", 5, 55, y0, (uint8_t)(y0 + 7u), 0);
                     sprintf(String, "%3u.%05u", gScanRangeStart / 100000, gScanRangeStart % 100000);
-                    UI_PrintStringSmallNormal(String, 56, 0, line + shift);
+                    UI_PrintStringSmallAtPixel(String, 59, 127, y0, (uint8_t)(y0 + 7u), 0);
                     sprintf(String, "%3u.%05u", gScanRangeStop / 100000, gScanRangeStop % 100000);
-                    UI_PrintStringSmallNormal(String, 56, 0, line + shift + 1);
+                    UI_PrintStringSmallAtPixel(String, 59, 127, (uint8_t)(y0 + 8u), (uint8_t)(y0 + 15u), 0);
 
                     if (!isMainOnly())
                         continue;
@@ -2649,11 +2649,20 @@ void UI_DisplayMain(void)
                     gScanRangeStart = 0;
                 }
 #else
-                UI_PrintString("ScnRng", 5, 0, line, 8);
-                sprintf(String, "%3u.%05u", gScanRangeStart / 100000, gScanRangeStart % 100000);
-                UI_PrintStringSmallNormal(String, 56, 0, line);
-                sprintf(String, "%3u.%05u", gScanRangeStop / 100000, gScanRangeStop % 100000);
-                UI_PrintStringSmallNormal(String, 56, 0, line + 1);
+                {
+                    const uint8_t y0 = (uint8_t)(line * 8u + 15u);
+
+#ifdef ENABLE_CHINESE
+                    if (gUiLanguage == UI_LANGUAGE_CN)
+                        UI_PrintStringSmallAtPixel("频率范围", 5, 55, y0, (uint8_t)(y0 + 7u), 0);
+                    else
+#endif
+                    UI_PrintStringSmallAtPixel("ScnRng", 5, 55, y0, (uint8_t)(y0 + 7u), 0);
+                    sprintf(String, "%3u.%05u", gScanRangeStart / 100000, gScanRangeStart % 100000);
+                    UI_PrintStringSmallAtPixel(String, 59, 127, y0, (uint8_t)(y0 + 7u), 0);
+                    sprintf(String, "%3u.%05u", gScanRangeStop / 100000, gScanRangeStop % 100000);
+                    UI_PrintStringSmallAtPixel(String, 59, 127, (uint8_t)(y0 + 8u), (uint8_t)(y0 + 15u), 0);
+                }
                 continue;
 #endif
             }
@@ -2717,7 +2726,17 @@ void UI_DisplayMain(void)
                 memcpy(p_line0 + 0, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
         }
         else // active TX VFO
-        {   // highlight the selected/used VFO with a marker
+        {
+#ifdef ENABLE_FEAT_F4HWN
+#ifdef ENABLE_SCAN_RANGES
+            if (gScanRangeStart && IS_FREQ_CHANNEL(gEeprom.ScreenChannel[activeTxVFO]))
+            {
+                DualVfoDrawTopChannel(vfo_num);
+                continue;
+            }
+#endif
+#endif
+            // highlight the selected/used VFO with a marker
             if (isMainVFO)
                 memcpy(p_line0 + 0, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
             else
