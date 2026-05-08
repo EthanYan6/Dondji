@@ -6,6 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.abbr.min.js" defer></script>
   <script>
     (function () {
       try {
@@ -17,6 +18,16 @@
   </script>
 </head>
 <body>
+  <div class="top-marquee">
+    <div class="top-marquee-inner">
+      <span class="marquee-text">
+        📻 共有 <span id="busuanzi_page_uv">加载中...</span> 位 Ham 访问过本网站，今日与你一起刷机的有 <span id="busuanzi_today_uv">加载中...</span> 人 📻
+      </span>
+      <span class="marquee-text">
+        📻 共有 <span class="busuanzi_page_uv_clone">加载中...</span> 位 Ham 访问过本网站，今日与你一起刷机的有 <span class="busuanzi_today_uv_clone">加载中...</span> 人 📻
+      </span>
+    </div>
+  </div>
   <button type="button" id="themeToggleBtn" class="theme-toggle" title="切换浅色主题" aria-label="切换浅色主题">
     <svg class="theme-toggle__icon theme-toggle__icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="4"/>
@@ -84,7 +95,7 @@
   <div class="page-layout">
     <!-- VERSION TIMELINE SIDEBAR -->
     <aside class="timeline-sidebar" id="timelineSidebar">
-      <h2 class="timeline-title">叮咚鸡（Dondji）版本历史</h2>
+      <h2 class="timeline-title">叮咚鸡（Dondji）历史版本</h2>
       <div class="timeline" id="timeline">
         <div class="timeline-loading">加载中...</div>
       </div>
@@ -279,8 +290,13 @@
               <line x1="14" y1="18" x2="14" y2="20"/>
             </svg>
             提示：写频功能仅供叮咚鸡（Dondji）固件使用。
+            如缺字，
+            <a href="https://docs.qq.com/form/page/DZkNzc2pzcVNKRHZV" target="_blank" rel="noopener noreferrer" class="writefreq-char-link">点击补充</a>
           </span>
         </p>
+
+
+
         <div id="logDockWritefreq" class="writefreq-log-dock"></div>
       </section>
 

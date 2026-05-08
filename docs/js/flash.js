@@ -20,6 +20,26 @@ const MSG_SPI_FLASH_WRITE_RESP = 0x0522;
 const MSG_NOTIFY_BL_VER    = 0x0530;
 const MSG_REBOOT           = 0x05DD;
 
+function initBusuanziSync() {
+  const pageUvEl = $('busuanzi_page_uv');
+  const todayUvEl = $('busuanzi_today_uv');
+  if (!pageUvEl || !todayUvEl) return;
+  
+  const observer = new MutationObserver(function() {
+    const clonePageUv = document.querySelector('.busuanzi_page_uv_clone');
+    const cloneTodayUv = document.querySelector('.busuanzi_today_uv_clone');
+    if (clonePageUv && pageUvEl.textContent) {
+      clonePageUv.textContent = pageUvEl.textContent;
+    }
+    if (cloneTodayUv && todayUvEl.textContent) {
+      cloneTodayUv.textContent = todayUvEl.textContent;
+    }
+  });
+  
+  observer.observe(pageUvEl, { childList: true, characterData: true, subtree: true });
+  observer.observe(todayUvEl, { childList: true, characterData: true, subtree: true });
+}
+
 const OBFUS_TBL = new Uint8Array([
   0x16, 0x6c, 0x14, 0xe6, 0x2e, 0x91, 0x0d, 0x40,
   0x21, 0x35, 0xd5, 0x40, 0x13, 0x03, 0xe9, 0x80
@@ -272,6 +292,7 @@ syncWritefreqFullLayoutClass();
 syncLogDockPlacement();
 initThemeToggle();
 initFlashDeviceWarningModal();
+initBusuanziSync();
 window.requestAnimationFrame(() => {
   openFlashDeviceWarningIfInitialViewIsFlashTab();
 });

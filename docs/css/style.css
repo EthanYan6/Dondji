@@ -65,8 +65,8 @@ body {
 }
 
 /* Two-column layout */
-.page-layout { display: flex; min-height: 100vh; }
-.timeline-sidebar { flex: 0 0 400px; background: var(--bg-elevated); border-right: 1px solid var(--border-default); padding: 32px 24px; overflow-y: auto; position: sticky; top: 0; height: 100vh; }
+.page-layout { display: flex; min-height: 100vh; padding-top: 32px; }
+.timeline-sidebar { flex: 0 0 400px; background: var(--bg-elevated); border-right: 1px solid var(--border-default); padding: 32px 24px; overflow-y: auto; position: sticky; top: 32px; height: calc(100vh - 32px); }
 /* 右侧主栏：内部 .container 为 720px 居中内容区；步骤条另按需定宽并居中 */
 .main-column {
   flex: 1;
@@ -559,6 +559,20 @@ html.theme-light .progress-label { color: var(--text-primary); }
   height: 1.15em;
   flex-shrink: 0;
 }
+.writefreq-char-missing {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.writefreq-char-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.writefreq-char-link:hover {
+  color: #58a6ff;
+}
 .writefreq-log-dock { margin-top: 8px; }
 .writefreq-log-dock .log-container { margin-top: 0; }
 .writefreq-log-dock .progress-container {
@@ -748,10 +762,60 @@ button.btn-with-icon {
 }
 .writefreq-validation { font-size: 0.85em; color: #f85149; white-space: pre-wrap; }
 
+/* 顶部滚动公告栏 */
+.top-marquee {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: linear-gradient(90deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+  border-bottom: 1px solid var(--border-strong);
+  overflow: hidden;
+  height: 32px;
+  line-height: 32px;
+}
+html.theme-light .top-marquee {
+  background: linear-gradient(90deg, #f0f4f8 0%, #e8f0fe 50%, #f0f4f8 100%);
+}
+.top-marquee-inner {
+  display: flex;
+  animation: marquee-scroll 20s linear infinite;
+  white-space: nowrap;
+}
+.top-marquee-inner:hover {
+  animation-play-state: paused;
+}
+.marquee-text {
+  display: inline-block;
+  padding: 0 50px;
+  color: #58a6ff;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+html.theme-light .marquee-text {
+  color: #0969da;
+}
+.marquee-text span {
+  color: #3fb950;
+  font-weight: 700;
+}
+html.theme-light .marquee-text span {
+  color: #1a7f37;
+}
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 /* 右上角主题切换（Toast 叠在其下方） */
 .theme-toggle {
   position: fixed;
-  top: calc(12px + env(safe-area-inset-top, 0px));
+  top: calc(44px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
   z-index: 9998;
   width: 42px;
@@ -803,7 +867,7 @@ html.theme-light .theme-toggle__icon--moon {
 /* 全局轻提示（替代 alert），固定在右上角 */
 .app-toast-root {
   position: fixed;
-  top: calc(62px + env(safe-area-inset-top, 0px));
+  top: calc(94px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
   left: auto;
   bottom: auto;
