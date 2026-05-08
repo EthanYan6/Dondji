@@ -133,39 +133,56 @@ const int8_t VGAOptions[] = {-33, -27, -21, -15, -9, -6, -3, 0};
 
 static void LoadSettings()
 {
-    uint8_t Data[8] = {0};
-    PY25Q16_ReadBuffer(0x00A158, Data, sizeof(Data));
+    uint8_t Data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    PY25Q16_ReadBuffer(0x00A148, Data, sizeof(Data));
 
-    settings.scanStepIndex = ((Data[3] & 0xF0) >> 4);
+    // Data[0]: scanStepIndex (7:4), stepsCount (3:2), listenBw (1:0)
+    settings.scanStepIndex = (Data[0] >> 4) & 0x0F;
 
     if (settings.scanStepIndex > 14)
     {
         settings.scanStepIndex = S_STEP_25_0kHz;
     }
 
-    settings.stepsCount = ((Data[3] & 0x0F) & 0b1100) >> 2;
+    settings.stepsCount = (Data[0] >> 2) & 0x03;
 
     if (settings.stepsCount > 3)
     {
         settings.stepsCount = STEPS_64;
     }
 
-    settings.listenBw = ((Data[3] & 0x0F) & 0b0011);
+    settings.listenBw = Data[0] & 0x03;
 
     if (settings.listenBw > 2)
     {
         settings.listenBw = BK4819_FILTER_BW_WIDE;
     }
+
+    // Data[1]: dbMax encoded as (dbMax + 130) / 5
+    if (Data[1] <= 28)
+        settings.dbMax = (int)Data[1] * 5 - 130;
+
+    // Data[2]: rssiTriggerLevel as uint8_t (0xFF = auto)
+    settings.rssiTriggerLevel = (Data[2] == 0xFF) ? RSSI_MAX_VALUE : Data[2];
+
+    // Data[3] ~ Data[7] are free (for the moment...)
 }
 
 static void SaveSettings()
 {
     uint8_t Data[8] = {0};
-    PY25Q16_ReadBuffer(0x00A158, Data, sizeof(Data));
+    PY25Q16_ReadBuffer(0x00A148, Data, sizeof(Data));
 
-    Data[3] = (settings.scanStepIndex << 4) | (settings.stepsCount << 2) | settings.listenBw;
+    // Data[0]: scanStepIndex (7:4), stepsCount (3:2), listenBw (1:0)
+    Data[0] = (settings.scanStepIndex << 4) | (settings.stepsCount << 2) | settings.listenBw;
 
-    PY25Q16_WriteBuffer(0x00A158, Data, sizeof(Data), false);
+    // Data[1]: dbMax encoded as (dbMax + 130) / 5
+    Data[1] = (uint8_t)((settings.dbMax + 130) / 5);
+
+    // Data[2]: rssiTriggerLevel as uint8_t (0xFF = auto)
+    Data[2] = (settings.rssiTriggerLevel == RSSI_MAX_VALUE) ? 0xFF : (uint8_t)settings.rssiTriggerLevel;
+
+    PY25Q16_WriteBuffer(0x00A148, Data, sizeof(Data), false);
 }
 #endif
 
@@ -569,6 +586,9 @@ static void RelaunchScan()
     scanInfo.rssiMin = RSSI_MAX_VALUE;
     memset(peakHoldY, PEAK_HOLD_INIT, sizeof(peakHoldY));
     memset(peakHoldAge, 0, sizeof(peakHoldAge));
+#ifdef ENABLE_FEAT_F4HWN_SPECTRUM
+    SaveSettings();
+#endif
 }
 
 static void UpdateScanInfo()
@@ -1095,7 +1115,8 @@ static void DrawSpectrum()
 #endif
     uint8_t topY[128];
     BuildSpectrumTopY(topY, bars);
-    SmoothTopY(topY);
+    if (!monitorMode)
+        SmoothTopY(topY);
 
     for (uint8_t x = 0; x < 128; ++x)
     {
@@ -1406,6 +1427,14 @@ static void DrawNums()
             const unsigned step_khz_frac  = (unsigned)(settings.frequencyChangeStep % 100u);
 
             sprintf(line_start, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
+#ifdef ENABLE_SCAN_RANGES
+            if (gScanRangeStart)
+            {
+                uint32_t bw = gScanRangeStop - gScanRangeStart;
+                sprintf(line_step, "%u.%02uk", bw / 100, bw % 100);
+            }
+            else
+#endif
             sprintf(line_step, "%u.%02uk", step_khz_whole, step_khz_frac);
             sprintf(line_end, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
 
@@ -1453,6 +1482,14 @@ static void DrawNums()
         sprintf(String, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
         GUI_DisplaySmallest(String, 0, 49, false, true);
 
+#ifdef ENABLE_SCAN_RANGES
+        if (gScanRangeStart)
+        {
+            uint32_t bw = gScanRangeStop - gScanRangeStart;
+            sprintf(String, "%u.%02uk", bw / 100, bw % 100);
+        }
+        else
+#endif
         sprintf(String, "\x7F%u.%02uk", settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
         GUI_DisplaySmallest(String, 48, 49, false, true);
