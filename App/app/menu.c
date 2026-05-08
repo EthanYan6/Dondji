@@ -2800,6 +2800,13 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
     {
         const int m = UI_MENU_GetCurrentMenuId();
 
+        if (m == MENU_VOL &&
+            gMenuUseMainOnlyStatus &&
+            gMenuMainPageIconIndex == 4u)
+        {
+            return;
+        }
+
         if (m == MENU_RESET  ||
             m == MENU_MEM_CH ||
             m == MENU_DEL_CH ||

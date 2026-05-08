@@ -1,5 +1,118 @@
 'use strict';
 
+(function() {
+  var loadingOverlay = document.getElementById('loadingOverlay');
+  var progressFill = document.querySelector('.loading-progress-fill');
+  var progressText = document.querySelector('.loading-progress-text');
+  var speechBubble = document.getElementById('chickenSpeechBubble');
+  
+  if (!loadingOverlay) return;
+  
+  var currentProgress = 0;
+  var targetProgress = 0;
+  var isComplete = false;
+  var animationInterval = null;
+  var bubbleTimeout = null;
+  
+  function updateProgressDisplay(progress) {
+    var percentage = Math.min(100, Math.max(0, Math.round(progress)));
+    if (progressFill) {
+      progressFill.style.width = percentage + '%';
+    }
+    if (progressText) {
+      progressText.textContent = percentage + '%';
+    }
+  }
+  
+  function startAnimation() {
+    if (animationInterval) return;
+    
+    animationInterval = setInterval(function() {
+      if (currentProgress < targetProgress) {
+        currentProgress += Math.max(1, (targetProgress - currentProgress) * 0.15);
+        if (currentProgress >= targetProgress) {
+          currentProgress = targetProgress;
+        }
+        updateProgressDisplay(currentProgress);
+      }
+    }, 30);
+  }
+  
+  function setProgress(progress) {
+    targetProgress = Math.min(100, Math.max(0, progress));
+    startAnimation();
+  }
+  
+  function showSpeechBubble() {
+    if (speechBubble && !isComplete) {
+      speechBubble.classList.add('show');
+    }
+  }
+  
+  function hideSpeechBubble() {
+    if (speechBubble) {
+      speechBubble.classList.remove('show');
+    }
+    if (bubbleTimeout) {
+      clearTimeout(bubbleTimeout);
+      bubbleTimeout = null;
+    }
+  }
+  
+  function hideLoadingOverlay() {
+    if (isComplete) return;
+    isComplete = true;
+    
+    hideSpeechBubble();
+    setProgress(100);
+    
+    setTimeout(function() {
+      if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+      }
+      
+      loadingOverlay.classList.add('fade-out');
+      setTimeout(function() {
+        loadingOverlay.style.display = 'none';
+      }, 500);
+    }, 600);
+  }
+  
+  updateProgressDisplay(0);
+  
+  bubbleTimeout = setTimeout(showSpeechBubble, 3000);
+  
+  setTimeout(function() { setProgress(20); }, 150);
+  setTimeout(function() { setProgress(40); }, 400);
+  setTimeout(function() { setProgress(60); }, 700);
+  setTimeout(function() { setProgress(80); }, 1000);
+  
+  var progressInterval = setInterval(function() {
+    if (targetProgress < 95) {
+      setProgress(targetProgress + 2);
+    }
+  }, 400);
+  
+  window.addEventListener('load', function() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+    hideLoadingOverlay();
+  });
+  
+  setTimeout(function() {
+    if (!isComplete) {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      hideLoadingOverlay();
+    }
+  }, 10000);
+})();
+
 // ========== CONSTANTS ==========
 const BAUDRATE = 38400;
 const GITHUB_REPO = 'EthanYan6/Dondji';
@@ -62,12 +175,12 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 40150;
+const CN_FONT_VERSION_OFFSET = 218613;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_BITMAP_SIZE = 30744;
+const CN_FONT_BITMAP_SIZE = 162384;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_CHAR_COUNT = 1281;
-const CN_FONT_VERSION     = 2;
+const CN_FONT_CHAR_COUNT = 6766;
+const CN_FONT_VERSION     = 3;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
 const CALIB_CHUNK         = 16;
@@ -1932,7 +2045,7 @@ let cnFontCodepointSetPromise = null;
  */
 function cnFontParseCodepointsFromBin(arrayBuffer) {
   const totalBytes = arrayBuffer.byteLength;
-  const minBytes = CN_FONT_BITMAP_SIZE + CN_FONT_CHAR_COUNT * 4;
+  const minBytes = CN_FONT_BITMAP_SIZE + CN_FONT_CHAR_COUNT * 6;
   if (totalBytes < minBytes) {
     const errText = 'cn_font.bin 长度异常（' + totalBytes + ' < ' + minBytes + '）';
     throw new Error(errText);
@@ -1941,9 +2054,8 @@ function cnFontParseCodepointsFromBin(arrayBuffer) {
   const codepointSet = new Set();
   let entryIndex = 0;
   for (; entryIndex < CN_FONT_CHAR_COUNT; entryIndex++) {
-    const byteOffset = CN_FONT_BITMAP_SIZE + entryIndex * 4;
-    const packed = dataView.getUint32(byteOffset, true);
-    const unicodeVal = packed >>> 16;
+    const byteOffset = CN_FONT_BITMAP_SIZE + entryIndex * 6;
+    const unicodeVal = dataView.getUint16(byteOffset, true);
     codepointSet.add(unicodeVal);
   }
   return codepointSet;

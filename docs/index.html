@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.css?v=20260508">
+  <link rel="stylesheet" href="css/style.css?v=20260509">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.abbr.min.js" defer></script>
   <script>
     (function () {
@@ -18,6 +18,43 @@
   </script>
 </head>
 <body>
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-chicken">
+        <div class="chicken-body">
+          <div class="chicken-head">
+            <div class="chicken-eye chicken-eye--left"></div>
+            <div class="chicken-eye chicken-eye--right"></div>
+            <div class="chicken-beak"></div>
+            <div class="chicken-comb"></div>
+          </div>
+          <div class="chicken-wing chicken-wing--left"></div>
+          <div class="chicken-wing chicken-wing--right"></div>
+          <div class="chicken-tail"></div>
+        </div>
+        <div class="chicken-feet">
+          <div class="chicken-foot chicken-foot--left"></div>
+          <div class="chicken-foot chicken-foot--right"></div>
+        </div>
+        <div class="chicken-speech-bubble" id="chickenSpeechBubble">
+          <div class="speech-bubble-content">兄弟，你的网有些差呀~</div>
+          <div class="speech-bubble-arrow"></div>
+        </div>
+      </div>
+      <div class="loading-text">叮咚鸡正在努力加载中...</div>
+      <div class="loading-progress">
+        <div class="loading-progress-bar">
+          <div class="loading-progress-fill"></div>
+        </div>
+        <div class="loading-progress-text">0%</div>
+      </div>
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
   <div class="top-marquee">
     <div class="top-marquee-inner" id="marqueeInner">
       <span class="marquee-text" id="marqueeText">
@@ -205,7 +242,7 @@
     <div class="tab-content" id="font-content">
       <section class="section">
         <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
-          将中文字库刷入 SPI Flash，支持 1281 个中文字符（省份、城市、姓氏、常用字等）。
+          将中文字库刷入 SPI Flash，支持 6766 个中文字符（GB2312完整字符集）。
           首次刷入字库后，固件启动时会自动检测并跳过重复写入。
         </p>
         <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
@@ -388,6 +425,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/flash.js?v=20250608"></script>
+  <script src="js/flash.js?v=20250509b"></script>
 </body>
 </html>
