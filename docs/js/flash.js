@@ -23,21 +23,36 @@ const MSG_REBOOT           = 0x05DD;
 function initBusuanziSync() {
   const pageUvEl = $('busuanzi_page_uv');
   const todayUvEl = $('busuanzi_today_uv');
-  if (!pageUvEl || !todayUvEl) return;
+  const marqueeText = $('marqueeText');
+  const marqueeInner = $('marqueeInner');
+  if (!pageUvEl || !todayUvEl || !marqueeText || !marqueeInner) return;
+  
+  let cloneCreated = false;
   
   const observer = new MutationObserver(function() {
-    const clonePageUv = document.querySelector('.busuanzi_page_uv_clone');
-    const cloneTodayUv = document.querySelector('.busuanzi_today_uv_clone');
-    if (clonePageUv && pageUvEl.textContent) {
-      clonePageUv.textContent = pageUvEl.textContent;
-    }
-    if (cloneTodayUv && todayUvEl.textContent) {
-      cloneTodayUv.textContent = todayUvEl.textContent;
+    if (cloneCreated) return;
+    const pageText = pageUvEl.textContent;
+    const todayText = todayUvEl.textContent;
+    if (pageText && todayText && !pageText.includes('spinner') && !todayText.includes('spinner')) {
+      const clone = marqueeText.cloneNode(true);
+      clone.removeAttribute('id');
+      marqueeInner.appendChild(clone);
+      cloneCreated = true;
+      observer.disconnect();
     }
   });
   
   observer.observe(pageUvEl, { childList: true, characterData: true, subtree: true });
   observer.observe(todayUvEl, { childList: true, characterData: true, subtree: true });
+  
+  setTimeout(function() {
+    if (!cloneCreated) {
+      const clone = marqueeText.cloneNode(true);
+      clone.removeAttribute('id');
+      marqueeInner.appendChild(clone);
+      cloneCreated = true;
+    }
+  }, 5000);
 }
 
 const OBFUS_TBL = new Uint8Array([

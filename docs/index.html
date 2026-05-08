@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20260508">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.abbr.min.js" defer></script>
   <script>
     (function () {
@@ -19,12 +19,9 @@
 </head>
 <body>
   <div class="top-marquee">
-    <div class="top-marquee-inner">
-      <span class="marquee-text">
-        📻 共有 <span id="busuanzi_page_uv">加载中...</span> 位 Ham 访问过本网站，今日与你一起刷机的有 <span id="busuanzi_today_uv">加载中...</span> 人 📻
-      </span>
-      <span class="marquee-text">
-        📻 共有 <span class="busuanzi_page_uv_clone">加载中...</span> 位 Ham 访问过本网站，今日与你一起刷机的有 <span class="busuanzi_today_uv_clone">加载中...</span> 人 📻
+    <div class="top-marquee-inner" id="marqueeInner">
+      <span class="marquee-text" id="marqueeText">
+        📻 共有 <span id="busuanzi_page_uv"><i class="loading-spinner"></i></span> 位 Ham 访问过本网站，今日与你一起刷机的有 <span id="busuanzi_today_uv"><i class="loading-spinner"></i></span> 人 📻
       </span>
     </div>
   </div>
@@ -391,6 +388,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/flash.js"></script>
+  <script src="js/flash.js?v=20250608"></script>
 </body>
 </html>
