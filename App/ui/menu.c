@@ -3084,6 +3084,30 @@ void UI_DisplayMenu(void)
                 already_printed = true;
                 break;
             }
+            if (page == 4u)
+            {
+                const char *url_line1 = "https://ethanyan6";
+                const char *url_line2 = ".github.io/Dondji/";
+                unsigned int url1_width = UI_SmallStringPixelWidth(url_line1);
+                unsigned int url2_width = UI_SmallStringPixelWidth(url_line2);
+                unsigned int pane_width = (unsigned int)(menu_item_x2 - menu_value_x1 + 1);
+                unsigned int max_url_width = (url1_width > url2_width) ? url1_width : url2_width;
+                unsigned int url_x = menu_value_x1 + (pane_width > max_url_width ? (pane_width - max_url_width) / 2u : 0u);
+                
+                UI_PrintStringSmallAtPixel(url_line1, (uint8_t)url_x, menu_item_x2, 24u, 31u, 0u);
+                UI_PrintStringSmallAtPixel(url_line2, (uint8_t)url_x, menu_item_x2, 34u, 41u, 0u);
+            
+                if (gIsInSubMenu)
+                {
+                    edit[0] = '\0';
+                }
+                else
+                {
+                    strcpy(edit, "<\xe7\xbd\x91\xe5\x9d\x80>");  // <网址>
+                }
+                already_printed = true;
+                break;
+            }
         }
 #else
             sprintf(String, "%u.%02uV\n%u%%",

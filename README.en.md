@@ -72,7 +72,7 @@ Flash firmware and font data directly from your browser — no software installa
 | Feature | Description |
 |---------|-------------|
 | Flash Firmware | Pull latest from GitHub Releases, or select a local .bin file |
-| Flash Font | Write 6766 Chinese characters to SPI Flash for channel naming |
+| Flash Font | Write 1291 Chinese characters to SPI Flash for channel naming |
 | Dump Calibration | Export device calibration data |
 | Restore Calibration | Restore calibration from backup |
 
@@ -89,18 +89,9 @@ Flash firmware and font data directly from your browser — no software installa
 |-----------|-------|
 | Font file | `docs/font/cn_font.bin` |
 | SPI Flash start address | `0x010200` |
-| Character count | 6766 (GB2312 complete character set) |
-| Font size | 218,613 bytes (about 213.5 KB) |
-| SPI Flash usage | 10.4% (total capacity 2MB) |
-
-**SPI Flash Address Map:**
-
-| Region | Start Address | End Address | Size | Description |
-|--------|---------------|-------------|------|-------------|
-| Font Bitmap | 0x010200 | 0x038B18 | 162,384 bytes | 6766 chars × 12 rows × 2 bytes |
-| Index Table | 0x038B18 | 0x042A54 | 40,596 bytes | 6766 entries × 6 bytes |
-| Pinyin Table | 0x042A54 | 0x0467D5 | 15,633 bytes | 401 pinyin syllables |
-| Version Marker | 0x045915 | 0x045915 | 1 byte | Version = 3 |
+| Character count | 1291 |
+| Font size | 40,451 bytes (about 39.5 KB) |
+| SPI Flash usage | 1.93% (total capacity 2MB) |
 
 ---
 

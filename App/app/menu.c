@@ -707,7 +707,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 
         case MENU_VOL:
 #ifdef ENABLE_FEAT_F4HWN
-            *pMax = 3;
+            *pMax = 4;
 #else
             *pMax = 0;
 #endif
@@ -2799,7 +2799,6 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
     if (gIsInSubMenu)
     {
         const int m = UI_MENU_GetCurrentMenuId();
-
         if (m == MENU_VOL &&
             gMenuUseMainOnlyStatus &&
             gMenuMainPageIconIndex == 4u)

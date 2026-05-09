@@ -250,10 +250,10 @@ void PY25Q16_ReadBuffer(uint32_t Address, void *pBuffer, uint32_t Size)
     CS_Release();
 }
 
-void PY25Q16_WriteBuffer(uint32_t Address, const void *pBuffer, uint32_t Size, bool Append)
+void PY25Q16_WriteBuffer(uint32_t Address, const void *pBuffer, uint32_t Size)
 {
 #ifdef DEBUG
-    printf("spi flash write: %06x %ld %d\n", Address, Size, Append);
+    printf("spi flash write: %06x %ld\n", Address, Size);
 #endif
 
     //#ifdef ENABLE_FEAT_F4HWN_DEBUG
@@ -301,21 +301,9 @@ void PY25Q16_WriteBuffer(uint32_t Address, const void *pBuffer, uint32_t Size, b
 
                 // CRITICAL FIX #2: Erase takes ~300ms, must complete before program starts
                 WaitWIP();
+            }
 
-                if (Append)
-                {
-                    SectorProgram(SecAddr, SectorCache, SecOffset + SecSize);
-                    memset(SectorCache + SecOffset + SecSize, 0xff, SECTOR_SIZE - SecOffset - SecSize);
-                }
-                else
-                {
-                    SectorProgram(SecAddr, SectorCache, SECTOR_SIZE);
-                }
-            }
-            else
-            {
-                SectorProgram(Address, pBuffer, SecSize);
-            }
+            SectorProgram(SecAddr, SectorCache, SECTOR_SIZE);
         }
 
         Address += SecSize;

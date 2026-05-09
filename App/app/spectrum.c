@@ -182,7 +182,7 @@ static void SaveSettings()
     // Data[2]: rssiTriggerLevel as uint8_t (0xFF = auto)
     Data[2] = (settings.rssiTriggerLevel == RSSI_MAX_VALUE) ? 0xFF : (uint8_t)settings.rssiTriggerLevel;
 
-    PY25Q16_WriteBuffer(0x00A148, Data, sizeof(Data), false);
+    PY25Q16_WriteBuffer(0x00A148, Data, sizeof(Data));
 }
 #endif
 

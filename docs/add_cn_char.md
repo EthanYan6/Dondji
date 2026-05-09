@@ -71,7 +71,7 @@ print(('#define %-26s %s' % ('CN_FONT_PY_TOTAL_SIZE', m2.group(1))) if m2 else '
 
 **关系校验（应用 `ENABLE_CHINESE` 那组定义）：**
 
-- `CN_FONT_INDEX_SIZE` = `CN_FONT_CHAR_COUNT * 6`（每个条目 6 字节：2 字节 Unicode + 4 字节索引）
+- `CN_FONT_INDEX_SIZE` = `CN_FONT_CHAR_COUNT * 4`
 - `CN_FONT_BITMAP_SIZE` = 字符数 × 24（12 行 × 每行 2 字节 × 列宽以生成脚本为准；以头文件为准）
 - **`CN_FONT_PY_OFFSET`** = `CN_FONT_BITMAP_SIZE + CN_FONT_INDEX_SIZE`
 - **`CN_FONT_VERSION_OFFSET`** = `CN_FONT_PY_OFFSET + CN_FONT_PY_TOTAL_SIZE`

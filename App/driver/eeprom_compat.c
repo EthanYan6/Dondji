@@ -100,11 +100,10 @@ void EEPROM_WriteBuffer(uint16_t Address, const void *pBuffer)
     {
         uint32_t PY_Addr;
         uint16_t PY_Size;
-        bool AppendFlag;
-        AddrTranslate(Address, Size, &PY_Addr, &PY_Size, &AppendFlag);
+        AddrTranslate(Address, Size, &PY_Addr, &PY_Size, NULL);
         if (PY_Addr < HOLE_ADDR)
         {
-            PY25Q16_WriteBuffer(PY_Addr, pBuffer, PY_Size, AppendFlag);
+            PY25Q16_WriteBuffer(PY_Addr, pBuffer, PY_Size);
         }
         Address += PY_Size;
         pBuffer += PY_Size;

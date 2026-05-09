@@ -480,7 +480,7 @@ void MR_SaveChannelAttributesToFlash(uint16_t channel_id, const ChannelAttribute
     uint16_t flash_addr = FLASH_CHANNEL_ATTR_BASE + (channel_id * FLASH_CHANNEL_ATTR_SIZE);
     
     // Write 2 bytes to Flash
-    PY25Q16_WriteBuffer(flash_addr, attributes, sizeof(ChannelAttributes_t), false);
+    PY25Q16_WriteBuffer(flash_addr, attributes, sizeof(ChannelAttributes_t));
 }
 
 // Get channel attributes (from cache or Flash)

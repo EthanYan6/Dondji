@@ -175,12 +175,12 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 218613;
+const CN_FONT_VERSION_OFFSET = 40450;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_BITMAP_SIZE = 162384;
+const CN_FONT_BITMAP_SIZE = 30984;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_CHAR_COUNT = 6766;
-const CN_FONT_VERSION     = 3;
+const CN_FONT_CHAR_COUNT = 1291;
+const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
 const CALIB_CHUNK         = 16;
@@ -769,8 +769,9 @@ $('firmwareFile').addEventListener('change', e => {
     $('fileName').textContent = file.name + ' (' + firmwareData.length + ' bytes)';
     $('fileName').classList.add('has-file');
     $('fileLabel').classList.add('has-file');
-    log('固件已加载: ' + file.name + ' (' + firmwareData.length + ' bytes)', 'success');
+    log('固件已加载：' + file.name + ' (' + firmwareData.length + ' bytes)', 'success');
     $('flashBtn').disabled = false;
+    e.target.value = '';
   };
   fr.readAsArrayBuffer(file);
 });
@@ -946,8 +947,9 @@ $('fontFile').addEventListener('change', e => {
     $('fontFileName').textContent = file.name + ' (' + fontData.length + ' bytes)';
     $('fontFileName').classList.add('has-file');
     $('fontFileLabel').classList.add('has-file');
-    log('字库已加载: ' + file.name + ' (' + fontData.length + ' bytes)', 'success');
+    log('字库已加载：' + file.name + ' (' + fontData.length + ' bytes)', 'success');
     $('fontFlashBtn').disabled = false;
+    e.target.value = '';
   };
   fr.readAsArrayBuffer(file);
 });

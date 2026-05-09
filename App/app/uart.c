@@ -578,7 +578,7 @@ static void CMD_0521(uint32_t Port, const uint8_t *pBuffer)
     if (writeSize > SPI_FLASH_WRITE_SIZE)
         writeSize = SPI_FLASH_WRITE_SIZE;
 
-    PY25Q16_WriteBuffer(pCmd->Address, pCmd->Data, writeSize, false);
+    PY25Q16_WriteBuffer(pCmd->Address, pCmd->Data, writeSize);
 
     Reply.Header.ID   = 0x0522;
     Reply.Header.Size = sizeof(Reply.Data);

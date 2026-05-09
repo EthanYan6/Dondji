@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Generate Chinese font bitmap + pinyin table for UV-K5 CN channel names.
-Supports GB2312 complete character set (6763 chars) + custom additions.
-Reads BDF and writes cn_font_data.h + cn_font.bin.
+CN_CHARS_500 is ordered unique Han (~1254); reads BDF and writes cn_font_data.h + cn_font.bin.
 """
 
 import os
@@ -11,32 +10,6 @@ import shutil
 import sys
 from collections import Counter
 from pypinyin import pinyin, Style
-
-
-def load_gb2312_chars(script_dir):
-    """
-    Load GB2312 complete character set (6763 chars).
-    Returns list of characters in GB2312 order.
-    """
-    gb2312_path = os.path.join(script_dir, "gb2312_chars.txt")
-    if not os.path.isfile(gb2312_path):
-        print("Generating GB2312 character list...")
-        gb2312_chars = []
-        for high_byte in range(0xB0, 0xF8):
-            for low_byte in range(0xA1, 0xFF):
-                try:
-                    char = bytes([high_byte, low_byte]).decode('gb2312')
-                    if '\u4e00' <= char <= '\u9fff':
-                        gb2312_chars.append(char)
-                except:
-                    pass
-        with open(gb2312_path, 'w', encoding='utf-8') as f:
-            f.write(''.join(gb2312_chars))
-        print(f"Generated {len(gb2312_chars)} GB2312 characters")
-        return gb2312_chars
-    else:
-        with open(gb2312_path, 'r', encoding='utf-8') as f:
-            return list(f.read().strip())
 
 
 def load_cn_chars_append(script_dir):
@@ -314,6 +287,17 @@ PINYIN_MAP = {
     '韵': 'yun',
     '体': 'ti',
     '情': 'qing',
+    # 追加常用（信道命名 / UI）
+    '引': 'yin',
+    '物': 'wu',
+    '玩': 'wan',
+    '具': 'ju',
+    '伟': 'wei',
+    '炜': 'wei',
+    '护': 'hu',
+    '择': 'ze',
+    '选': 'xuan',
+    '闭': 'bi',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
@@ -391,7 +375,7 @@ def generate_header(char_list, bdf_chars, output_file):
 
     # Calculate sizes
     font_size = len(font_data) * 2
-    index_size = len(char_map) * 6  # 6 bytes per entry: 2 bytes unicode + 4 bytes index
+    index_size = len(char_map) * 4
     pinyin_offset = font_size + index_size
 
     # Calculate pinyin total size
@@ -413,10 +397,10 @@ def generate_header(char_list, bdf_chars, output_file):
         f.write(f"#define CN_FONT_FLASH_BASE      0x010200u\n")
         f.write(f"#define CN_FONT_CHAR_COUNT      {len(valid_chars)}u\n")
         f.write(f"#define CN_FONT_BITMAP_SIZE     {font_size}u   /* {len(font_data)} uint16_t */\n")
-        f.write(f"#define CN_FONT_INDEX_SIZE      {index_size}u   /* {len(char_map)} entries x 6 bytes */\n")
+        f.write(f"#define CN_FONT_INDEX_SIZE      {index_size}u   /* {len(char_map)} entries x 4 bytes */\n")
         f.write(f"#define CN_FONT_PY_OFFSET       {pinyin_offset}u  /* pinyin table offset from base */\n")
         f.write(f"#define CN_FONT_PY_COUNT        {len(pinyin_sorted)}u\n")
-        f.write(f"#define CN_FONT_VERSION         3u\n")
+        f.write(f"#define CN_FONT_VERSION         2u\n")
         f.write(f"#define CN_FONT_VERSION_OFFSET  {font_size + index_size + total_py_bytes}u  /* version byte offset from base */\n\n")
 
         # ── Font bitmap data ──
@@ -440,18 +424,14 @@ def generate_header(char_list, bdf_chars, output_file):
         # ── Unicode index table ──
         f.write(f"/* Unicode → font index mapping */\n")
         f.write(f"/* Write to SPI Flash at CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE */\n")
-        f.write(f"/* Format: [unicode:2 bytes LE][index:4 bytes LE] per entry */\n")
-        f.write(f"static const uint8_t cn_font_index[{len(char_map) * 6}] = {{\n")
+        f.write(f"static const uint32_t cn_font_index[{len(char_map)}] = {{\n")
         for i, (unicode_val, idx) in enumerate(char_map):
-            if i % 4 == 0:
+            if i % 8 == 0:
                 f.write("    ")
-            # Write 6 bytes: unicode (2 bytes LE) + index (4 bytes LE)
-            f.write(f"0x{unicode_val & 0xFF:02X}, 0x{(unicode_val >> 8) & 0xFF:02X}, ")
-            f.write(f"0x{idx & 0xFF:02X}, 0x{(idx >> 8) & 0xFF:02X}, ")
-            f.write(f"0x{(idx >> 16) & 0xFF:02X}, 0x{(idx >> 24) & 0xFF:02X}")
+            f.write(f"0x{unicode_val:04X}{idx:04X}")
             if i < len(char_map) - 1:
                 f.write(", ")
-            if i % 4 == 3:
+            if i % 8 == 7:
                 f.write("\n")
         f.write("\n};\n\n")
 
@@ -471,10 +451,8 @@ def generate_header(char_list, bdf_chars, output_file):
                 data_bytes.append(ord(c))
             data_bytes.append(len(indices))
             for idx in indices:
-                # Store Unicode value (2 bytes, big-endian) instead of character index
-                unicode_val = ord(valid_chars[idx])
-                data_bytes.append(unicode_val >> 8)
-                data_bytes.append(unicode_val & 0xFF)
+                data_bytes.append(idx >> 8)
+                data_bytes.append(idx & 0xFF)
             line += ', '.join(f'0x{b:02X}' for b in data_bytes)
             if offset + len(data_bytes) < total_py_bytes:
                 line += ','
@@ -514,10 +492,9 @@ def generate_bin(char_list, bdf_chars, output_file):
         for val in font_data:
             f.write(struct.pack('<H', val))
 
-        # Unicode index: 6 bytes per entry (unicode:2 + index:4, little-endian)
+        # Unicode index (uint32_t, little-endian: unicode<<16 | index)
         for unicode_val, idx in char_map:
-            f.write(struct.pack('<H', unicode_val))  # 2 bytes unicode
-            f.write(struct.pack('<I', idx))          # 4 bytes index
+            f.write(struct.pack('<I', (unicode_val << 16) | idx))
 
         # Pinyin table
         for py, indices in pinyin_sorted:
@@ -525,14 +502,12 @@ def generate_bin(char_list, bdf_chars, output_file):
             f.write(py.encode('ascii'))
             f.write(struct.pack('B', len(indices)))
             for idx in indices:
-                # Write Unicode value (2 bytes, big-endian) instead of character index
-                unicode_val = ord(valid_chars[idx])
-                f.write(struct.pack('>H', unicode_val))
+                f.write(struct.pack('>H', idx))
 
-        # Version marker
+        # Version marker at offset 20825
         # Pad to version offset
         font_size = len(font_data) * 2
-        index_size = len(char_map) * 6  # 6 bytes per entry
+        index_size = len(char_map) * 4
         pinyin_offset = font_size + index_size
         # Calculate pinyin total size
         total_py_bytes = 0
@@ -543,7 +518,7 @@ def generate_bin(char_list, bdf_chars, output_file):
         current = f.tell()
         if current < version_offset:
             f.write(b'\xff' * (version_offset - current))
-        f.write(struct.pack('B', 3))  # CN_FONT_VERSION = 3
+        f.write(struct.pack('B', 2))  # CN_FONT_VERSION = 2
 
     total = os.path.getsize(output_file)
     print(f"Binary: {output_file} ({total} bytes)")
@@ -557,41 +532,49 @@ def main():
         print(f"Error: BDF file not found: {bdf_path}")
         sys.exit(1)
 
-    # Load GB2312 complete character set
-    print("Loading GB2312 character set...")
-    gb2312_chars = load_gb2312_chars(script_dir)
-    print(f"GB2312 characters: {len(gb2312_chars)}")
-    
-    # Load existing custom characters (CN_CHARS_500 + append)
-    print("Loading existing custom characters...")
-    existing_chars_text = "".join(CN_CHARS_500)
+    # 若字表中再次出现重复汉字，在此列出（正常情况应为 0）
+    source_concat = ''.join(CN_CHARS_500)
+    han_in_source = [ch for ch in source_concat if ord(ch) >= 0x4E00]
+    han_occurrences = Counter(han_in_source)
+    duplicate_pairs = []
+    for single_char, occurrence_count in han_occurrences.items():
+        if occurrence_count > 1:
+            duplicate_pairs.append((single_char, occurrence_count))
+    duplicate_pairs.sort(key=lambda item: (-item[1], item[0]))
+    redundant_total = 0
+    for single_char, occurrence_count in duplicate_pairs:
+        redundant_total += occurrence_count - 1
+    if duplicate_pairs:
+        unique_han_count = len(han_occurrences)
+        print(
+            "字表源串: 汉字总出现次数 %d，唯一汉字 %d；%d 个字重复出现，冗余 %d 处（输出字序仅保留首次出现）"
+            % (len(han_in_source), unique_han_count, len(duplicate_pairs), redundant_total)
+        )
+        preview_limit = 30
+        shown = 0
+        for single_char, occurrence_count in duplicate_pairs:
+            if shown >= preview_limit:
+                rest_count = len(duplicate_pairs) - preview_limit
+                print("  ... 另有 %d 个重复字未列出" % rest_count)
+                break
+            print("  x%d %s (U+%04X)" % (occurrence_count, single_char, ord(single_char)))
+            shown += 1
+    else:
+        print("字表源串: %d 个汉字，无重复" % len(han_in_source))
+
+    # 按 Unicode 顺序遍历字表（tuple 内可为多段字符串拼接成一条）+ 追加字表文件
     append_segment = load_cn_chars_append(script_dir)
     if append_segment:
-        print("追加字表 cn_chars_append.txt: %d 个字符" % len(append_segment))
-    existing_chars_text += append_segment
-    
-    # Deduplicate existing chars while preserving order
+        print("追加字表 cn_chars_append.txt: %d 个字符（拼接在去重前）" % len(append_segment))
+    combined_source_text = "".join(CN_CHARS_500) + append_segment
     seen = set()
-    existing_chars = []
-    for char in existing_chars_text:
-        if char not in seen and ord(char) >= 0x4E00:
-            seen.add(char)
-            existing_chars.append(char)
-    print(f"Existing custom characters: {len(existing_chars)}")
-    
-    # Merge: existing chars first (preserve order), then GB2312 chars not in existing
-    print("Merging character sets...")
-    unique_chars = list(existing_chars)
-    existing_set = set(existing_chars)
-    added_count = 0
-    for char in gb2312_chars:
-        if char not in existing_set:
-            unique_chars.append(char)
-            existing_set.add(char)
-            added_count += 1
-    
-    print(f"Merged total: {len(unique_chars)} characters")
-    print(f"Added {added_count} characters from GB2312")
+    unique_chars = []
+    for single_character in combined_source_text:
+        if single_character not in seen and ord(single_character) >= 0x4E00:
+            seen.add(single_character)
+            unique_chars.append(single_character)
+
+    print(f"Target characters: {len(unique_chars)}")
 
     print(f"Parsing BDF file: {bdf_path}")
     bdf_chars = parse_bdf(bdf_path)

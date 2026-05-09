@@ -126,7 +126,7 @@ void FM_EraseChannels(void)
     
     uint8_t clearBuf[128];
     memset(clearBuf, 0xFF, sizeof(clearBuf));
-    PY25Q16_WriteBuffer(0x00A028, clearBuf, sizeof(clearBuf), false);
+    PY25Q16_WriteBuffer(0x00A028, clearBuf, sizeof(clearBuf));
 
     memset(gFM_Channels, 0xFF, sizeof(gFM_Channels));
 }

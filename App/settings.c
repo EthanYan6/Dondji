@@ -56,7 +56,7 @@ void SETTINGS_InitEEPROM(void)
             // 1. Write new version to EEPROM
             char newVersion[16] = {0};
             strncpy(newVersion, VERSION_STRING_2, sizeof(newVersion));
-            PY25Q16_WriteBuffer(0x00A160, newVersion, sizeof(newVersion), false);
+            PY25Q16_WriteBuffer(0x00A160, newVersion, sizeof(newVersion));
 
             // 2. Reset sensitive parameters (MENU_LOCK, etc.)
             uint8_t configByte[8] = {0};
@@ -70,7 +70,7 @@ void SETTINGS_InitEEPROM(void)
             configByte[5] = 0; /* 声控菜单隐藏：版本升级后默认关 */
 #endif
 
-            PY25Q16_WriteBuffer(0x00A000, configByte, sizeof(configByte), false);
+            PY25Q16_WriteBuffer(0x00A000, configByte, sizeof(configByte));
 
             // 3. Reset display inversion (SET_INV = 0)
             uint8_t displayByte[8] = {0};
@@ -78,7 +78,7 @@ void SETTINGS_InitEEPROM(void)
 
             displayByte[5] &= (uint8_t)~0x10;  // Clear bit 4 (SET_INV)
 
-            PY25Q16_WriteBuffer(0x00A158, displayByte, sizeof(displayByte), false);
+            PY25Q16_WriteBuffer(0x00A158, displayByte, sizeof(displayByte));
 
             // 4. Reset logo lines (clear to null for strlen() == 0)
 
@@ -104,7 +104,7 @@ void SETTINGS_InitEEPROM(void)
             }
 
             if (needsWrite) {
-                PY25Q16_WriteBuffer(0x00A0C8, logoLines, sizeof(logoLines), false);
+                PY25Q16_WriteBuffer(0x00A0C8, logoLines, sizeof(logoLines));
             }
 
             // 5. Reset dBmCorrTable
@@ -122,7 +122,7 @@ void SETTINGS_InitEEPROM(void)
             if (needsWrite) {
                 for (uint8_t i = 0; i < 7; i++)
                     buf[i] = dBmCorrTable[i];
-                PY25Q16_WriteBuffer(0x00A0B9, buf, 7, false);
+                PY25Q16_WriteBuffer(0x00A0B9, buf, 7);
             }
         }
     }
@@ -703,7 +703,7 @@ void SETTINGS_FactoryReset(bool bIsAll)
             Data8[7] = (1 & 0x01);
         #endif
 
-        PY25Q16_WriteBuffer(0x00A000, Data8, sizeof(Data8), false);
+        PY25Q16_WriteBuffer(0x00A000, Data8, sizeof(Data8));
 
         // cohérence RAM
         gEeprom.MENU_LOCK = 0;
@@ -751,10 +751,10 @@ void SETTINGS_SaveFM(void)
         fmCfg.band     = gEeprom.FM_Band;
         // fmCfg.space    = gEeprom.FM_Space;
         // 0E88
-        PY25Q16_WriteBuffer(0x00A020, fmCfg.__raw, 8, false);
+        PY25Q16_WriteBuffer(0x00A020, fmCfg.__raw, 8);
 
         // 0E40
-        PY25Q16_WriteBuffer(0x00A028, gFM_Channels, sizeof(gFM_Channels), false);
+        PY25Q16_WriteBuffer(0x00A028, gFM_Channels, sizeof(gFM_Channels));
     }
 #endif
 
@@ -789,7 +789,7 @@ void SETTINGS_SaveVfoIndicesFlush(void)
             Data16[7] = gEeprom.NoaaChannel[1];
         #endif
 
-            PY25Q16_WriteBuffer(0x00A010, Data16, sizeof(Data16), false);
+            PY25Q16_WriteBuffer(0x00A010, Data16, sizeof(Data16));
         }
     }
 }
@@ -886,7 +886,7 @@ void SETTINGS_SaveSettings(void)
         State[7] = gEeprom.VFO_OPEN;
     #endif
 
-    PY25Q16_WriteBuffer(0x00A000, SecBuf, 0x10, false);
+    PY25Q16_WriteBuffer(0x00A000, SecBuf, 0x10);
 
     // -------------------------
     //  0e90 - 0ee0
@@ -955,7 +955,7 @@ void SETTINGS_SaveSettings(void)
     State[2] = gEeprom.PERMIT_REMOTE_KILL;
 #endif
 
-    PY25Q16_WriteBuffer(0x00A0A8, SecBuf, 0x50, false);
+    PY25Q16_WriteBuffer(0x00A0A8, SecBuf, 0x50);
 
     // -------------------------
     // 0f18 - 0f20
@@ -977,7 +977,7 @@ void SETTINGS_SaveSettings(void)
     State[5] = (uint8_t)(gEeprom.CHAN_1_CALL & 0xFF);
     State[6] = (uint8_t)(gEeprom.CHAN_1_CALL >> 8);
 
-    PY25Q16_WriteBuffer(0x00A130, SecBuf, 0x08, false);
+    PY25Q16_WriteBuffer(0x00A130, SecBuf, 0x08);
 
     // ---------------------
     // 0f40 - 0f48
@@ -1028,7 +1028,7 @@ void SETTINGS_SaveSettings(void)
     #endif
     State[7] = (State[7] & ~(3u << 6)) | ((gSetting_backlight_on_tx_rx & 3u) << 6);
 
-    PY25Q16_WriteBuffer(0x00A150, SecBuf, 8, false);
+    PY25Q16_WriteBuffer(0x00A150, SecBuf, 8);
 
     // ------------------
 
@@ -1083,7 +1083,7 @@ void SETTINGS_SaveSettings(void)
 
     gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
 
-    PY25Q16_WriteBuffer(0x00A158, SecBuf, 8, false);
+    PY25Q16_WriteBuffer(0x00A158, SecBuf, 8);
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_VOL
@@ -1094,7 +1094,7 @@ void SETTINGS_SaveSettings(void)
         uint8_t langHint[2];
         langHint[0] = gUiLanguage & 1u;
         langHint[1] = (gSetting_boot_hint < 3) ? gSetting_boot_hint : 2;
-        PY25Q16_WriteBuffer(0x00A170, langHint, sizeof(langHint), false);
+        PY25Q16_WriteBuffer(0x00A170, langHint, sizeof(langHint));
     }
 }
 
@@ -1151,7 +1151,7 @@ void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO,
         State -> _8[7] =  pVFO->SCRAMBLING_TYPE;
 #endif
 
-        PY25Q16_WriteBuffer(OffsetVFO, Buf, 0x10, false);
+        PY25Q16_WriteBuffer(OffsetVFO, Buf, 0x10);
 
         SETTINGS_UpdateChannel(Channel, pVFO, true, true, true);
 
@@ -1172,7 +1172,7 @@ void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO,
 void SETTINGS_SaveBatteryCalibration(const uint16_t * batteryCalibration)
 {
     // 0x1F40
-    PY25Q16_WriteBuffer(0x010000 + 0x140, batteryCalibration, 12, false);
+    PY25Q16_WriteBuffer(0x010000 + 0x140, batteryCalibration, 12);
 }
 
 void SETTINGS_SaveChannelName(uint16_t channel, const char * name)
@@ -1183,7 +1183,7 @@ void SETTINGS_SaveChannelName(uint16_t channel, const char * name)
     if (len > CHANNEL_NAME_MAX_BYTES)
         len = CHANNEL_NAME_MAX_BYTES;
     memcpy(buf, name, len);
-    PY25Q16_WriteBuffer(0x004000 + offset, buf, 0x10, false);
+    PY25Q16_WriteBuffer(0x004000 + offset, buf, 0x10);
 }
 
 void SETTINGS_UpdateChannel(uint16_t channel, const VFO_Info_t *pVFO, bool keep, bool check, bool save)
@@ -1226,7 +1226,7 @@ void SETTINGS_UpdateChannel(uint16_t channel, const VFO_Info_t *pVFO, bool keep,
             uint16_t buf[MR_CHANNELS_MAX + 24];
             PY25Q16_ReadBuffer(0x008000, buf, sizeof(buf));
             buf[channel] = state.__val;
-            PY25Q16_WriteBuffer(0x008000, buf, sizeof(buf), false);
+            PY25Q16_WriteBuffer(0x008000, buf, sizeof(buf));
         }
 
         MR_SetChannelAttributes(channel, &att);
@@ -1299,7 +1299,7 @@ State[1] = 0
     | (1 << 6)
 #endif
 ;
-    PY25Q16_WriteBuffer(0x00A158, State, sizeof(State), false);
+    PY25Q16_WriteBuffer(0x00A158, State, sizeof(State));
 }
 
 #ifdef ENABLE_FEAT_F4HWN_RESUME_STATE
@@ -1311,7 +1311,7 @@ State[1] = 0
         State[7] =
             (gEeprom.CURRENT_STATE & 0x07) |
             ((gEeprom.SCAN_LIST_DEFAULT & 0x1F) << 3);
-        PY25Q16_WriteBuffer(0x00A008, State, sizeof(State), false);
+        PY25Q16_WriteBuffer(0x00A008, State, sizeof(State));
 
         //
 
@@ -1329,7 +1329,7 @@ State[1] = 0
         State[5] = (uint8_t)(gEeprom.CHAN_1_CALL & 0xFF);
         State[6] = (uint8_t)(gEeprom.CHAN_1_CALL >> 8);
 
-        PY25Q16_WriteBuffer(0x00A130, State, sizeof(State), false);
+        PY25Q16_WriteBuffer(0x00A130, State, sizeof(State));
     }
 #endif
 
@@ -1340,7 +1340,7 @@ State[1] = 0
         // 0x1F88
         PY25Q16_ReadBuffer(0x010000 + 0x188, State, sizeof(State));
         State[6] = gEeprom.VOLUME_GAIN;
-        PY25Q16_WriteBuffer(0x010000 + 0x188, State, sizeof(State), false);
+        PY25Q16_WriteBuffer(0x010000 + 0x188, State, sizeof(State));
     }
 #endif
 
@@ -1373,7 +1373,7 @@ void SETTINGS_ResetTxLock(void)
             Buf[off + TXLOCK_BYTE_OFFSET] |= (1 << TXLOCK_BIT);
         }
 
-        PY25Q16_WriteBuffer(Offset, Buf, BatchSize, false);
+        PY25Q16_WriteBuffer(Offset, Buf, BatchSize);
     }
 
     RADIO_ConfigureChannel(0, VFO_CONFIGURE_RELOAD);
@@ -1517,32 +1517,24 @@ void SETTINGS_InitCNFont(void)
     // Chinese channel names will not display until font is flashed
 }
 
-int32_t SETTINGS_CNCharToIndex(uint16_t unicode)
+int16_t SETTINGS_CNCharToIndex(uint16_t unicode)
 {
     // Search the Unicode index table in SPI Flash
-    // Each entry: 6 bytes = [unicode:2 bytes LE][index:4 bytes LE]
+    // Each entry: uint32_t = (unicode:16 | index:16)
+    uint32_t entry;
     for (uint16_t i = 0; i < CN_FONT_CHAR_COUNT; i++)
     {
-        uint32_t entry_offset = CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (i * 6u);
-        
-        uint8_t unicode_bytes[2];
-        PY25Q16_ReadBuffer(entry_offset, unicode_bytes, 2);
-        uint16_t stored_unicode = (uint16_t)((unicode_bytes[1] << 8) | unicode_bytes[0]);
-        
+        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (i * 4),
+                           (uint8_t *)&entry, 4);
+        uint16_t stored_unicode = (uint16_t)(entry >> 16);
+        uint16_t stored_index = (uint16_t)(entry & 0xFFFF);
         if (stored_unicode == unicode)
-        {
-            uint8_t index_bytes[4];
-            PY25Q16_ReadBuffer(entry_offset + 2, index_bytes, 4);
-            uint32_t stored_index = (uint32_t)(
-                (index_bytes[3] << 24) | (index_bytes[2] << 16) | 
-                (index_bytes[1] << 8) | index_bytes[0]);
-            return (int32_t)stored_index;
-        }
+            return (int16_t)stored_index;
     }
     return -1;
 }
 
-void SETTINGS_ReadCNFontBitmap(uint32_t charIndex, uint16_t *bitmap)
+void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap)
 {
     // charIndex is the uint16_t array offset from the index table (0, 12, 24, ...)
     // Each uint16_t is 2 bytes, so byte offset = charIndex * 2
@@ -1553,8 +1545,7 @@ void SETTINGS_ReadCNFontBitmap(uint32_t charIndex, uint16_t *bitmap)
 int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount, int startOffset)
 {
     // Search pinyin table in SPI Flash
-    // Format per entry: [str_len:1][ascii:str_len][char_count:1][unicode_values:char_count*2]
-    // Each unicode value is stored as 2 bytes (big-endian)
+    // Format per entry: [str_len:1][ascii:str_len][char_count:1][indices:char_count*2]
     // Returns total matching candidate count; fills unicodeOut with up to maxCount entries from startOffset
     uint16_t offset = 0;
     int count = 0;
@@ -1586,14 +1577,17 @@ int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int
 
                 for (uint8_t j = 0; j < char_count; j++)
                 {
-                    uint8_t unicode_bytes[2];
+                    uint8_t idx_bytes[2];
                     PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
-                                       unicode_bytes, 2);
-                    uint16_t unicode = (uint16_t)((unicode_bytes[0] << 8) | unicode_bytes[1]);
+                                       idx_bytes, 2);
+                    uint16_t font_idx = (uint16_t)((idx_bytes[0] << 8) | idx_bytes[1]);
 
                     if (j >= startOffset && count < maxCount)
                     {
-                        unicodeOut[count++] = unicode;
+                        uint32_t entry;
+                        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (font_idx * 4),
+                                           (uint8_t *)&entry, 4);
+                        unicodeOut[count++] = (uint16_t)(entry >> 16);
                     }
 
                     offset += 2;

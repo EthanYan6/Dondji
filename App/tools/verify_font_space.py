@@ -6,7 +6,7 @@ Verify font library space usage and overlap with legacy region
 
 # Font library
 font_base = 0x010200
-font_size = 218613
+font_size = 40150
 font_end = font_base + font_size
 
 print(f'Font library start: 0x{font_base:06X} ({font_base} bytes)')

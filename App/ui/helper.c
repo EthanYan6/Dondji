@@ -797,7 +797,7 @@ static uint16_t Utf8ToUnicode(const char *pStr)
 
 static void DrawChineseChar(uint16_t unicode, uint8_t x, uint8_t y_pixel, uint8_t y_pixel_end)
 {
-    int32_t spi_index = SETTINGS_CNCharToIndex(unicode);
+    int16_t spi_index = SETTINGS_CNCharToIndex(unicode);
     if (spi_index < 0)
         return;
 
@@ -812,7 +812,7 @@ static void DrawChineseChar(uint16_t unicode, uint8_t x, uint8_t y_pixel, uint8_
         y = 8;
 
     uint16_t spi_bitmap[12];
-    SETTINGS_ReadCNFontBitmap((uint32_t)spi_index, spi_bitmap);
+    SETTINGS_ReadCNFontBitmap((uint16_t)spi_index, spi_bitmap);
 
     for (uint8_t row = 0; row < char_height; row++) {
         uint16_t row_data = spi_bitmap[row];
@@ -960,10 +960,10 @@ void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uin
     while (pString[i]) {
         if (IsChineseChar(&pString[i])) {
             uint16_t unicode = Utf8ToUnicode(&pString[i]);
-            int32_t spi_idx = SETTINGS_CNCharToIndex(unicode);
+            int16_t spi_idx = SETTINGS_CNCharToIndex(unicode);
             if (spi_idx >= 0) {
                 uint16_t spi_bitmap[12];
-                SETTINGS_ReadCNFontBitmap((uint32_t)spi_idx, spi_bitmap);
+                SETTINGS_ReadCNFontBitmap((uint16_t)spi_idx, spi_bitmap);
                 const uint16_t y_range_inv = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
                 const uint8_t chn_top = (y_range_inv >= 12u)
                     ? (uint8_t)(y_pixel_start + (uint8_t)((y_range_inv - 12u) / 2u))
@@ -1057,10 +1057,10 @@ void UI_PrintStringSmallAtPixelCnInverse(const char *pString, uint8_t x_start, u
     while (pString[i]) {
         if (IsChineseChar(&pString[i])) {
             uint16_t unicode = Utf8ToUnicode(&pString[i]);
-            int32_t spi_index = SETTINGS_CNCharToIndex(unicode);
+            int16_t spi_index = SETTINGS_CNCharToIndex(unicode);
             if (spi_index >= 0) {
                 uint16_t spi_bitmap[12];
-                SETTINGS_ReadCNFontBitmap((uint32_t)spi_index, spi_bitmap);
+                SETTINGS_ReadCNFontBitmap((uint16_t)spi_index, spi_bitmap);
                 const uint16_t y_range = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
                 uint8_t y_off = 0;
                 if (y_range >= 12u)
