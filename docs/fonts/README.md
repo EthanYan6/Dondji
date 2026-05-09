@@ -8,7 +8,7 @@
 python App/tools/gen_cn_font.py
 ```
 
-会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **40451** 字节含版本字节，**1291** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
+会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **40517** 字节含版本字节，**1293** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
 
 ## 近期补充字符
 
@@ -25,5 +25,6 @@ python App/tools/gen_cn_font.py
 | 儿、韵、体 | 常用词 / UI / 信道名等缺字补全 |
 | 情 | 常用词 / 信道名等缺字补全 |
 | 芙、蓉、祈、福、叁、始、象、矩、屏 | 常用词 / 信道名等缺字补全 |
+| 刷、址 | 常用词 / 信道名等缺字补全 |
 
 字模来源：`App/bdf/wenquanyi_9pt.bdf`（文泉驿点阵宋体）。

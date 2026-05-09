@@ -175,11 +175,11 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x010200;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 40450;
+const CN_FONT_VERSION_OFFSET = 40516;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_BITMAP_SIZE = 30984;
+const CN_FONT_BITMAP_SIZE = 31032;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
-const CN_FONT_CHAR_COUNT = 1291;
+const CN_FONT_CHAR_COUNT = 1293;
 const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
@@ -2047,7 +2047,7 @@ let cnFontCodepointSetPromise = null;
  */
 function cnFontParseCodepointsFromBin(arrayBuffer) {
   const totalBytes = arrayBuffer.byteLength;
-  const minBytes = CN_FONT_BITMAP_SIZE + CN_FONT_CHAR_COUNT * 6;
+  const minBytes = CN_FONT_BITMAP_SIZE + CN_FONT_CHAR_COUNT * 4;
   if (totalBytes < minBytes) {
     const errText = 'cn_font.bin 长度异常（' + totalBytes + ' < ' + minBytes + '）';
     throw new Error(errText);
@@ -2056,8 +2056,9 @@ function cnFontParseCodepointsFromBin(arrayBuffer) {
   const codepointSet = new Set();
   let entryIndex = 0;
   for (; entryIndex < CN_FONT_CHAR_COUNT; entryIndex++) {
-    const byteOffset = CN_FONT_BITMAP_SIZE + entryIndex * 6;
-    const unicodeVal = dataView.getUint16(byteOffset, true);
+    const byteOffset = CN_FONT_BITMAP_SIZE + entryIndex * 4;
+    const entryValue = dataView.getUint32(byteOffset, true);
+    const unicodeVal = (entryValue >>> 16) & 0xFFFF;
     codepointSet.add(unicodeVal);
   }
   return codepointSet;

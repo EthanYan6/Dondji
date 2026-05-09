@@ -3086,16 +3086,40 @@ void UI_DisplayMenu(void)
             }
             if (page == 4u)
             {
+                const char *url_title = SUBV("web:", "\xe5\x88\xb7\xe6\x9c\xba\xe5\x86\x99\xe9\xa2\x91\xe7\xbd\x91\xe5\x9d\x80\xef\xbc\x9a");
                 const char *url_line1 = "https://ethanyan6";
                 const char *url_line2 = ".github.io/Dondji/";
-                unsigned int url1_width = UI_SmallStringPixelWidth(url_line1);
-                unsigned int url2_width = UI_SmallStringPixelWidth(url_line2);
-                unsigned int pane_width = (unsigned int)(menu_item_x2 - menu_value_x1 + 1);
-                unsigned int max_url_width = (url1_width > url2_width) ? url1_width : url2_width;
-                unsigned int url_x = menu_value_x1 + (pane_width > max_url_width ? (pane_width - max_url_width) / 2u : 0u);
-                
-                UI_PrintStringSmallAtPixel(url_line1, (uint8_t)url_x, menu_item_x2, 24u, 31u, 0u);
-                UI_PrintStringSmallAtPixel(url_line2, (uint8_t)url_x, menu_item_x2, 34u, 41u, 0u);
+                uint8_t url_x = (uint8_t)menu_value_x1;
+
+                uint8_t url_band_y_top = 0u;
+                uint8_t url_band_y_bot = 0u;
+                if (gIsInSubMenu)
+                {
+                    url_band_y_top = 19u;
+                    url_band_y_bot = 63u;
+                }
+                else
+                {
+                    url_band_y_top = 37u;
+                    url_band_y_bot = 55u;
+                }
+                const unsigned int url_line_h = 8u;
+                const unsigned int url_line_gap = 2u;
+                const unsigned int url_total_h = 3u * url_line_h + 2u * url_line_gap;
+                const unsigned int url_avail_h = (unsigned int)url_band_y_bot - (unsigned int)url_band_y_top + 1u;
+                unsigned int url_start_y = url_band_y_top;
+                if (url_avail_h > url_total_h)
+                {
+                    url_start_y = (unsigned int)url_band_y_top + (url_avail_h - url_total_h) / 2u;
+                }
+                uint8_t url_y1 = (uint8_t)url_start_y;
+                if (url_y1 >= 2u) url_y1 = (uint8_t)(url_y1 - 2u);
+                uint8_t url_y2 = (uint8_t)(url_start_y + url_line_h + url_line_gap);
+                uint8_t url_y3 = (uint8_t)(url_start_y + 2u * (url_line_h + url_line_gap));
+
+                UI_PrintStringSmallAtPixel(url_title, url_x, menu_item_x2, url_y1, (uint8_t)(url_y1 + 7u), 0u);
+                UI_PrintStringSmallAtPixel(url_line1, url_x, menu_item_x2, url_y2, (uint8_t)(url_y2 + 7u), 0u);
+                UI_PrintStringSmallAtPixel(url_line2, url_x, menu_item_x2, url_y3, (uint8_t)(url_y3 + 7u), 0u);
             
                 if (gIsInSubMenu)
                 {
@@ -3103,7 +3127,7 @@ void UI_DisplayMenu(void)
                 }
                 else
                 {
-                    strcpy(edit, "<\xe7\xbd\x91\xe5\x9d\x80>");  // <网址>
+                    strcpy(edit, "<\xe7\xbd\x91\xe5\x9d\x80>");
                 }
                 already_printed = true;
                 break;
