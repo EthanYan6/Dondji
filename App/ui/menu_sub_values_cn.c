@@ -135,8 +135,8 @@ const char gSubMenu_BAT_TXT_CN[][10] = {
 };
 
 const char gSubMenu_SET_NAV_CN[][17] = {
-    "\xe5\xb7\xa6\n\xe5\x8f\xb3\nUV-K1",
-    "\xe4\xb8\x8a\n\xe4\xb8\x8b\nUV-K5(8)",
+    "\xe5\xb7\xa6\n\xe5\x8f\xb3\nUV-K1(8)",
+    "\xe4\xb8\x8a\n\xe4\xb8\x8b\nUV-K5(6)",
 };
 
 #ifdef ENABLE_VOICE

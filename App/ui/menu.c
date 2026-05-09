@@ -689,10 +689,10 @@ const char gSubMenu_BATTYP[][12] =
     "2500mAh K1"
 };
 
-const char gSubMenu_SET_NAV[][17] =
+const char gSubMenu_SET_NAV[][20] =
 {
-    "LEFT\nRIGHT\nUV-K1",
-    "UP\nDOWN\nUV-K5(8)",
+    "LEFT\nRIGHT\nUV-K1(8)",
+    "UP\nDOWN\nUV-K5(6)",
 };
 
 #ifndef ENABLE_FEAT_F4HWN
