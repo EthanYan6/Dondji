@@ -2206,6 +2206,7 @@ void APP_RunSpectrum()
     vfo = gEeprom.TX_VFO;
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
     LoadSettings();
+    settings.frequencyChangeStep = GetBW() >> 1;
 #endif
     // set the current frequency in the middle of the display
 #ifdef ENABLE_SCAN_RANGES
