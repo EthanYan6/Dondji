@@ -288,6 +288,7 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_BCL ||
         menu_id == MENU_COMPAND ||
         menu_id == MENU_AM ||
+        menu_id == MENU_LIST_CH ||
         menu_id == MENU_MEM_CH ||
         menu_id == MENU_DEL_CH ||
         menu_id == MENU_MEM_NAME ||
@@ -364,10 +365,11 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_BCL) return 9u;
         if (menu_id == MENU_COMPAND) return 10u;
         if (menu_id == MENU_AM) return 11u;
-        if (menu_id == MENU_MEM_CH) return 12u;
-        if (menu_id == MENU_DEL_CH) return 13u;
-        if (menu_id == MENU_MEM_NAME) return 14u;
-        if (menu_id == MENU_MDF) return 15u;
+        if (menu_id == MENU_LIST_CH) return 12u;
+        if (menu_id == MENU_MEM_CH) return 13u;
+        if (menu_id == MENU_DEL_CH) return 14u;
+        if (menu_id == MENU_MEM_NAME) return 15u;
+        if (menu_id == MENU_MDF) return 16u;
     }
 
     if (icon_index == 1u)

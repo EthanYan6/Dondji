@@ -1480,9 +1480,10 @@ function writefreqIsMrAttrUnused(attrTwoBytes) {
  * 合成要写回 SPI 的 ChannelAttributes_t（uint16 LE）。原值为 0xFFFF 时用默认 band；否则只更新低 3 位 band，保留扫描列表等高位字段。
  * @param {Uint8Array|null} existingTwoBytes
  * @param {number} rxStored
+ * @param {number} scanlistVal 扫描列表位图（低8位，每位对应一个扫描列表）
  * @returns {number}
  */
-function writefreqBuildAttrUint16ForProgram(existingTwoBytes, rxStored) {
+function writefreqBuildAttrUint16ForProgram(existingTwoBytes, rxStored, scanlistVal) {
   const bandEnum = writefreqBandEnumFromRxStored(rxStored);
   const bandPart = bandEnum & 7;
   let existingVal = 0xffff;
@@ -1497,11 +1498,12 @@ function writefreqBuildAttrUint16ForProgram(existingTwoBytes, rxStored) {
     }
   }
   let mergedAttr = 0;
+  const scanlistPart = (scanlistVal & 0xff) << 8;
   if (existingVal === 0xffff) {
-    mergedAttr = bandPart;
+    mergedAttr = bandPart | scanlistPart;
   } else {
-    const withoutBand = existingVal & ~7;
-    mergedAttr = withoutBand | bandPart;
+    const withoutBandAndScanlist = existingVal & ~0xff07;
+    mergedAttr = withoutBandAndScanlist | bandPart | scanlistPart;
   }
   return mergedAttr;
 }
@@ -1533,6 +1535,37 @@ const WF_DCS_OPTIONS = [
 
 const WF_POWER_LABELS = ['', 'LOW 1', 'LOW 2', 'LOW 3', 'LOW 4', 'LOW 5', 'MID', 'HIGH'];
 const WF_MOD_LABELS = ['FM', 'AM', 'USB'];
+
+const WF_STEP_OPTIONS = [
+  { value: 0, label: '2.5k', hz10: 250 },
+  { value: 1, label: '5k', hz10: 500 },
+  { value: 2, label: '6.25k', hz10: 625 },
+  { value: 3, label: '10k', hz10: 1000 },
+  { value: 4, label: '12.5k', hz10: 1250 },
+  { value: 5, label: '25k', hz10: 2500 },
+  { value: 6, label: '8.33k', hz10: 833 },
+  { value: 7, label: '0.01k', hz10: 1 },
+  { value: 8, label: '0.05k', hz10: 5 },
+  { value: 9, label: '0.1k', hz10: 10 },
+  { value: 10, label: '0.25k', hz10: 25 },
+  { value: 11, label: '0.5k', hz10: 50 },
+  { value: 12, label: '1k', hz10: 100 },
+  { value: 13, label: '1.25k', hz10: 125 },
+  { value: 14, label: '9k', hz10: 900 },
+  { value: 15, label: '15k', hz10: 1500 },
+  { value: 16, label: '20k', hz10: 2000 },
+  { value: 17, label: '30k', hz10: 3000 },
+  { value: 18, label: '50k', hz10: 5000 },
+  { value: 19, label: '100k', hz10: 10000 },
+  { value: 20, label: '125k', hz10: 12500 },
+  { value: 21, label: '200k', hz10: 20000 },
+  { value: 22, label: '250k', hz10: 25000 },
+  { value: 23, label: '500k', hz10: 50000 }
+];
+const WF_STEP_DEFAULT = 4;
+
+const WF_SCANLIST_MAX = 24;
+const WF_SCANLIST_ALL_VAL = 25;
 
 function wfFormatDcsMenuLabel(isInverted, index) {
   const raw = WF_DCS_OPTIONS[index];
@@ -1608,6 +1641,10 @@ function wfDecodeChannelFields(bytes16) {
   if (d4 !== 0xff) {
     power = (d4 >> 2) & 7;
   }
+  let stepSetting = bytes16[14];
+  if (stepSetting >= WF_STEP_OPTIONS.length) {
+    stepSetting = WF_STEP_DEFAULT;
+  }
   const rxIsUnset = rxStored === WRITE_FREQ_HZ_UNSET;
   const offsetIsUnset = offsetStored === WRITE_FREQ_HZ_UNSET;
   let rxMHzStr;
@@ -1632,6 +1669,7 @@ function wfDecodeChannelFields(bytes16) {
     offsetDir,
     modulation,
     power,
+    stepSetting,
     rxToneType: rxCt,
     rxToneCode: rxCode,
     txToneType: txCt,
@@ -1753,7 +1791,7 @@ function wfFillRowFromBlock(tr, block16) {
 }
 
 /** rxStored/offsetStored：与固件相同的 uint32，单位为 WRITE_FREQ_STORE_STEP_HZ（10 Hz）一步 */
-function wfMergeUserIntoBlock(original16, rxStored, offsetStored, offsetDir, modulation, power7, rxTone, txTone) {
+function wfMergeUserIntoBlock(original16, rxStored, offsetStored, offsetDir, modulation, power7, stepSetting, rxTone, txTone) {
   const out = new Uint8Array(original16);
   const dv = new DataView(out.buffer);
   dv.setUint32(0, rxStored >>> 0, true);
@@ -1767,6 +1805,7 @@ function wfMergeUserIntoBlock(original16, rxStored, offsetStored, offsetDir, mod
   const old12 = original16[12];
   const new12 = wfMergePowerByte(old12, power7);
   out[12] = new12;
+  out[14] = stepSetting & 0xff;
   return out;
 }
 
@@ -2463,6 +2502,8 @@ function writefreqGetRowInputs(tr) {
   const txDcsEl = tr.querySelector('.wf-tx-dcs');
   const sftEl = tr.querySelector('.wf-sft');
   const modEl = tr.querySelector('.wf-mod');
+  const stepEl = tr.querySelector('.wf-step');
+  const scanlistEl = tr.querySelector('.wf-scanlist');
   const rxText = rxEl ? rxEl.value : '';
   const offsetText = offsetEl ? offsetEl.value : '';
   const channelNameText = channelNameEl ? channelNameEl.value : '';
@@ -2473,6 +2514,14 @@ function writefreqGetRowInputs(tr) {
   const txDcs = txDcsEl ? txDcsEl.value : '';
   const sftVal = sftEl ? sftEl.value : '';
   const modVal = modEl ? modEl.value : '';
+  const stepVal = stepEl ? stepEl.value : String(WF_STEP_DEFAULT);
+  let scanlistVal = 0;
+  if (scanlistEl && scanlistEl.value !== '') {
+    const parsed = Number.parseInt(scanlistEl.value, 10);
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= WF_SCANLIST_ALL_VAL) {
+      scanlistVal = parsed;
+    }
+  }
   return {
     rxText,
     offsetText,
@@ -2483,7 +2532,9 @@ function writefreqGetRowInputs(tr) {
     txCtcss,
     txDcs,
     sftVal,
-    modVal
+    modVal,
+    stepVal,
+    scanlistVal
   };
 }
 
@@ -2498,7 +2549,9 @@ function writefreqEmptyRowFields() {
     txCtcss: '',
     txDcs: '',
     sftVal: '0',
-    modVal: '0'
+    modVal: '0',
+    stepVal: String(WF_STEP_DEFAULT),
+    scanlistVal: 0
   };
 }
 
@@ -2628,6 +2681,7 @@ function writefreqApplyFieldsToTr(tr, fields) {
   const txDcsEl = tr.querySelector('.wf-tx-dcs');
   const sftEl = tr.querySelector('.wf-sft');
   const modEl = tr.querySelector('.wf-mod');
+  const stepEl = tr.querySelector('.wf-step');
   if (rxIn) {
     rxIn.value = fields.rxText;
   }
@@ -2657,6 +2711,14 @@ function writefreqApplyFieldsToTr(tr, fields) {
   }
   if (modEl) {
     modEl.value = fields.modVal;
+  }
+  if (stepEl) {
+    stepEl.value = fields.stepVal !== undefined ? fields.stepVal : String(WF_STEP_DEFAULT);
+  }
+  const scanlistEl = tr.querySelector('.wf-scanlist');
+  if (scanlistEl) {
+    const val = fields.scanlistVal !== undefined ? fields.scanlistVal : 0;
+    scanlistEl.value = String(val);
   }
 }
 
@@ -2694,6 +2756,7 @@ function wfBlock16ToRowFields(block16) {
   row.rxDcs = rxDcs;
   row.txCtcss = txCtcss;
   row.txDcs = txDcs;
+  row.stepVal = String(decoded.stepSetting);
   return row;
 }
 
@@ -3008,6 +3071,39 @@ function writefreqRebuildRows() {
     }
     tdMod.appendChild(selMod);
 
+    const tdStep = document.createElement('td');
+    const selStep = document.createElement('select');
+    selStep.className = 'wf-step';
+    let sti = 0;
+    for (; sti < WF_STEP_OPTIONS.length; sti++) {
+      const sto = document.createElement('option');
+      sto.value = String(WF_STEP_OPTIONS[sti].value);
+      sto.textContent = WF_STEP_OPTIONS[sti].label;
+      selStep.appendChild(sto);
+    }
+    tdStep.appendChild(selStep);
+
+    const tdScanlist = document.createElement('td');
+    tdScanlist.className = 'wf-scanlist-cell';
+    const selScanlist = document.createElement('select');
+    selScanlist.className = 'wf-scanlist';
+    const optNone = document.createElement('option');
+    optNone.value = '0';
+    optNone.textContent = '不参与';
+    selScanlist.appendChild(optNone);
+    let sli = 0;
+    for (; sli < WF_SCANLIST_MAX; sli++) {
+      const opt = document.createElement('option');
+      opt.value = String(sli + 1);
+      opt.textContent = '列表 ' + String(sli + 1);
+      selScanlist.appendChild(opt);
+    }
+    const optAll = document.createElement('option');
+    optAll.value = String(WF_SCANLIST_ALL_VAL);
+    optAll.textContent = '全部';
+    selScanlist.appendChild(optAll);
+    tdScanlist.appendChild(selScanlist);
+
     const tdDelete = document.createElement('td');
     tdDelete.className = 'wf-delete-cell';
     const deleteBtn = document.createElement('button');
@@ -3031,6 +3127,8 @@ function writefreqRebuildRows() {
     tr.appendChild(tdSft);
     tr.appendChild(tdOff);
     tr.appendChild(tdMod);
+    tr.appendChild(tdStep);
+    tr.appendChild(tdScanlist);
     tr.appendChild(tdDelete);
     tbody.appendChild(tr);
   }
@@ -3124,6 +3222,10 @@ async function writefreqReadFromDevice() {
       const mergedNameText = writefreqMergeReadChannelName(unifiedNameText, legacyCnNameText);
       const rowFields = wfBlock16ToRowFields(block);
       rowFields.channelNameText = mergedNameText;
+      const attrView = new DataView(attrRaw.buffer, attrRaw.byteOffset, 2);
+      const attrVal = attrView.getUint16(0, true);
+      const scanlistFromAttr = (attrVal >> 8) & 0xff;
+      rowFields.scanlistVal = scanlistFromAttr;
       writefreqRowsData[chIdx] = rowFields;
       const pct = ((chIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
       updateProgress(pct);
@@ -3304,11 +3406,16 @@ async function writefreqWriteToDevice() {
       }
       const rxTone = wfParseToneSide(fields.rxCtcss, fields.rxDcs, chLabel + ' 接收');
       const txTone = wfParseToneSide(fields.txCtcss, fields.txDcs, chLabel + ' 发射');
+      let stepSetting = Number.parseInt(fields.stepVal, 10);
+      if (!Number.isFinite(stepSetting) || stepSetting < 0 || stepSetting >= WF_STEP_OPTIONS.length) {
+        stepSetting = WF_STEP_DEFAULT;
+      }
+      const scanlistVal = fields.scanlistVal !== undefined ? fields.scanlistVal : 0;
       const original = await spiFlashReadChunk(sessionTs, baseAddr, 16);
       if (!original || original.length !== 16) {
         throw new Error('读取原信道块失败 @ CH ' + (chIndex0 + 1));
       }
-      const merged = wfMergeUserIntoBlock(original, rxStored, offsetStored, offsetDir, modNum, pow7, rxTone, txTone);
+      const merged = wfMergeUserIntoBlock(original, rxStored, offsetStored, offsetDir, modNum, pow7, stepSetting, rxTone, txTone);
       const writeMainOk = await spiFlashWriteChunk(sessionTs, baseAddr, merged);
       if (!writeMainOk) {
         throw new Error('写入信道数据失败 @ CH ' + (chIndex0 + 1));
@@ -3324,7 +3431,7 @@ async function writefreqWriteToDevice() {
         throw new Error('写入旧中文名区（清除）失败 @ CH ' + (chIndex0 + 1));
       }
       const attrExisting = await spiFlashReadChunk(sessionTs, attrAddr, 2);
-      const attrValMerged = writefreqBuildAttrUint16ForProgram(attrExisting, rxStored);
+      const attrValMerged = writefreqBuildAttrUint16ForProgram(attrExisting, rxStored, scanlistVal);
       const attrPayload = writefreqUint16ToLeBytes(attrValMerged);
       const attrOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrPayload);
       if (!attrOk) {
@@ -3408,6 +3515,66 @@ function writefreqModValToSheetLabel(modVal) {
   }
   const modLabel = WF_MOD_LABELS[idx];
   return modLabel;
+}
+
+function writefreqStepValToSheetLabel(stepVal) {
+  const t = String(stepVal).trim();
+  const idx = Number.parseInt(t, 10);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= WF_STEP_OPTIONS.length) {
+    return WF_STEP_OPTIONS[WF_STEP_DEFAULT].label;
+  }
+  return WF_STEP_OPTIONS[idx].label;
+}
+
+function writefreqSheetLabelToStepVal(cellText) {
+  const raw = String(cellText).trim();
+  if (raw === '') {
+    return String(WF_STEP_DEFAULT);
+  }
+  let si = 0;
+  for (; si < WF_STEP_OPTIONS.length; si++) {
+    if (WF_STEP_OPTIONS[si].label === raw) {
+      return String(si);
+    }
+  }
+  const legacyNum = Number.parseInt(raw, 10);
+  if (Number.isFinite(legacyNum) && legacyNum >= 0 && legacyNum < WF_STEP_OPTIONS.length) {
+    return String(legacyNum);
+  }
+  return String(WF_STEP_DEFAULT);
+}
+
+function writefreqScanlistValToSheetLabel(scanlistVal) {
+  const val = scanlistVal !== undefined ? scanlistVal : 0;
+  if (val === 0) {
+    return '不参与';
+  }
+  if (val === WF_SCANLIST_ALL_VAL) {
+    return '全部';
+  }
+  return '列表 ' + String(val);
+}
+
+function writefreqSheetLabelToScanlistVal(cellText) {
+  const raw = String(cellText).trim();
+  if (raw === '' || raw === '不参与' || raw === '无' || raw === '0') {
+    return 0;
+  }
+  if (raw === '全部') {
+    return WF_SCANLIST_ALL_VAL;
+  }
+  const match = raw.match(/列表\s*(\d+)/);
+  if (match) {
+    const listNum = Number.parseInt(match[1], 10);
+    if (Number.isFinite(listNum) && listNum >= 1 && listNum <= WF_SCANLIST_MAX) {
+      return listNum;
+    }
+  }
+  const directNum = Number.parseInt(raw, 10);
+  if (Number.isFinite(directNum) && directNum >= 0 && directNum <= WF_SCANLIST_ALL_VAL) {
+    return directNum;
+  }
+  return 0;
 }
 
 function writefreqSheetLabelToModVal(cellText) {
@@ -3591,6 +3758,8 @@ function writefreqExportSheet() {
     '频差方向',
     '频差频率_MHz',
     '调制模式',
+    '步进',
+    '信道列表',
     '信道名'
   ];
   const rows = [];
@@ -3616,6 +3785,8 @@ function writefreqExportSheet() {
       writefreqSftValToSheetLabel(fields.sftVal),
       fields.offsetText.trim(),
       writefreqModValToSheetLabel(fields.modVal),
+      writefreqStepValToSheetLabel(fields.stepVal),
+      writefreqScanlistValToSheetLabel(fields.scanlistVal),
       fields.channelNameText
     ];
     rows.push(row);
@@ -3666,6 +3837,11 @@ function writefreqImportSheet(rowsAoA) {
   const idxSft = header.indexOf('频差方向');
   const idxOff = header.indexOf('频差频率_MHz');
   const idxMod = header.indexOf('调制模式');
+  const idxStep = header.indexOf('步进');
+  const idxScanlist = header.indexOf('信道列表');
+  if (idxScanlist < 0) {
+    idxScanlist = header.indexOf('扫描列表');
+  }
   let idxName = header.indexOf('信道名');
   if (idxName < 0) {
     idxName = header.indexOf('命名信道');
@@ -3771,6 +3947,12 @@ function writefreqImportSheet(rowsAoA) {
       merged.txCtcss = writefreqSheetLabelToCtcssVal(cellStr(idxTxCt));
       merged.sftVal = writefreqSheetLabelToSftVal(cellStr(idxSft));
       merged.modVal = writefreqSheetLabelToModVal(cellStr(idxMod));
+      if (idxStep >= 0) {
+        merged.stepVal = writefreqSheetLabelToStepVal(cellStr(idxStep));
+      }
+      if (idxScanlist >= 0) {
+        merged.scanlistVal = writefreqSheetLabelToScanlistVal(cellStr(idxScanlist));
+      }
       const hasNameUnifiedCol = idxName >= 0;
       const hasNamePairCols = idxEn >= 0 && idxCn >= 0;
       if (hasNamePairCols) {
