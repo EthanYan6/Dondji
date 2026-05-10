@@ -19,6 +19,7 @@
 
 #include "app/chFrScanner.h"
 #include "app/dtmf.h"
+#include "app/mdc1200.h"
 #ifdef ENABLE_AM_FIX
     #include "am_fix.h"
 #endif
@@ -1884,6 +1885,53 @@ void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
 }
 #endif /* ENABLE_AUDIO_BAR */
 
+#define MDC_POPUP_WIDTH          60
+#define MDC_POPUP_HEIGHT         30
+#define MDC_POPUP_X0             ((LCD_WIDTH - MDC_POPUP_WIDTH) / 2)
+
+void UI_DisplayMDC1200RxPopup(void)
+{
+    unsigned int centered_popup_y;
+    uint8_t popup_y0;
+    uint8_t popup_y1;
+    uint8_t inner_left;
+    uint8_t inner_right;
+    char line1[16];
+    char line2[16];
+    uint8_t y, row;
+
+    if (gScreenToDisplay != DISPLAY_MAIN)
+        return;
+
+    if (mdc1200_rx_ready_tick_500ms == 0)
+        return;
+
+    centered_popup_y = ((unsigned)LCD_HEIGHT - (unsigned)MDC_POPUP_HEIGHT) / 2u;
+    popup_y0 = (uint8_t)centered_popup_y;
+    popup_y1 = (uint8_t)(popup_y0 + MDC_POPUP_HEIGHT - 1);
+
+    inner_left = (uint8_t)(MDC_POPUP_X0 + 2u);
+    inner_right = (uint8_t)(MDC_POPUP_X0 + MDC_POPUP_WIDTH - 3u);
+
+    for (y = popup_y0; y <= popup_y1; y++) {
+        for (row = MDC_POPUP_X0 + 1; row < MDC_POPUP_X0 + MDC_POPUP_WIDTH - 1; row++) {
+            UI_DrawPixelBuffer(gFrameBuffer, row, y, false);
+        }
+    }
+
+    UI_DrawRectangleBuffer(gFrameBuffer, MDC_POPUP_X0, popup_y0,
+                           (int16_t)(MDC_POPUP_X0 + MDC_POPUP_WIDTH - 1),
+                           (int16_t)popup_y1, true);
+
+    strcpy(line1, "MDC ID");
+    sprintf(line2, "%04X", mdc1200_unit_id);
+
+    UI_PrintStringSmallNormal(line1, inner_left, inner_right, popup_y0 / 8 + 1);
+    UI_PrintStringSmallNormal(line2, inner_left, inner_right, popup_y0 / 8 + 2);
+
+    ST7565_BlitFullScreen();
+}
+
 #ifdef ENABLE_FEAT_F4HWN
 /* 供 UI_DisplayMainOnlyStatusBar / 菜单顶栏 5 格信号条：与 DisplayRSSIBar(F4HWN) 同一映射 */
 static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
@@ -3718,6 +3766,9 @@ display_main_after_vfo_loop:
     //}
     //#endif
 #endif
+
+    if (mdc1200_rx_ready_tick_500ms > 0 && gEeprom.ROGER == ROGER_MODE_MDC)
+        UI_DisplayMDC1200RxPopup();
 
 #ifdef ENABLE_FEAT_F4HWN
     ST7565_BlitMainPerMode();

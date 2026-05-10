@@ -19,6 +19,7 @@
 
 #include "../app/dtmf.h"
 #include "../app/menu.h"
+#include "../app/mdc1200.h"
 #include "../bitmaps.h"
 #include "../board.h"
 #include "../dcs.h"
@@ -414,6 +415,7 @@ const t_menu_item MenuList[] =
     {"Voice",       MENU_VOICE         },
 #endif
     {"Roger",       MENU_ROGER         },
+    {"MDC ID",      MENU_MDC_ID        },
     {"STE",         MENU_STE           },
     {"RP STE",      MENU_RP_STE        },
     {"1 Call",      MENU_1_CALL        },
@@ -3179,6 +3181,33 @@ void UI_DisplayMenu(void)
 
         case MENU_BATTYP:
             strcpy(String, gSubMenu_BATTYP[gSubMenuSelection]);
+            break;
+
+        case MENU_MDC_ID:
+            if (gIsInSubMenu && edit_index >= 0)
+            {
+                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x2 = menu_item_x2;
+                UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 28u, 35u, 0u);
+                if (edit_index < 4)
+                {
+                    uint8_t char_width = 6;
+                    uint8_t char_spacing = char_width + 1;
+                    uint8_t text_start = (uint8_t)sub_val_x1;
+                    if (sub_val_x2 > sub_val_x1)
+                        text_start += (uint8_t)((((sub_val_x2 - sub_val_x1) - 4 * char_spacing) + 1u) / 2u);
+                    {
+                        const uint8_t underline_x = (uint8_t)(text_start + (edit_index * char_spacing) + 1u);
+                        const uint8_t underline_fb_row = (uint8_t)(35u / 8u);
+                        if (underline_fb_row < FRAME_LINES)
+                            for (uint8_t c = 0; c < char_width; c++)
+                                gFrameBuffer[underline_fb_row][underline_x + c] |= 0x01u;
+                    }
+                }
+                already_printed = true;
+                break;
+            }
+            sprintf(String, "%04X", gMDC1200_ID);
             break;
 
         case MENU_SET_NAV:

@@ -20,8 +20,10 @@
 
 #include "settings.h"
 #include "misc.h"
+#include "radio.h"
 
 #include "audio.h"
+#include "app/mdc1200.h"
 
 #include "driver/bk4819.h"
 #include "driver/gpio.h"
@@ -809,8 +811,7 @@ void BK4819_SetAF(BK4819_AF_Type_t AF)
     // AF Output Inverse Mode = Inverse
     // Undocumented bits 0x2040
     //
-    BK4819_WriteRegister(BK4819_REG_47, 0x6042 | (AF << 8));
-    // BK4819_WriteRegister(BK4819_REG_47, (6u << 12) | (AF << 8) | (1u << 6));
+    BK4819_WriteRegister(BK4819_REG_47, (6u << 12) | (AF << 8) | (1u << 6));
 }
 
 void BK4819_SetRegValue(RegisterSpec s, uint16_t v) {
@@ -1827,8 +1828,226 @@ void BK4819_PlayRoger(void)
     if (gEeprom.ROGER == ROGER_MODE_ROGER) {
         BK4819_PlayRogerNormal();
     } else if (gEeprom.ROGER == ROGER_MODE_MDC) {
-        BK4819_PlayRogerMDC();
+        if (gMDC1200_ID != 0) {
+            uint8_t packet[40];
+            unsigned int size;
+            size = MDC1200_encode_single_packet(packet, MDC1200_OP_CODE_PTT_ID, 0x80, gMDC1200_ID);
+            BK4819_PlayMDC1200(packet, size, false);
+        } else {
+            BK4819_PlayRogerMDC();
+        }
     }
+}
+
+void BK4819_PlayMDC1200(const uint8_t *data, const unsigned int size, const bool long_preamble)
+{
+    uint16_t fsk_reg59;
+    unsigned int i;
+    const uint16_t *p = (const uint16_t *)data;
+
+    AUDIO_AudioPathOff();
+
+    BK4819_WriteRegister(BK4819_REG_50, 0x3B20);
+
+    BK4819_WriteRegister(BK4819_REG_30,
+        BK4819_REG_30_ENABLE_VCO_CALIB |
+        BK4819_REG_30_ENABLE_UNKNOWN   |
+        BK4819_REG_30_ENABLE_AF_DAC    |
+        BK4819_REG_30_ENABLE_DISC_MODE |
+        BK4819_REG_30_ENABLE_PLL_VCO   |
+        BK4819_REG_30_ENABLE_PA_GAIN   |
+        BK4819_REG_30_ENABLE_TX_DSP    |
+    0);
+
+    BK4819_SetAF(BK4819_AF_MUTE);
+
+    const uint16_t css_val = BK4819_ReadRegister(BK4819_REG_51);
+    BK4819_WriteRegister(BK4819_REG_51, 0);
+
+    const uint16_t dev_val = BK4819_ReadRegister(BK4819_REG_40);
+    {
+        uint16_t deviation = 850;
+        if (gCurrentVfo != NULL) {
+            switch (gCurrentVfo->CHANNEL_BANDWIDTH) {
+                case BK4819_FILTER_BW_WIDE:     deviation = 1050; break;
+                case BK4819_FILTER_BW_NARROW:   deviation = 850; break;
+                case BK4819_FILTER_BW_NARROWER: deviation = 750; break;
+                default:                        deviation = 850; break;
+            }
+        }
+        BK4819_WriteRegister(BK4819_REG_40, (dev_val & 0xf000) | (deviation & 0xfff));
+    }
+
+    const uint16_t filt_val = BK4819_ReadRegister(BK4819_REG_2B);
+    BK4819_WriteRegister(BK4819_REG_2B, (1u << 2) | (1u << 0));
+
+    BK4819_WriteRegister(BK4819_REG_58, 0x37C3);
+
+    BK4819_WriteRegister(BK4819_REG_72, scale_freq(1200));
+
+    BK4819_WriteRegister(BK4819_REG_70, 0x00E0);
+
+    fsk_reg59 = (0u << 15) |
+                (0u << 14) |
+                (0u << 13) |
+                (0u << 12) |
+                (0u << 11) |
+                (0u << 10) |
+                (0u <<  9) |
+                (0u <<  8) |
+                (long_preamble ? 15u << 4 : 6u << 4) |
+                (1u <<  3) |
+                (0u <<  0);
+
+    {
+        unsigned int padded_size = ((size + 1) / 2) * 2;
+        BK4819_WriteRegister(BK4819_REG_5D, ((size - 1) << 8));
+
+        BK4819_WriteRegister(BK4819_REG_5A, 0xFB72);
+        BK4819_WriteRegister(BK4819_REG_5B, 0x4099);
+        BK4819_WriteRegister(BK4819_REG_5C, 0xA730);
+
+        BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
+        BK4819_WriteRegister(BK4819_REG_59, fsk_reg59);
+
+        for (i = 0; i < (padded_size / sizeof(p[0])); i++) {
+            uint16_t word;
+            if ((i + 1) * sizeof(p[0]) <= size)
+                word = p[i];
+            else
+                word = data[(i * sizeof(p[0]))] | (0x00 << 8);
+            BK4819_WriteRegister(BK4819_REG_5F, word);
+        }
+    }
+
+    BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_3F_FSK_TX_FINISHED);
+
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 11) | fsk_reg59);
+
+    {
+        unsigned int timeout = 300 / 4;
+        while (timeout-- > 0)
+        {
+            SYSTEM_DelayMs(4);
+            if (BK4819_ReadRegister(BK4819_REG_0C) & (1u << 0))
+            {
+                BK4819_WriteRegister(BK4819_REG_02, 0);
+                if (BK4819_ReadRegister(BK4819_REG_02) & BK4819_REG_02_FSK_TX_FINISHED)
+                    timeout = 0;
+            }
+        }
+    }
+
+    BK4819_WriteRegister(BK4819_REG_59, fsk_reg59);
+    BK4819_WriteRegister(BK4819_REG_3F, 0);
+    BK4819_WriteRegister(BK4819_REG_70, 0);
+    BK4819_WriteRegister(BK4819_REG_58, 0);
+    BK4819_WriteRegister(BK4819_REG_40, dev_val);
+    BK4819_WriteRegister(BK4819_REG_2B, filt_val);
+    BK4819_WriteRegister(BK4819_REG_51, css_val);
+    BK4819_WriteRegister(BK4819_REG_50, 0xBB20);
+    BK4819_WriteRegister(BK4819_REG_47, (1u << 14) | (1u << 13) | (BK4819_AF_MUTE << 8) | (1u << 6));
+    BK4819_WriteRegister(BK4819_REG_30,
+        BK4819_REG_30_ENABLE_VCO_CALIB |
+        BK4819_REG_30_ENABLE_UNKNOWN   |
+        BK4819_REG_30_ENABLE_DISC_MODE |
+        BK4819_REG_30_ENABLE_PLL_VCO   |
+        BK4819_REG_30_ENABLE_PA_GAIN   |
+        BK4819_REG_30_ENABLE_MIC_ADC   |
+        BK4819_REG_30_ENABLE_TX_DSP    |
+    0);
+    BK4819_WriteRegister(BK4819_REG_50, 0x3B20);
+}
+
+void BK4819_DisableMDC1200Rx(void)
+{
+    BK4819_WriteRegister(BK4819_REG_70, 0);
+    BK4819_WriteRegister(BK4819_REG_58, 0);
+}
+
+void BK4819_EnableMDC1200Rx(void)
+{
+    uint16_t fsk_reg59;
+
+    BK4819_WriteRegister(BK4819_REG_70,
+        (0u << 15) |
+        (0u <<  8) |
+        (1u <<  7) |
+        (96u <<  0));
+
+    BK4819_WriteRegister(BK4819_REG_72, scale_freq(1200));
+
+    BK4819_WriteRegister(BK4819_REG_58,
+        (1u << 13) |
+        (7u << 10) |
+        (3u <<  8) |
+        (0u <<  6) |
+        (0u <<  4) |
+        (1u <<  1) |
+        (1u <<  0));
+
+    BK4819_WriteRegister(BK4819_REG_5A, 0xFB72);
+    BK4819_WriteRegister(BK4819_REG_5B, 0x4099);
+
+    BK4819_WriteRegister(BK4819_REG_5C, 0xA730);
+
+    BK4819_WriteRegister(BK4819_REG_5E, (64u << 3) | (1u << 0));
+
+    {
+        uint16_t size = (MDC1200_FEC_K * 2);
+        BK4819_WriteRegister(BK4819_REG_5D, ((size - 1) << 8));
+    }
+
+    fsk_reg59 = (0u << 15) |
+                (0u << 14) |
+                (0u << 13) |
+                (0u << 12) |
+                (0u << 11) |
+                (0u << 10) |
+                (0u <<  9) |
+                (0u <<  8) |
+                (0u <<  4) |
+                (1u <<  3) |
+                (0u <<  0);
+
+    BK4819_WriteRegister(BK4819_REG_02, 0);
+    BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_3F_FSK_RX_FINISHED | BK4819_REG_3F_FSK_FIFO_ALMOST_FULL);
+
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
+}
+
+bool BK4819_ReadMDC1200RxBuffer(uint8_t *data, unsigned int *size)
+{
+    uint16_t fifo_count;
+    uint16_t status;
+    unsigned int i;
+    uint16_t fsk_reg59;
+
+    status = BK4819_ReadRegister(BK4819_REG_0C);
+    if (!(status & 1u))
+        return false;
+
+    fifo_count = BK4819_ReadRegister(BK4819_REG_5E) & 0x00FF;
+    if (fifo_count == 0 || fifo_count > 40) {
+        fsk_reg59 = BK4819_ReadRegister(BK4819_REG_59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
+        BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
+        BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
+        return false;
+    }
+
+    *size = fifo_count * 2;
+    for (i = 0; i < fifo_count; i++) {
+        uint16_t word = BK4819_ReadRegister(BK4819_REG_5F);
+        data[i * 2] = (word >> 8) & 0xFF;
+        data[i * 2 + 1] = word & 0xFF;
+    }
+
+    fsk_reg59 = BK4819_ReadRegister(BK4819_REG_59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
+
+    return true;
 }
 
 void BK4819_Enable_AfDac_DiscMode_TxDsp(void)

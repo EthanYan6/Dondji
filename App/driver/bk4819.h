@@ -169,6 +169,11 @@ void     BK4819_PrepareFSKReceive(void);
 
 void     BK4819_PlayRoger(void);
 
+void     BK4819_PlayMDC1200(const uint8_t *data, const unsigned int size, const bool long_preamble);
+void     BK4819_EnableMDC1200Rx(void);
+void     BK4819_DisableMDC1200Rx(void);
+bool     BK4819_ReadMDC1200RxBuffer(uint8_t *data, unsigned int *size);
+
 void     BK4819_Enable_AfDac_DiscMode_TxDsp(void);
 
 void     BK4819_GetVoxAmp(uint16_t *pResult);

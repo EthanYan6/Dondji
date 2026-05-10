@@ -15,6 +15,7 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 
 #if !defined(ENABLE_OVERLAY)
     #include "py32f0xx.h"
@@ -22,6 +23,7 @@
 #include "app/dtmf.h"
 #include "app/generic.h"
 #include "app/menu.h"
+#include "app/mdc1200.h"
 #include "app/scanner.h"
 #include "audio.h"
 #include "board.h"
@@ -296,6 +298,7 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
 
     if (menu_id == MENU_SQL ||
         menu_id == MENU_ROGER ||
+        menu_id == MENU_MDC_ID ||
         menu_id == MENU_STE ||
         menu_id == MENU_RP_STE ||
         menu_id == MENU_BEEP ||
@@ -371,15 +374,16 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
     {
         if (menu_id == MENU_SQL) return 0u;
         if (menu_id == MENU_ROGER) return 1u;
-        if (menu_id == MENU_STE) return 2u;
-        if (menu_id == MENU_RP_STE) return 3u;
-        if (menu_id == MENU_BEEP) return 4u;
-        if (menu_id == MENU_MIC) return 5u;
-        if (menu_id == MENU_F1SHRT) return 6u;
-        if (menu_id == MENU_F1LONG) return 7u;
-        if (menu_id == MENU_F2SHRT) return 8u;
-        if (menu_id == MENU_F2LONG) return 9u;
-        if (menu_id == MENU_MLONG) return 10u;
+        if (menu_id == MENU_MDC_ID) return 2u;
+        if (menu_id == MENU_STE) return 3u;
+        if (menu_id == MENU_RP_STE) return 4u;
+        if (menu_id == MENU_BEEP) return 5u;
+        if (menu_id == MENU_MIC) return 6u;
+        if (menu_id == MENU_F1SHRT) return 7u;
+        if (menu_id == MENU_F1LONG) return 8u;
+        if (menu_id == MENU_F2SHRT) return 9u;
+        if (menu_id == MENU_F2LONG) return 10u;
+        if (menu_id == MENU_MLONG) return 11u;
     }
 
     if (icon_index == 2u)
@@ -885,6 +889,11 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         case MENU_BATTYP:
             //*pMin = 0;
             *pMax = 4;
+            break;
+
+        case MENU_MDC_ID:
+            *pMin = 0;
+            *pMax = 0xFFFF;
             break;
 
         case MENU_SET_NAV:
@@ -1431,6 +1440,11 @@ void MENU_AcceptSetting(void)
             gEeprom.BATTERY_TYPE = gSubMenuSelection;
             break;
 
+        case MENU_MDC_ID:
+            gMDC1200_ID = (uint16_t)gSubMenuSelection;
+            MDC1200_SaveID();
+            return;
+
         case MENU_SET_NAV:
             gEeprom.SET_NAV = gSubMenuSelection;
             break;
@@ -1894,6 +1908,10 @@ void MENU_ShowCurrentSetting(void)
             gSubMenuSelection = gEeprom.BATTERY_TYPE;
             break;
 
+        case MENU_MDC_ID:
+            gSubMenuSelection = gMDC1200_ID;
+            break;
+
         case MENU_SET_NAV:
             gSubMenuSelection = gEeprom.SET_NAV;
             break;
@@ -2261,6 +2279,20 @@ static void MENU_Key_0_to_9(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         return;
     }
 
+    if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID && edit_index >= 0)
+    {
+        if (edit_index < 4)
+        {
+            if (Key <= KEY_9)
+            {
+                edit[edit_index] = (char)('0' + Key - KEY_0);
+                edit_index++;
+            }
+            gRequestDisplayScreen = DISPLAY_MENU;
+        }
+        return;
+    }
+
     INPUTBOX_Append(Key);
 
     gRequestDisplayScreen = DISPLAY_MENU;
@@ -2531,6 +2563,25 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                 }
             }
 
+            if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID && edit_index >= 0)
+            {
+                if (edit_index > 0)
+                {
+                    edit_index--;
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+                else
+                {
+                    edit_index = -1;
+                    gIsInSubMenu = false;
+                    gInputBoxIndex = 0;
+                    gFlagRefreshSetting = true;
+                    gRequestDisplayScreen = DISPLAY_MENU;
+                    return;
+                }
+            }
+
             /* About (icon 4): EXIT from level 3 returns to level-1 launcher on About, not level-2 list */
             if (UI_MENU_GetCurrentMenuId() == MENU_VOL &&
                 gMenuUseMainOnlyStatus &&
@@ -2730,7 +2781,22 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 
             return;
         }
+    }
 
+    if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
+    {
+        if (edit_index < 0)
+        {
+            sprintf(edit, "%04X", gMDC1200_ID);
+            edit_index = 0;
+            memcpy(edit_original, edit, sizeof(edit_original));
+            gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
+            return;
+        }
+    }
+
+    if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && edit_index >= 0)
+    {
 #ifdef ENABLE_CHINESE
         if (gUiLanguage == UI_LANGUAGE_CN)
         {
@@ -2791,6 +2857,55 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
                 if (memcmp(edit_original, edit, sizeof(edit_original)) == 0)
                     gIsInSubMenu = false;
             }
+        }
+    }
+
+    if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID && edit_index >= 0)
+    {
+        if (edit_index < 4)
+        {
+            edit_index++;
+            if (edit_index >= 4)
+            {
+                uint16_t id = 0;
+                for (int i = 0; i < 4; i++)
+                {
+                    id <<= 4;
+                    if (edit[i] >= '0' && edit[i] <= '9')
+                        id |= (edit[i] - '0');
+                    else if (edit[i] >= 'A' && edit[i] <= 'F')
+                        id |= (edit[i] - 'A' + 10);
+                    else if (edit[i] >= 'a' && edit[i] <= 'f')
+                        id |= (edit[i] - 'a' + 10);
+                }
+                gMDC1200_ID = id;
+                MDC1200_SaveID();
+                edit_index = -1;
+                gIsInSubMenu = false;
+            }
+            else
+            {
+                gRequestDisplayScreen = DISPLAY_MENU;
+                return;
+            }
+        }
+        else
+        {
+            uint16_t id = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                id <<= 4;
+                if (edit[i] >= '0' && edit[i] <= '9')
+                    id |= (edit[i] - '0');
+                else if (edit[i] >= 'A' && edit[i] <= 'F')
+                    id |= (edit[i] - 'A' + 10);
+                else if (edit[i] >= 'a' && edit[i] <= 'f')
+                    id |= (edit[i] - 'a' + 10);
+            }
+            gMDC1200_ID = id;
+            MDC1200_SaveID();
+            edit_index = -1;
+            gIsInSubMenu = false;
         }
     }
 

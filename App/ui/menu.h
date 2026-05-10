@@ -163,6 +163,7 @@ enum
     MENU_F2LONG,
     MENU_MLONG,
     MENU_BATTYP,
+    MENU_MDC_ID,
     MENU_LANGUAGE
 };
 

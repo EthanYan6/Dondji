@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "app/dtmf.h"
+#include "app/mdc1200.h"
 #if defined(ENABLE_FMRADIO)
     #include "app/fm.h"
 #endif
@@ -154,6 +155,9 @@ void FUNCTION_Transmit()
 
     // if DTMF is enabled when TX'ing, it changes the TX audio filtering !! .. 1of11
     BK4819_DisableDTMF();
+
+    if (gEeprom.ROGER == ROGER_MODE_MDC)
+        BK4819_DisableMDC1200Rx();
 
 #ifdef ENABLE_DTMF_CALLING
     // clear the DTMF RX buffer

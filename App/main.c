@@ -42,6 +42,7 @@
 
 #include "app/app.h"
 #include "app/dtmf.h"
+#include "app/mdc1200.h"
 
 #include "driver/backlight.h"
 #include "driver/bk4819.h"
@@ -98,6 +99,8 @@ void Main(void)
     BOARD_ADC_GetBatteryInfo(&gBatteryCurrentVoltage, &gBatteryCurrent);
 
     SETTINGS_InitEEPROM();
+
+    MDC1200_init();
 
     #ifdef ENABLE_FEAT_F4HWN
         gDW = gEeprom.DUAL_WATCH;

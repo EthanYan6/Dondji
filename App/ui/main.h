@@ -52,6 +52,7 @@ void UI_DisplayAudioScope(void);
  * main_screen_just_redrawn：本周期若已执行 GUI_DisplayScreen() 则为 true，用于在整屏刷新后重画边框/话筒，避免每帧整屏重绘闪烁。
  */
 void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn);
+void UI_DisplayMDC1200RxPopup(void);
 #endif
 void UI_MAIN_TimeSlice500ms(void);
 void UI_DisplayMain(void);

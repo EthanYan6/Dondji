@@ -24,6 +24,7 @@ target_sources(App INTERFACE
     app/generic.c
     app/main.c
     app/menu.c
+    app/mdc1200.c
     app/scanner.c
     audio.c
     bitmaps.c
