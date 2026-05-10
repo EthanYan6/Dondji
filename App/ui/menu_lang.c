@@ -118,7 +118,7 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_SET_GUI:      return "\xe8\xae\xbe\xe7\xbd\xae""GUI";
     case MENU_SET_TMR:      return "\xe8\xae\xbe\xe7\xbd\xae\xe5\xae\x9a\xe6\x97\xb6";
 #ifdef ENABLE_FEAT_F4HWN_SLEEP
-    case MENU_SET_OFF:      return "\xe8\xae\xbe\xe7\xbd\xae\xe5\x85\xb3\xe6\x9c\xba";
+    case MENU_SET_OFF:      return "\xe8\xbf\x9b\xe5\x85\xa5\xe4\xbc\x91\xe7\x9c\xa0";
 #endif
 #ifdef ENABLE_FEAT_F4HWN_NARROWER
     case MENU_SET_NFM:      return "\xe8\xae\xbe\xe7\xbd\xae\xe7\xaa\x84\xe5\xb8\xa6";

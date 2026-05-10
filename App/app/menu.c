@@ -343,8 +343,8 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         return in_about;       // About
     if (!in_other)
         return false;
-    if (icon_index == 3u && menu_id == MENU_TX_LOCK)
-        return false;          // Other: hide TX_LOCK entry
+    if (icon_index == 3u && (menu_id == MENU_TX_LOCK || menu_id == MENU_SET_TMR))
+        return false;          // Other: hide TX_LOCK and SET_TMR entry
     return true;
 }
 
