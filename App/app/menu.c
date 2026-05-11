@@ -231,10 +231,6 @@ static bool MENU_IsHiddenDtmfMenu(uint8_t menu_id)
 
 bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 {
-#if defined(ENABLE_FEAT_F4HWN) && defined(ENABLE_FEAT_F4HWN_AUDIO)
-    if (menu_id == MENU_SET_AUD)
-        return true;
-#endif
     if (menu_id == MENU_350EN)
         return true;
     return menu_id == MENU_PONMSG ||

@@ -133,7 +133,7 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_NOAA_S:       return "\xe8\xae\xbe""NWR";
 #endif
 #ifdef ENABLE_FEAT_F4HWN_AUDIO
-    case MENU_SET_AUD:      return "\xe8\xae\xbe""RxA";
+    case MENU_SET_AUD:      return "\xe9\x9f\xb3\xe9\xa2\x91\xe9\xa2\x84\xe8\xae\xbe";
 #endif
     case MENU_SET_NAV:      return "\xe5\xaf\xbc\xe8\x88\xaa\xe9\x94\xae";
 #endif
