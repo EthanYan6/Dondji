@@ -3733,20 +3733,17 @@ void UI_DisplayMenu(void)
         /*
          * 存信道 / 删信道 / 命名信道 / 复位：共用本段。
          * 标点与 FM 页一致：汉字 + 英文 ? / !（勿用全角 U+FF1F/U+FF01，混排绘制更稳）。
+         * 根据当前语言设置动态选择提示语言。
          */
         if (gAskForConfirmation == 1) {
-            /* 确 U+786E = UTF-8 E7 A1 AE */
-            pPrintStr = "\xe7\xa1\xae\xe8\xae\xa4?";
+            pPrintStr = (gUiLanguage == UI_LANGUAGE_CN) ? "\xe7\xa1\xae\xe8\xae\xa4?" : "SURE?";
         } else {
-            pPrintStr = "\xe8\xaf\xb7\xe7\xad\x89\xe5\xbe\x85!";
+            pPrintStr = (gUiLanguage == UI_LANGUAGE_CN) ? "\xe8\xaf\xb7\xe7\xad\x89\xe5\xbe\x85!" : "WAIT!";
         }
-#else
-        pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
-#endif
-#ifdef ENABLE_CHINESE
         /* 整行宽度居中 */
         UI_PrintStringSmallAtPixel(pPrintStr, 0u, LCD_WIDTH - 1u, 52u, 59u, 3u);
 #else
+        pPrintStr = (gAskForConfirmation == 1) ? "SURE?" : "WAIT!";
         UI_PrintStringSmallNormal(pPrintStr, menu_value_x1, menu_item_x2, 6);
 #endif
     }
