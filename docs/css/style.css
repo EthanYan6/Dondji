@@ -896,6 +896,59 @@ html.theme-light .theme-toggle__icon--moon {
   display: block;
 }
 
+.top-right-buttons {
+  position: fixed;
+  top: calc(44px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--shadow-kicker);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  text-decoration: none;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.help-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.help-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.help-btn__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.help-btn__text {
+  white-space: nowrap;
+}
+
+.top-right-buttons .theme-toggle {
+  position: static;
+}
+
 /* 全局轻提示（替代 alert），固定在右上角 */
 .app-toast-root {
   position: fixed;

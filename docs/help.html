@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>帮助文档 - 叮咚鸡（Dondji）</title>
+  <link rel="stylesheet" href="css/style.css?v=20260509">
+  <link rel="stylesheet" href="css/help.css?v=20260511">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('uvk1-web-theme') === 'light') {
+          document.documentElement.classList.add('theme-light');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="help-page">
+  <header class="help-header">
+    <a href="index.html" class="help-back-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      <span>返回</span>
+    </a>
+    <h1 class="help-title">帮助文档</h1>
+    <button type="button" id="themeToggleBtn" class="theme-toggle theme-toggle--help" title="切换浅色主题" aria-label="切换浅色主题">
+      <svg class="theme-toggle__icon theme-toggle__icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+      <svg class="theme-toggle__icon theme-toggle__icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="help-layout">
+    <aside class="help-sidebar" id="helpSidebar">
+      <nav class="help-toc" id="helpToc">
+        <div class="help-toc-loading">加载中...</div>
+      </nav>
+    </aside>
+
+    <main class="help-content" id="helpContent">
+      <div class="help-content-loading">
+        <div class="loading-spinner"></div>
+        <span>正在加载文档...</span>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    (function() {
+      var themeBtn = document.getElementById('themeToggleBtn');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+          var isLight = document.documentElement.classList.toggle('theme-light');
+          try {
+            localStorage.setItem('uvk1-web-theme', isLight ? 'light' : 'dark');
+          } catch (e) {}
+        });
+      }
+    })();
+
+    function extractHeadings(html) {
+      var headings = [];
+      var tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      var headingElements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      headingElements.forEach(function(heading, index) {
+        var id = 'heading-' + index + '-' + heading.textContent.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+        heading.id = id;
+        headings.push({
+          level: parseInt(heading.tagName.charAt(1)),
+          id: id,
+          text: heading.textContent
+        });
+      });
+      return tempDiv.innerHTML;
+    }
+
+    function buildToc(headings) {
+      if (headings.length === 0) {
+        return '<div class="help-toc-empty">暂无目录</div>';
+      }
+
+      var html = '<ul class="help-toc-list">';
+      headings.forEach(function(heading) {
+        var indent = (heading.level - 1) * 16;
+        html += '<li class="help-toc-item help-toc-item--level-' + heading.level + '" style="padding-left: ' + indent + 'px">';
+        html += '<a href="#' + heading.id + '" class="help-toc-link">' + heading.text + '</a>';
+        html += '</li>';
+      });
+      html += '</ul>';
+      return html;
+    }
+
+    function loadHelpDoc() {
+      var contentEl = document.getElementById('helpContent');
+      var tocEl = document.getElementById('helpToc');
+
+      function renderMarkdown(md) {
+        marked.setOptions({
+          breaks: true,
+          gfm: true
+        });
+        
+        var rawHtml = marked.parse(md);
+        var headings = [];
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = rawHtml;
+        
+        var headingElements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headingElements.forEach(function(heading, index) {
+          var id = 'heading-' + index + '-' + heading.textContent.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+          heading.id = id;
+          headings.push({
+            level: parseInt(heading.tagName.charAt(1)),
+            id: id,
+            text: heading.textContent
+          });
+        });
+        
+        contentEl.innerHTML = tempDiv.innerHTML;
+        tocEl.innerHTML = buildToc(headings);
+
+        var tocLinks = document.querySelectorAll('.help-toc-link');
+        tocLinks.forEach(function(link) {
+          link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = this.getAttribute('href').slice(1);
+            var targetElement = document.getElementById(targetId);
+            if (targetElement) {
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              history.pushState(null, null, '#' + targetId);
+            }
+          });
+        });
+
+        if (window.location.hash) {
+          var targetId = window.location.hash.slice(1);
+          var targetElement = document.getElementById(targetId);
+          if (targetElement) {
+            setTimeout(function() {
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+          }
+        }
+      }
+
+      function loadWithXhr() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'help.md?v=' + Date.now(), true);
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status === 200 || xhr.status === 0) {
+              renderMarkdown(xhr.responseText);
+            } else {
+              contentEl.innerHTML = '<div class="help-content-error"><p>加载文档失败</p><p>请确保 help.md 文件存在。</p></div>';
+              tocEl.innerHTML = '<div class="help-toc-empty">加载失败</div>';
+            }
+          }
+        };
+        xhr.send();
+      }
+
+      fetch('help.md?v=' + Date.now())
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('无法加载文档: ' + response.status);
+          }
+          return response.text();
+        })
+        .then(renderMarkdown)
+        .catch(function(error) {
+          loadWithXhr();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadHelpDoc);
+    } else {
+      loadHelpDoc();
+    }
+  </script>
+</body>
+</html>
