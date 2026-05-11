@@ -622,7 +622,7 @@ void FM_Play(void)
         }
     }
 
-    if (gFM_AutoScan && gEeprom.FM_FrequencyPlaying >= BK1080_GetFreqHiLimit(1))
+    if (gFM_AutoScan && gEeprom.FM_FrequencyPlaying >= BK1080_GetFreqHiLimit(gEeprom.FM_Band))
         FM_PlayAndUpdate();
     else
         FM_Tune(gEeprom.FM_FrequencyPlaying, gFM_ScanState, false);
