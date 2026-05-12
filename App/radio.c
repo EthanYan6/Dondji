@@ -429,6 +429,8 @@ void RADIO_ConfigureChannel(const unsigned int VFO, const unsigned int configure
             pVfo->FrequencyReverse  = !!((d4 >> 0) & 1u);
             pVfo->CHANNEL_BANDWIDTH = !!((d4 >> 1) & 1u);
             pVfo->OUTPUT_POWER      =   ((d4 >> 2) & 7u);
+            if (pVfo->OUTPUT_POWER < OUTPUT_POWER_LOW1 || pVfo->OUTPUT_POWER > OUTPUT_POWER_HIGH)
+                pVfo->OUTPUT_POWER = OUTPUT_POWER_LOW1;
             pVfo->BUSY_CHANNEL_LOCK = !!((d4 >> 5) & 1u);
             pVfo->TX_LOCK           = !!((d4 >> 6) & 1u);
         }
