@@ -3106,7 +3106,11 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
         if (gMenuMainPageActive)
         {
             const uint8_t icon_count = MENU_MainPageIconCount();
-            gSubMenuSelection = NUMBER_AddWithWraparound(gSubMenuSelection, -Direction, 0, icon_count > 0 ? (icon_count - 1) : 0);
+            // Level-1: respect SET_NAV setting
+            if (!gEeprom.SET_NAV) {
+                Direction = -Direction;
+            }
+            gSubMenuSelection = NUMBER_AddWithWraparound(gSubMenuSelection, Direction, 0, icon_count > 0 ? (icon_count - 1) : 0);
             gRequestDisplayScreen = DISPLAY_MENU;
             return;
         }
