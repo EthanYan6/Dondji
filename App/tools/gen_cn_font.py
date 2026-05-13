@@ -305,6 +305,17 @@ PINYIN_MAP = {
     '装': 'zhuang',
     '旅': 'lv',
     '眠': 'mian',
+    # 缺字补充
+    '免': 'mian',
+    '滤': 'lv',
+    '所': 'suo',
+    '值': 'zhi',
+    '佬': 'lao',
+    '洁': 'jie',
+    '讲': 'jiang',
+    '禾': 'he',
+    '渔': 'yu',
+    '鹏': 'peng',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
