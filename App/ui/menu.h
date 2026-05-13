@@ -133,7 +133,9 @@ enum
     MENU_SET_PTT,
     MENU_SET_TOT,
     MENU_SET_EOT,
+#ifdef ENABLE_FEAT_F4HWN_CTR
     MENU_SET_CTR,
+#endif
     MENU_SET_INV,
     MENU_SET_LCK,
     MENU_SET_MET,

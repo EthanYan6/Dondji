@@ -316,7 +316,9 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_ABR_MIN ||
         menu_id == MENU_ABR_MAX ||
         menu_id == MENU_ABR_ON_TX_RX ||
+#ifdef ENABLE_FEAT_F4HWN_CTR
         menu_id == MENU_SET_CTR ||
+#endif
         menu_id == MENU_SET_INV ||
         menu_id == MENU_BAT_TXT
 #ifdef ENABLE_AUDIO_BAR
@@ -393,7 +395,9 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_ABR_MIN) return 4u;
         if (menu_id == MENU_ABR_MAX) return 5u;
         if (menu_id == MENU_ABR_ON_TX_RX) return 6u;
+#ifdef ENABLE_FEAT_F4HWN_CTR
         if (menu_id == MENU_SET_CTR) return 7u;
+#endif
         if (menu_id == MENU_SET_INV) return 8u;
         if (menu_id == MENU_BAT_TXT) return 9u;
 #ifdef ENABLE_AUDIO_BAR

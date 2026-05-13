@@ -142,9 +142,11 @@ void SETTINGS_InitEEPROM(void)
         gEeprom.KEY_LOCK = (Data[4] & 0x01) != 0;
         gEeprom.MENU_LOCK = (Data[4] & 0x02) != 0;
         gEeprom.SET_KEY = ((Data[4] >> 2) & 0x0F) > 4 ? 0 : (Data[4] >> 2) & 0x0F;
-        gEeprom.SET_NAV = (Data[4] & 0x40) != 0;
     #else
         gEeprom.KEY_LOCK             = (Data[4] <  2) ? Data[4] : false;
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN
+        gEeprom.SET_NAV = (Data[4] & 0x40) != 0;
     #endif
     #ifdef ENABLE_VOX
         gEeprom.VOX_SWITCH       = (Data[5] <  2) ? Data[5] : false;
@@ -827,10 +829,12 @@ void SETTINGS_SaveSettings(void)
         State[4] =
             (gEeprom.KEY_LOCK        ? 0x01 : 0) |
             (gEeprom.MENU_LOCK       ? 0x02 : 0) |
-            ((gEeprom.SET_KEY & 0x0F) << 2)      |
-            (gEeprom.SET_NAV  ? 0x40 : 0);
+            ((gEeprom.SET_KEY & 0x0F) << 2);
     #else
         State[4] = gEeprom.KEY_LOCK;
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN
+        State[4] |= (gEeprom.SET_NAV  ? 0x40 : 0);
     #endif
 
     #ifdef ENABLE_VOX
@@ -1073,7 +1077,11 @@ void SETTINGS_SaveSettings(void)
             (gSetting_set_met << 2) |
             (gSetting_set_gui << 3);
 
+#ifdef ENABLE_FEAT_F4HWN_CTR
     State[5] = ((tmp << 4) | (gSetting_set_ctr & 0x0F));
+#else
+    State[5] = ((tmp << 4) | 10);
+#endif
     gSetting_set_tot = 0;
     gSetting_set_eot = 0;
     State[6] = ((gSetting_set_tot << 4) | (gSetting_set_eot & 0x0F));

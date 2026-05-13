@@ -504,7 +504,9 @@ const t_menu_item MenuList[] =
     {"SetPTT",      MENU_SET_PTT       },
     {"SetTOT",      MENU_SET_TOT       },
     {"SetEOT",      MENU_SET_EOT       },
+#ifdef ENABLE_FEAT_F4HWN_CTR
     {"SetCtr",      MENU_SET_CTR       },
+#endif
     {"SetInv",      MENU_SET_INV       },
 #ifdef ENABLE_FEAT_F4HWN_AUDIO    
     {"SetRxA",      MENU_SET_AUD       },
@@ -1435,13 +1437,16 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         else
         #endif
 #ifdef ENABLE_FEAT_F4HWN
+#ifdef ENABLE_FEAT_F4HWN_CTR
         if (UI_MENU_GetCurrentMenuId() == MENU_SET_CTR)
         {
             /* 设置对比度：设置 / 对比度 */
             UI_PrintStringSmallAtPixel("\xe8\xae\xbe\xe7\xbd\xae", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("\xe5\xaf\xb9\xe6\xaf\x94\xe5\xba\xa6", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
         }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_TX_LOCK)
+        else
+#endif
+        if (UI_MENU_GetCurrentMenuId() == MENU_TX_LOCK)
         {
             UI_PrintStringSmallAtPixel("\xe6\xae\xb5\xe5\xa4\x96", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
             UI_PrintStringSmallAtPixel("\xe5\x8f\x91\xe5\xb0\x84\xe9\x94\x81", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
@@ -3382,15 +3387,13 @@ void UI_DisplayMenu(void)
             strcpy(String, SUBV(gSubMenu_SET_TOT[gSubMenuSelection], gSubMenu_SET_TOT_CN[gSubMenuSelection]));
             break;
 
+#ifdef ENABLE_FEAT_F4HWN_CTR
         case MENU_SET_CTR:
-            #ifdef ENABLE_FEAT_F4HWN_CTR
-                sprintf(String, "%d", gSubMenuSelection);
-                gSetting_set_ctr = gSubMenuSelection;
-                ST7565_ContrastAndInv();
-            #else
-                strcpy(String, gSubMenu_NA);
-            #endif
+            sprintf(String, "%d", gSubMenuSelection);
+            gSetting_set_ctr = gSubMenuSelection;
+            ST7565_ContrastAndInv();
             break;
+#endif
 
         case MENU_SET_INV:
             #ifdef ENABLE_FEAT_F4HWN_INV
