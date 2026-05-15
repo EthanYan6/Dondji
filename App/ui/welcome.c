@@ -204,13 +204,31 @@ void UI_DisplayWelcome(void)
 #endif
     UI_DisplayClear();
 
+    if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_LOGO) {
+#define LOGO_FLASH_ADDR     0x1FF000
+#define LOGO_HEADER_SIZE    8
+#define LOGO_BITMAP_ADDR    (LOGO_FLASH_ADDR + LOGO_HEADER_SIZE)
+        uint8_t logo_header[LOGO_HEADER_SIZE];
+        PY25Q16_ReadBuffer(LOGO_FLASH_ADDR, logo_header, sizeof(logo_header));
+        if (logo_header[0] == 'D' && logo_header[1] == 'O' && logo_header[2] == 'N' && logo_header[3] == 'D') {
+            PY25Q16_ReadBuffer(LOGO_BITMAP_ADDR, gStatusLine, sizeof(gStatusLine));
+            PY25Q16_ReadBuffer(LOGO_BITMAP_ADDR + sizeof(gStatusLine), gFrameBuffer, sizeof(gFrameBuffer));
+            ST7565_BlitStatusLine();
+            ST7565_BlitFullScreen();
+#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_Update(true);
+#endif
+            return;
+        }
+    }
+
 #ifdef ENABLE_FEAT_F4HWN
     ST7565_BlitFullScreenDualVfoTightTop();
 
-    if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_NONE || gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_SOUND) {
+    if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_NONE) {
         ST7565_FillScreen(0x00);
 #else
-    if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_NONE || gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_FULL_SCREEN) {
+    if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_NONE) {
         ST7565_FillScreen(0xFF);
 #endif
     } else {
@@ -218,9 +236,7 @@ void UI_DisplayWelcome(void)
         memset(WelcomeString0, 0, sizeof(WelcomeString0));
         memset(WelcomeString1, 0, sizeof(WelcomeString1));
 
-        // 0x0EB0
         PY25Q16_ReadBuffer(0x00A0C8, WelcomeString0, 16);
-        // 0x0EC0
         PY25Q16_ReadBuffer(0x00A0D8, WelcomeString1, 16);
 
         sprintf(WelcomeString2, "%u.%02uV %u%%",
@@ -228,41 +244,20 @@ void UI_DisplayWelcome(void)
                 gBatteryVoltageAverage % 100,
                 BATTERY_VoltsToPercent(gBatteryVoltageAverage));
 
-        if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_VOLTAGE)
+        if(strlen(WelcomeString0) == 0 && strlen(WelcomeString1) == 0)
         {
-            strcpy(WelcomeString0, "VOLTAGE");
+            strcpy(WelcomeString0, "WELCOME");
             strcpy(WelcomeString1, WelcomeString2);
         }
-        else if(gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_ALL)
-        {
-            if(strlen(WelcomeString0) == 0 && strlen(WelcomeString1) == 0)
-            {
-                strcpy(WelcomeString0, "WELCOME");
-                strcpy(WelcomeString1, WelcomeString2);
-            }
-            else if(strlen(WelcomeString0) == 0 || strlen(WelcomeString1) == 0)
-            {
-                if(strlen(WelcomeString0) == 0)
-                {
-                    strcpy(WelcomeString0, WelcomeString1);
-                }
-                strcpy(WelcomeString1, WelcomeString2);
-            }
-        }
-        else if(gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_MESSAGE)
+        else if(strlen(WelcomeString0) == 0 || strlen(WelcomeString1) == 0)
         {
             if(strlen(WelcomeString0) == 0)
             {
-                strcpy(WelcomeString0, "WELCOME");
+                strcpy(WelcomeString0, WelcomeString1);
             }
-
-            if(strlen(WelcomeString1) == 0)
-            {
-                strcpy(WelcomeString1, "BIENVENUE");
-            }
+            strcpy(WelcomeString1, WelcomeString2);
         }
 
-        /* 开机首行：菜单「开机提示」可选「叮咚鸡」/「魅力北京」/「五五节纪念版」；第二行仍为电压/EEPROM（WelcomeString1） */
 #ifdef ENABLE_CHINESE
         if (gUiLanguage == UI_LANGUAGE_CN) {
             if (gSetting_boot_hint == 0) {

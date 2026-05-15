@@ -20,7 +20,7 @@ extern const char gSubMenu_D_RSP_CN[][11];
 #endif
 
 extern const char *const gSubMenu_PTT_ID_CN[];
-extern const char gSubMenu_PONMSG_CN[][8];
+extern const char gSubMenu_PONMSG_CN[][10];
 extern const char *const gSubMenu_BOOT_HINT_CN[];
 extern const char gSubMenu_ROGER_CN[][6];
 extern const char gSubMenu_RESET_CN[][8];

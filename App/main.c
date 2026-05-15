@@ -213,11 +213,7 @@ void Main(void)
 
         BACKLIGHT_TurnOn();
 
-#ifdef ENABLE_FEAT_F4HWN
-        if (gEeprom.POWER_ON_DISPLAY_MODE != POWER_ON_DISPLAY_MODE_NONE && gEeprom.POWER_ON_DISPLAY_MODE != POWER_ON_DISPLAY_MODE_SOUND)
-#else
         if (gEeprom.POWER_ON_DISPLAY_MODE != POWER_ON_DISPLAY_MODE_NONE)
-#endif
         {   // 2.55 second boot-up screen
             while (boot_counter_10ms > 0)
             {

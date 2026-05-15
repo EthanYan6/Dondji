@@ -233,6 +233,7 @@
       <button class="tab" type="button" data-tab="font" id="tabFont">刷字库</button>
       <button class="tab" type="button" data-tab="restore" id="tabRestore">恢复校准</button>
       <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq">写频</button>
+      <button class="tab" type="button" data-tab="logo" id="tabLogo">开机图片</button>
     </div>
 
     <!-- FLASH FIRMWARE TAB -->
@@ -413,6 +414,62 @@
       <p id="writefreqValidation" class="writefreq-validation" style="display:none;"></p>
     </div>
 
+    <!-- BOOT LOGO TAB -->
+    <div class="tab-content" id="logo-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          上传自定义 128×64 开机图片到对讲机。支持 PNG、JPG、BMP 等格式，图片会自动缩放并转为单色位图。
+          在菜单「开机画面」中选择「自定义」即可显示。
+        </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 请先<strong>正常开机进入使用界面</strong>后再连接 USB 操作（与刷字库、备份校准相同，无需 BOOT 模式）。
+        </p>
+      </section>
+
+      <section class="section">
+        <label>选择图片</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="logoImageFile" accept="image/*" aria-label="选择开机图片">
+          <div class="file-input-label" id="logoImageFileLabel">
+            <span class="file-name" id="logoImageFileName">未选择文件</span>
+            <span class="file-button">选择图片</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div>
+            <label for="logoThreshold" style="display:block;margin-bottom:4px;">阈值</label>
+            <input type="range" id="logoThreshold" min="0" max="255" value="128" style="width:160px;">
+            <span id="logoThresholdValue" style="margin-left:8px;">128</span>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;">反色</label>
+            <label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+              <input type="checkbox" id="logoInvert">
+              <span>反转黑白</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <label>预览</label>
+        <div style="background:#1a1a2e;border:1px solid #30363d;border-radius:6px;padding:8px;display:inline-block;">
+          <canvas id="logoPreviewCanvas" width="128" height="64" style="width:256px;height:128px;image-rendering:pixelated;display:block;"></canvas>
+        </div>
+      </section>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button id="logoUploadBtn" disabled>上传开机图片</button>
+        <button id="logoReadBtn">读取开机图片</button>
+      </div>
+      <div class="download-link" id="logoDownload" style="display:none;">
+        <a href="#" id="logoDownloadLink" download="boot_logo.png">下载 boot_logo.png</a>
+      </div>
+    </div>
+
     <!-- 日志默认插入位置（写频标签下会移到 #logDockWritefreq） -->
     <div id="logAnchorDefault" class="log-anchor-default" aria-hidden="true"></div>
     <!-- CONSOLE LOG -->
@@ -430,7 +487,7 @@
     </section>
 
     <aside class="info-box">
-      <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。<strong>仅刷固件</strong>需进入 BOOT 模式（按住 PTT 开机）。<strong>刷字库、备份校准、恢复校准</strong>均在<strong>正常开机使用界面</strong>下连接 USB 操作。
+      <strong>注意：</strong>需要 Chrome / Edge / Opera 浏览器。<strong>仅刷固件</strong>需进入 BOOT 模式（按住 PTT 开机）。<strong>刷字库、备份校准、恢复校准、开机图片</strong>均在<strong>正常开机使用界面</strong>下连接 USB 操作。
     </aside>
 
     <footer class="footer">

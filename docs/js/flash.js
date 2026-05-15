@@ -183,6 +183,9 @@ const CN_FONT_CHAR_COUNT = 1309;
 const CN_FONT_VERSION     = 2;
 const SPI_CHUNK_SIZE      = 48;
 const CALIB_SIZE          = 512;
+const LOGO_FLASH_ADDR     = 0x1FF000;
+const LOGO_HEADER_SIZE    = 8;
+const LOGO_BITMAP_SIZE    = 1024;
 const CALIB_CHUNK         = 16;
 
 /** 校准区在 EEPROM 中的起始地址：与 UVTools2 一致，v5.0.0 起为 0xB000，更早固件为 0x1E00（由导出/恢复时请求设备信息解析） */
@@ -4264,3 +4267,257 @@ function flashStepsInitFloatingTooltips() {
 }
 
 flashStepsInitFloatingTooltips();
+
+// ========== BOOT LOGO UPLOAD ==========
+(function initBootLogoTab() {
+  const logoImageFileInput = $('logoImageFile');
+  const logoImageFileName = $('logoImageFileName');
+  const logoThreshold = $('logoThreshold');
+  const logoThresholdValue = $('logoThresholdValue');
+  const logoInvert = $('logoInvert');
+  const logoPreviewCanvas = $('logoPreviewCanvas');
+  const logoUploadBtn = $('logoUploadBtn');
+  const logoReadBtn = $('logoReadBtn');
+  const logoDownload = $('logoDownload');
+  const logoDownloadLink = $('logoDownloadLink');
+
+  if (!logoImageFileInput || !logoPreviewCanvas) return;
+
+  let logoImageData = null;
+  let currentImage = null;
+
+  function imageToMonochromeBitmap(img, threshold, invert) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.drawImage(img, 0, 0, 128, 64);
+    const imgData = ctx.getImageData(0, 0, 128, 64);
+    const pixels = imgData.data;
+    const bitmap = new Uint8Array(1024);
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 128; x++) {
+        const idx = (y * 128 + x) * 4;
+        const gray = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+        let on = gray >= threshold;
+        if (invert) on = !on;
+        if (on) {
+          const page = y >> 3;
+          const bit = y & 7;
+          bitmap[page * 128 + x] |= (1 << bit);
+        }
+      }
+    }
+    return bitmap;
+  }
+
+  function renderPreview(img, threshold, invert) {
+    if (!img) return;
+    const bitmap = imageToMonochromeBitmap(img, threshold, invert);
+    const ctx = logoPreviewCanvas.getContext('2d');
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = '#ffffff';
+    for (let page = 0; page < 8; page++) {
+      for (let x = 0; x < 128; x++) {
+        const byte = bitmap[page * 128 + x];
+        for (let bit = 0; bit < 8; bit++) {
+          if (byte & (1 << bit)) {
+            ctx.fillRect(x, page * 8 + bit, 1, 1);
+          }
+        }
+      }
+    }
+    logoImageData = bitmap;
+  }
+
+  function bitmapToCanvas(bitmap) {
+    const ctx = logoPreviewCanvas.getContext('2d');
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = '#ffffff';
+    for (let page = 0; page < 8; page++) {
+      for (let x = 0; x < 128; x++) {
+        const byte = bitmap[page * 128 + x];
+        for (let bit = 0; bit < 8; bit++) {
+          if (byte & (1 << bit)) {
+            ctx.fillRect(x, page * 8 + bit, 1, 1);
+          }
+        }
+      }
+    }
+  }
+
+  function bitmapToPngDataUrl(bitmap) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = '#ffffff';
+    for (let page = 0; page < 8; page++) {
+      for (let x = 0; x < 128; x++) {
+        const byte = bitmap[page * 128 + x];
+        for (let bit = 0; bit < 8; bit++) {
+          if (byte & (1 << bit)) {
+            ctx.fillRect(x, page * 8 + bit, 1, 1);
+          }
+        }
+      }
+    }
+    return canvas.toDataURL('image/png');
+  }
+
+  logoImageFileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) {
+      logoImageFileName.textContent = '未选择文件';
+      logoUploadBtn.disabled = true;
+      currentImage = null;
+      logoImageData = null;
+      return;
+    }
+    logoImageFileName.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        currentImage = img;
+        renderPreview(img, parseInt(logoThreshold.value), logoInvert.checked);
+        logoUploadBtn.disabled = false;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  logoThreshold.addEventListener('input', function() {
+    logoThresholdValue.textContent = logoThreshold.value;
+    if (currentImage) {
+      renderPreview(currentImage, parseInt(logoThreshold.value), logoInvert.checked);
+    }
+  });
+
+  logoInvert.addEventListener('change', function() {
+    if (currentImage) {
+      renderPreview(currentImage, parseInt(logoThreshold.value), logoInvert.checked);
+    }
+  });
+
+  logoUploadBtn.addEventListener('click', async function() {
+    if (!logoImageData) {
+      log('请先选择一张图片', 'error');
+      return;
+    }
+    if (!port) {
+      try {
+        await connect();
+      } catch(e) {
+        log('连接失败: ' + e.message, 'error');
+        return;
+      }
+    }
+    try {
+      isFlashing = true;
+      logoUploadBtn.disabled = true;
+      log('正在上传开机图片...', 'info');
+
+      const session = await requestDeviceInfoForCalib();
+      const ts = session.timestamp;
+
+      const header = new Uint8Array(LOGO_HEADER_SIZE);
+      header[0] = 0x44;
+      header[1] = 0x4F;
+      header[2] = 0x4E;
+      header[3] = 0x44;
+      header[4] = 0x4A;
+      header[5] = 0x49;
+      header[6] = 0x01;
+      header[7] = 0x00;
+
+      let written = 0;
+      const totalSize = LOGO_HEADER_SIZE + LOGO_BITMAP_SIZE;
+
+      for (let off = 0; off < header.length; off += SPI_CHUNK_SIZE) {
+        const chunkLen = Math.min(SPI_CHUNK_SIZE, header.length - off);
+        const chunk = header.slice(off, off + chunkLen);
+        const ok = await spiFlashWriteChunk(ts, LOGO_FLASH_ADDR + off, chunk);
+        if (!ok) throw new Error('写入 logo 头部失败 @ 0x' + (LOGO_FLASH_ADDR + off).toString(16));
+        written += chunkLen;
+        updateProgress((written / totalSize) * 100);
+        await sleep(50);
+      }
+
+      for (let off = 0; off < logoImageData.length; off += SPI_CHUNK_SIZE) {
+        const chunkLen = Math.min(SPI_CHUNK_SIZE, logoImageData.length - off);
+        const raw = logoImageData.slice(off, off + chunkLen);
+        const chunk = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) chunk[i] = raw[i] ^ 0xFF;
+        const ok = await spiFlashWriteChunk(ts, LOGO_FLASH_ADDR + LOGO_HEADER_SIZE + off, chunk);
+        if (!ok) throw new Error('写入 logo 数据失败 @ 0x' + (LOGO_FLASH_ADDR + LOGO_HEADER_SIZE + off).toString(16));
+        written += chunkLen;
+        updateProgress((written / totalSize) * 100);
+        if ((off / SPI_CHUNK_SIZE) % 10 === 0)
+          log('已写入 ' + written + '/' + totalSize + ' bytes', 'info');
+        await sleep(50);
+      }
+
+      updateProgress(100);
+      log('开机图片上传成功！请在菜单「开机画面」中选择「自定义」', 'success');
+    } catch(e) {
+      log('上传失败: ' + e.message, 'error');
+    } finally {
+      isFlashing = false;
+      logoUploadBtn.disabled = !logoImageData;
+    }
+  });
+
+  logoReadBtn.addEventListener('click', async function() {
+    if (!port) {
+      try {
+        await connect();
+      } catch(e) {
+        log('连接失败: ' + e.message, 'error');
+        return;
+      }
+    }
+    try {
+      logoReadBtn.disabled = true;
+      log('正在读取开机图片...', 'info');
+
+      const session = await requestDeviceInfoForCalib();
+      const ts = session.timestamp;
+
+      const bitmap = new Uint8Array(LOGO_BITMAP_SIZE);
+      let readBytes = 0;
+
+      for (let off = 0; off < LOGO_BITMAP_SIZE; off += SPI_CHUNK_SIZE) {
+        const chunkLen = Math.min(SPI_CHUNK_SIZE, LOGO_BITMAP_SIZE - off);
+        const chunk = await spiFlashReadChunk(ts, LOGO_FLASH_ADDR + LOGO_HEADER_SIZE + off, chunkLen);
+        if (!chunk || chunk.length !== chunkLen) {
+          throw new Error('读取 logo 数据失败 @ 0x' + (LOGO_FLASH_ADDR + LOGO_HEADER_SIZE + off).toString(16));
+        }
+        bitmap.set(chunk, off);
+        for (let i = off; i < off + chunkLen; i++) bitmap[i] ^= 0xFF;
+        readBytes += chunkLen;
+        updateProgress((readBytes / LOGO_BITMAP_SIZE) * 100);
+      }
+
+      updateProgress(100);
+      bitmapToCanvas(bitmap);
+      logoImageData = bitmap;
+
+      const dataUrl = bitmapToPngDataUrl(bitmap);
+      logoDownloadLink.href = dataUrl;
+      logoDownload.style.display = 'block';
+      log('开机图片读取成功', 'success');
+    } catch(e) {
+      log('读取失败: ' + e.message, 'error');
+    } finally {
+      logoReadBtn.disabled = false;
+    }
+  });
+})();

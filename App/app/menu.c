@@ -233,8 +233,9 @@ bool MENU_IsMenuIdExcludedFromBrowse(uint8_t menu_id)
 {
     if (menu_id == MENU_350EN)
         return true;
-    return menu_id == MENU_PONMSG ||
-           menu_id == MENU_UPCODE ||
+    if (menu_id == MENU_BOOT_HINT && gEeprom.POWER_ON_DISPLAY_MODE != POWER_ON_DISPLAY_MODE_DEFAULT)
+        return true;
+    return menu_id == MENU_UPCODE ||
            menu_id == MENU_DWCODE ||
            menu_id == MENU_PTT_ID ||
            menu_id == MENU_VOX ||
@@ -311,6 +312,7 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
 
     if (menu_id == MENU_LANGUAGE ||
         menu_id == MENU_TDR ||
+        menu_id == MENU_PONMSG ||
         menu_id == MENU_BOOT_HINT ||
         menu_id == MENU_ABR ||
         menu_id == MENU_ABR_MIN ||
@@ -390,18 +392,19 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
     {
         if (menu_id == MENU_LANGUAGE) return 0u;
         if (menu_id == MENU_TDR) return 1u;
-        if (menu_id == MENU_BOOT_HINT) return 2u;
-        if (menu_id == MENU_ABR) return 3u;
-        if (menu_id == MENU_ABR_MIN) return 4u;
-        if (menu_id == MENU_ABR_MAX) return 5u;
-        if (menu_id == MENU_ABR_ON_TX_RX) return 6u;
+        if (menu_id == MENU_PONMSG) return 2u;
+        if (menu_id == MENU_BOOT_HINT) return 3u;
+        if (menu_id == MENU_ABR) return 4u;
+        if (menu_id == MENU_ABR_MIN) return 5u;
+        if (menu_id == MENU_ABR_MAX) return 6u;
+        if (menu_id == MENU_ABR_ON_TX_RX) return 7u;
 #ifdef ENABLE_FEAT_F4HWN_CTR
-        if (menu_id == MENU_SET_CTR) return 7u;
+        if (menu_id == MENU_SET_CTR) return 8u;
 #endif
-        if (menu_id == MENU_SET_INV) return 8u;
-        if (menu_id == MENU_BAT_TXT) return 9u;
+        if (menu_id == MENU_SET_INV) return 9u;
+        if (menu_id == MENU_BAT_TXT) return 10u;
 #ifdef ENABLE_AUDIO_BAR
-        if (menu_id == MENU_MIC_BAR) return 10u;
+        if (menu_id == MENU_MIC_BAR) return 11u;
 #endif
     }
 
