@@ -19,27 +19,102 @@
 
 ---
 
-## 检查清单（添加缺字后逐项打勾）
+## 快速添加字符（推荐方式）
 
-复制到 PR / 记事本里自用：
+使用 `App/tools/cn_chars_append.txt` 文件追加字符，无需修改 `gen_cn_font.py` 中的 `CN_CHARS_500`。
 
-- [ ] 修改 `App/tools/gen_cn_font.py`：`CN_CHARS_500`（必要时 `PINYIN_MAP`）
-- [ ] 运行 `python App/tools/gen_cn_font.py`，无报错
-- [ ] 确认生成：`App/cn_font_data.h`、`docs/font/cn_font.bin`，且已复制到 `docs/fonts/cn_font.bin`（脚本会自动 copy）
-- [ ] **`App/settings.h`**：将 `cn_font_data.h` 中下列宏与之一致（见下文「一键对照」）
-  - `CN_FONT_CHAR_COUNT`、`CN_FONT_BITMAP_SIZE`、`CN_FONT_INDEX_SIZE`
-  - **`CN_FONT_PY_OFFSET`**（最易漏，漏则拼音全错）
-  - `CN_FONT_PY_COUNT`、`CN_FONT_VERSION`、`CN_FONT_VERSION_OFFSET`、`CN_FONT_PY_TOTAL_SIZE`
-- [ ] **`docs/js/flash.js`**：同上命名的一组 `CN_FONT_*` 常量（勿手写展示用字数，应用 `CN_FONT_CHAR_COUNT`）
-- [ ] 文档与门户页（字数、体积与当前 bin 一致即可）：`README.md`、`README.zh.md`、`README.en.md`、`docs/index.html`、`docs/fonts/README.md`
-- [ ] **重新编译固件并烧录**；再按需 USB 刷字库（或一并重新刷 `cn_font.bin`）
-- [ ] 设备上试：命名信道 → 拼音模式 → 输入此前出过问题的音节，候选应正常
+### 步骤 1：添加字符到追加文件
+
+编辑 `App/tools/cn_chars_append.txt`，在末尾添加新字符（每行一个或连续写）：
+
+```
+铭缺君餐足浴娱留橘桔
+```
+
+以 `#` 开头的行会被忽略。
+
+### 步骤 2：添加拼音映射
+
+编辑 `App/tools/gen_cn_font.py`，在 `PINYIN_MAP` 字典末尾添加：
+
+```python
+'铭': 'ming',
+'缺': 'que',
+'君': 'jun',
+'餐': 'can',
+'足': 'zu',
+'浴': 'yu',
+'娱': 'yu',
+'留': 'liu',
+'橘': 'ju',
+'桔': 'jie,ju',  # 多音字用逗号分隔
+```
+
+**多音字格式**：`'字': 'pinyin1,pinyin2'`，如 `'桔': 'jie,ju'` 表示桔字同时出现在 jie 和 ju 两个拼音候选中。
+
+### 步骤 3：运行生成脚本
+
+```bash
+python App/tools/gen_cn_font.py
+```
+
+### 步骤 4：同步常量到 settings.h 和 flash.js
+
+从 `App/cn_font_data.h` 顶部复制以下常量：
+
+| 常量 | 说明 |
+|------|------|
+| `CN_FONT_CHAR_COUNT` | 字符总数 |
+| `CN_FONT_BITMAP_SIZE` | 位图数据大小 |
+| `CN_FONT_INDEX_SIZE` | 索引表大小 |
+| `CN_FONT_PY_OFFSET` | 拼音表偏移（最易漏！） |
+| `CN_FONT_PY_COUNT` | 拼音音节数 |
+| `CN_FONT_VERSION` | 版本号 |
+| `CN_FONT_VERSION_OFFSET` | 版本字节偏移 |
+| `CN_FONT_PY_TOTAL_SIZE` | 拼音表总大小 |
+
+更新到：
+- `App/settings.h` 中的 `#if defined(ENABLE_CHINESE)` 块
+- `docs/js/flash.js` 顶部的 `const CN_FONT_*`
+
+### 步骤 5：更新文档中的字数说明
+
+更新以下文件中的字符数和字库大小：
+- `README.md`、`README.zh.md`、`README.en.md`
+- `docs/index.html`
+- `docs/fonts/README.md`
+
+### 步骤 6：验证
+
+```bash
+# 检查新字符是否在字库中
+python -c "
+chars = '铭缺君餐足浴娱留橘桔'
+with open('App/cn_font_data.h', 'r', encoding='utf-8') as f:
+    content = f.read()
+for c in chars:
+    print(f'{c}: {\"OK\" if c in content else \"MISSING\"}')"
+```
 
 ---
 
-## 从 `cn_font_data.h` 抄宏到 `settings.h` / `flash.js`（建议）
+## 完整检查清单
 
-生成完成后，在仓库根目录执行（需 Python 3）：
+- [ ] 修改 `App/tools/cn_chars_append.txt`：追加新字符
+- [ ] 修改 `App/tools/gen_cn_font.py`：在 `PINYIN_MAP` 添加拼音映射
+- [ ] 运行 `python App/tools/gen_cn_font.py`，无报错
+- [ ] 确认生成：`App/cn_font_data.h`、`docs/font/cn_font.bin`、`docs/fonts/cn_font.bin`
+- [ ] **`App/settings.h`**：同步 `CN_FONT_*` 常量
+- [ ] **`docs/js/flash.js`**：同步 `CN_FONT_*` 常量
+- [ ] 文档：`README.md`、`README.zh.md`、`README.en.md`、`docs/index.html`、`docs/fonts/README.md`
+- [ ] **重新编译固件并烧录**
+- [ ] 设备测试：命名信道 → 拼音模式 → 输入新字符拼音，候选应正常
+
+---
+
+## 一键提取常量脚本
+
+生成完成后，在仓库根目录执行：
 
 ```bash
 python -c "
@@ -64,45 +139,28 @@ print(('#define %-26s %s' % ('CN_FONT_PY_TOTAL_SIZE', m2.group(1))) if m2 else '
 "
 ```
 
-把输出逐行覆盖到：
-
-- `App/settings.h` 里 `#if defined(ENABLE_CHINESE)` 块中的 `CN_FONT_*`（C 用 `1234u` 形式）
-- `docs/js/flash.js` 顶部对应 `const`（JS 无 `u` 后缀，数值相同）
-
-**关系校验（应用 `ENABLE_CHINESE` 那组定义）：**
+**关系校验：**
 
 - `CN_FONT_INDEX_SIZE` = `CN_FONT_CHAR_COUNT * 4`
-- `CN_FONT_BITMAP_SIZE` = 字符数 × 24（12 行 × 每行 2 字节 × 列宽以生成脚本为准；以头文件为准）
-- **`CN_FONT_PY_OFFSET`** = `CN_FONT_BITMAP_SIZE + CN_FONT_INDEX_SIZE`
-- **`CN_FONT_VERSION_OFFSET`** = `CN_FONT_PY_OFFSET + CN_FONT_PY_TOTAL_SIZE`
-- **`cn_font.bin` 文件字节数** = `CN_FONT_VERSION_OFFSET + 1`（末尾 1 字节为版本号）
+- `CN_FONT_PY_OFFSET` = `CN_FONT_BITMAP_SIZE + CN_FONT_INDEX_SIZE`
+- `CN_FONT_VERSION_OFFSET` = `CN_FONT_PY_OFFSET + CN_FONT_PY_TOTAL_SIZE`
+- `cn_font.bin` 文件字节数 = `CN_FONT_VERSION_OFFSET + 1`
 
 ---
 
-## 1. 确认缺失字符
-
-```bash
-python -c "
-chars = '待检查的汉字'
-with open('App/cn_font_data.h', 'r', encoding='utf-8') as f:
-    content = f.read()
-for c in chars:
-    print(f'{c} (U+{ord(c):04X}): {\"found\" if c in content else \"MISSING\"}')
-"
-```
-
-## 2. 确认 BDF 字体文件包含该字符
+## 确认字符是否在 BDF 字体中
 
 ```bash
 python -c "
 bdf_path = 'App/bdf/wenquanyi_9pt.bdf'
-targets = {0xXXXX: '字'}  # 替换为实际 Unicode 码点
+chars = '铭缺君餐足浴娱留橘桔'
+targets = {ord(c): c for c in chars}
 with open(bdf_path, 'r', encoding='utf-8') as f:
     for line in f:
         if line.startswith('ENCODING'):
             enc = int(line.split()[1])
             if enc in targets:
-                print(f'U+{enc:04X} ({targets[enc]}): found')
+                print(f'U+{enc:04X} ({targets[enc]}): found in BDF')
                 del targets[enc]
 for k, v in targets.items():
     print(f'U+{k:04X} ({v}): NOT in BDF')
@@ -111,84 +169,72 @@ for k, v in targets.items():
 
 如果 BDF 中没有该字符，需要更换字体或手动制作点阵。
 
-## 3. 修改 gen_cn_font.py
+---
 
-文件：`App/tools/gen_cn_font.py`
+## 示例：本次添加字符记录
 
-### 3a. 将字符加入 CN_CHARS_500 列表
+### 添加的字符
 
-`CN_CHARS_500` 为**已去重**的连续字表（多行字符串隐式拼接）。在**字序末尾**追加新字（在最后一个 `"..."` 行内或另起一行继续接字符串），**不要**重复已出现的字。跑 `python App/tools/gen_cn_font.py` 时若源串仍有重复会打印警告。
+| 字符 | Unicode | 拼音 | 说明 |
+|------|---------|------|------|
+| 铭 | U+94ED | ming | 信道命名 |
+| 缺 | U+7F3A | que | 信道命名 |
+| 君 | U+541B | jun | 信道命名 |
+| 餐 | U+9910 | can | 信道命名 |
+| 足 | U+8DB3 | zu | 信道命名 |
+| 浴 | U+6D74 | yu | 信道命名 |
+| 娱 | U+5A31 | yu | 信道命名 |
+| 留 | U+7559 | liu | 信道命名 |
+| 橘 | U+6A58 | ju | 信道命名 |
+| 桔 | U+6854 | jie, ju | 多音字 |
 
-### 3b. 将拼音加入 PINYIN_MAP
+### 更新前后对比
 
-在 "用户补充" 区域末尾追加拼音映射，格式：`'字': 'pinyin'`。
-拼音不带声调数字后缀（脚本会自动去除）。
+| 参数 | 更新前 | 更新后 |
+|------|--------|--------|
+| 字符数 | 1309 | 1319 |
+| 拼音音节 | 329 | 330 |
+| 字库大小 | 40,997 bytes | 41,304 bytes |
+| Flash 占用 | 1.93% | 1.97% |
 
-如果一个字有多个读音，用逗号分隔：`'蔚': 'wei7,yu'`。
-该字会同时出现在两个拼音的候选列表中。
+### 修改的文件
 
-如果没有显式条目，脚本会 fallback 到 pypinyin 库自动获取，但建议手动添加以确保准确。
-
-## 4. 重新生成字库
-
-```bash
-python App/tools/gen_cn_font.py
-```
-
-这会生成 / 更新：
-
-- `App/cn_font_data.h` — C 头文件（含布局常量与数组）
-- `docs/font/cn_font.bin` — SPI Flash 二进制字库
-- 同步复制：`docs/fonts/cn_font.bin`
-
-## 5. 更新 settings.h 常量
-
-文件：`App/settings.h`
-
-用 **`cn_font_data.h` 顶部** 的值更新 `ENABLE_CHINESE` 区块中的以下常量（**禁止**凭记忆手填数字，务必以生成头文件为准）：
-
-```c
-#define CN_FONT_CHAR_COUNT      XXXXu
-#define CN_FONT_BITMAP_SIZE     XXXXXu
-#define CN_FONT_INDEX_SIZE      XXXXu
-#define CN_FONT_PY_OFFSET       XXXXXu   /* 最易漏；错则拼音检索全局错位 */
-#define CN_FONT_PY_COUNT        XXXu
-#define CN_FONT_VERSION         XXXXu
-#define CN_FONT_VERSION_OFFSET  XXXXXu
-#define CN_FONT_PY_TOTAL_SIZE   XXXXu
-```
-
-`CN_FONT_FLASH_BASE`（一般为 `0x010200u`）通常不变，除非硬件分区改动。
-
-## 6. 更新 docs/js/flash.js
-
-将 **`cn_font_data.h` 中同名布局常量** 写到文件顶部 `const CN_FONT_*`，与 `settings.h` 数值一致。  
-展示「当前字库多少字」时使用 **`${CN_FONT_CHAR_COUNT}`**，避免写死「1254」等历史数字。
-
-## 7. 更新说明文档（可选但建议）
-
-字符数、bin 大小、Flash 占用比例变化时，同步：
-
-- `README.md`、`README.zh.md`、`README.en.md`
-- `docs/index.html`（刷字库说明中的字数）
-- `docs/fonts/README.md`（简述当前 bin 大小与字数）
-
-## 8. 验证
-
-```bash
-# 新字是否出现在生成头文件中
-python -c "
-with open('App/cn_font_data.h', 'r', encoding='utf-8') as f:
-    content = f.read()
-print('新字符' in content)
-"
-
-# bin 大小应等于 VERSION_OFFSET + 1（Windows 可用 PowerShell：(Get-Item docs/font/cn_font.bin).Length）
-wc -c docs/font/cn_font.bin
-```
+1. `App/tools/cn_chars_append.txt` - 追加字符
+2. `App/tools/gen_cn_font.py` - 添加拼音映射
+3. `App/cn_font_data.h` - 自动生成
+4. `docs/font/cn_font.bin` - 自动生成
+5. `docs/fonts/cn_font.bin` - 自动复制
+6. `App/settings.h` - 同步常量
+7. `docs/js/flash.js` - 同步常量
+8. `README.md` - 更新字数说明
+9. `README.zh.md` - 更新字数说明
+10. `README.en.md` - 更新字数说明
+11. `docs/index.html` - 更新字数说明
+12. `docs/fonts/README.md` - 更新字数说明和补充字符表
 
 ---
 
-## 将来可做：由脚本自动写回常量（未实现）
+## 多音字处理
+
+多音字需要在 `PINYIN_MAP` 中用逗号分隔多个拼音：
+
+```python
+'桔': 'jie,ju',      # 桔子(jié)、桔梗(jú)
+'蔚': 'wei,yu',      # 蔚蓝(wèi)、蔚县(yù)
+'行': 'xing,hang',   # 行走(xíng)、银行(háng)
+```
+
+该字会同时出现在多个拼音的候选列表中。生成后可在 `cn_font_data.h` 的拼音表中验证：
+
+```c
+/* jie    */ 0x03, 0x6A, 0x69, 0x65, 0x09, ... 0x05, 0x26,  /* jie → 9 chars */
+/* ju     */ 0x02, 0x6A, 0x75, 0x0C, ... 0x05, 0x26,        /* ju → 12 chars */
+```
+
+`0x0526` = 1318 是桔的索引，同时出现在 jie 和 ju 两个音节中。
+
+---
+
+## 将来可做：脚本自动同步常量
 
 在 `gen_cn_font.py` 末尾根据本次生成结果自动替换 `settings.h` / `flash.js` 中的 `CN_FONT_*` 数值，可彻底避免漏同步。若你在本仓库实现该逻辑，请在本节补充调用方式。

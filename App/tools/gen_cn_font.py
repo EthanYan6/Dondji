@@ -316,6 +316,16 @@ PINYIN_MAP = {
     '禾': 'he',
     '渔': 'yu',
     '鹏': 'peng',
+    '铭': 'ming',
+    '缺': 'que',
+    '君': 'jun',
+    '餐': 'can',
+    '足': 'zu',
+    '浴': 'yu',
+    '娱': 'yu',
+    '留': 'liu',
+    '橘': 'ju',
+    '桔': 'jie,ju',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
