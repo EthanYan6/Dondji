@@ -65,7 +65,8 @@ static const AddrMapping_t ADDR_MAPPINGS[] = {
                                                 // Settings F4HWN * 8 Bytes (0x00C000)      0x00A158 -> 0x00A160
                                                 // Settings Version * 16 Bytes              0x00A160 -> 0x00A170
 
-    _MK_MAPPING(0x010000, 0x00B000, 0x00B200),  // Calibration 512 Bytes!!!
+    _MK_MAPPING(0x010000, 0x001E00, 0x002000),  // Calibration 512 Bytes (v4.x 兼容)
+    _MK_MAPPING(0x010000, 0x00B000, 0x00B200),  // Calibration 512 Bytes (v5.0.0+)
 };
 
 static void AddrTranslate(uint16_t EEPROM_Addr, uint16_t Size, uint32_t *PY25Q16_Addr_out, uint16_t *Size_out, bool *End_out);
