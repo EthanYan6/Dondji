@@ -225,6 +225,14 @@
       </div>
     </div>
 
+    <p style="text-align: center; color: #8b949e; font-size: 0.85em; margin: 8px 0;">
+      校准使用最开始备份的就行，不要每次备份，后面的也许备份是错的！
+    </p>
+    <p style="text-align: center; color: red; font-weight: bold; font-size: 0.85em; margin: 8px 0;">
+      哪个小倒霉蛋刷了V5.0.0后，变雪花屏了，肯定是校准有问题。<br>
+      下载刷入校准即可<a href="archive/calibration_k1.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K1)</a> | <a href="archive/calibration_k6v3.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K6V3)</a>。
+    </p>
+
     <div class="container">
     <!-- TABS -->
     <div class="tabs" role="tablist">
@@ -234,6 +242,7 @@
       <button class="tab" type="button" data-tab="restore" id="tabRestore">恢复校准</button>
       <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq">写频</button>
       <button class="tab" type="button" data-tab="logo" id="tabLogo">开机图片</button>
+      <button class="tab" type="button" data-tab="toolbox" id="tabToolbox">应急工具箱</button>
     </div>
 
     <!-- FLASH FIRMWARE TAB -->
@@ -467,6 +476,111 @@
       </div>
       <div class="download-link" id="logoDownload" style="display:none;">
         <a href="#" id="logoDownloadLink" download="boot_logo.png">下载 boot_logo.png</a>
+      </div>
+    </div>
+
+    <!-- TOOLBOX TAB -->
+    <div class="tab-content" id="toolbox-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          应急工具箱提供校准文件和原厂固件的下载，用于救砖或恢复出厂状态。
+        </p>
+      </section>
+      <div class="toolbox-grid">
+        <a href="archive/calibration_k1.dat" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .5 1.5l1 1a2 2 0 0 1-2.8 2.8l-1-1a1.65 1.65 0 0 0-1.5-.5"/>
+              <path d="M4.6 15a1.65 1.65 0 0 1-.5 1.5l-1 1a2 2 0 0 0 2.8 2.8l1-1a1.65 1.65 0 0 1 1.5-.5"/>
+              <path d="M15 4.6a1.65 1.65 0 0 0 1.5.5l1-1a2 2 0 0 1 2.8 2.8l-1 1a1.65 1.65 0 0 0-.5 1.5"/>
+              <path d="M9 4.6a1.65 1.65 0 0 1-.5 1.5l-1 1a2 2 0 0 0-2.8 2.8l1-1a1.65 1.65 0 0 1 .5-1.5"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K1 校准文件</div>
+          <div class="toolbox-card-filename">calibration_k1.dat</div>
+        </a>
+        <a href="archive/calibration_k6v3.dat" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .5 1.5l1 1a2 2 0 0 1-2.8 2.8l-1-1a1.65 1.65 0 0 0-1.5-.5"/>
+              <path d="M4.6 15a1.65 1.65 0 0 1-.5 1.5l-1 1a2 2 0 0 0 2.8 2.8l1-1a1.65 1.65 0 0 1 1.5-.5"/>
+              <path d="M15 4.6a1.65 1.65 0 0 0 1.5.5l1-1a2 2 0 0 1 2.8 2.8l-1 1a1.65 1.65 0 0 0-.5 1.5"/>
+              <path d="M9 4.6a1.65 1.65 0 0 1-.5 1.5l-1 1a2 2 0 0 0-2.8 2.8l1-1a1.65 1.65 0 0 1 .5-1.5"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K6 V3 校准文件</div>
+          <div class="toolbox-card-filename">calibration_k6v3.dat</div>
+        </a>
+        <a href="archive/quansheng.k1.stock.firmware.v7.02.02.bin" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K1 原厂英文固件</div>
+          <div class="toolbox-card-filename">quansheng.k1.stock.firmware.v7.02.02.bin</div>
+        </a>
+        <a href="archive/quansheng.k1.stock.firmware.v7.03.01.bin" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K1 原厂英文固件</div>
+          <div class="toolbox-card-filename">quansheng.k1.stock.firmware.v7.03.01.bin</div>
+        </a>
+        <a href="archive/quansheng.k5v3.stock.firmware.v7.00.11.bin" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K5 V3 原厂英文固件</div>
+          <div class="toolbox-card-filename">quansheng.k5v3.stock.firmware.v7.00.11.bin</div>
+        </a>
+        <a href="archive/官方固件_K1_v7.02.02.bin" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K1 官方固件</div>
+          <div class="toolbox-card-filename">官方固件_K1_v7.02.02.bin</div>
+        </a>
+        <a href="archive/官方固件_K5_V.7.01.09.bin" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K5 V3 官方固件</div>
+          <div class="toolbox-card-filename">官方固件_K5_V.7.01.09.bin</div>
+        </a>
+        <a href="archive/UV-K1官方写频软件.rar" download class="toolbox-card">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">K1 官方写频软件</div>
+          <div class="toolbox-card-filename">UV-K1官方写频软件.rar</div>
+        </a>
       </div>
     </div>
 

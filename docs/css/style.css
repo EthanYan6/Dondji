@@ -1615,3 +1615,62 @@ html.theme-light .flash-device-warning-modal__backdrop {
 .chicken-speech-bubble.show {
   animation: bubbleBounce 2s ease-in-out infinite;
 }
+
+/* Toolbox Grid */
+.toolbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.toolbox-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.toolbox-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-muted);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toolbox-card-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.toolbox-card-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.toolbox-card-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.toolbox-card-filename {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-all;
+  padding: 4px 8px;
+  background: var(--bg-muted);
+  border-radius: 4px;
+  max-width: 100%;
+}
