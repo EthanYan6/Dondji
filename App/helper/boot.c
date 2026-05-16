@@ -66,6 +66,10 @@ BOOT_Mode_t BOOT_GetMode(void)
                 gAirCopyBootMode = true;
                 return BOOT_MODE_AIRCOPY;
             }
+        #else
+            if (Keys[0] == KEY_SIDE2) {
+                return BOOT_MODE_SIDE2_ERROR;
+            }
         #endif
     }
 

@@ -225,15 +225,7 @@ static uint8_t UI_MENU_GetRowPixelStart(const uint8_t row)
 
 static void UI_MENU_FormatBuildTimeBeijing(char *time_output, const size_t output_size)
 {
-    int utc_hour = 0;
-    int utc_minute = 0;
-    int utc_second = 0;
-    int beijing_hour = 0;
-    int beijing_minute = 0;
-    int beijing_second = 0;
-    int beijing_total_seconds = 0;
-
-    if (time_output == NULL || output_size < 16u)
+    if (time_output == NULL || output_size < 18u)
     {
         return;
     }
@@ -251,32 +243,25 @@ static void UI_MENU_FormatBuildTimeBeijing(char *time_output, const size_t outpu
         return;
     }
 
-    utc_hour = (BuildTime[0] - '0') * 10 + (BuildTime[1] - '0');
-    utc_minute = (BuildTime[3] - '0') * 10 + (BuildTime[4] - '0');
-    utc_second = (BuildTime[6] - '0') * 10 + (BuildTime[7] - '0');
-
-    beijing_total_seconds = (utc_hour * 3600) + (utc_minute * 60) + utc_second + (8 * 3600);
-    while (beijing_total_seconds >= 86400)
-    {
-        beijing_total_seconds = beijing_total_seconds - 86400;
-    }
-
-    beijing_hour = beijing_total_seconds / 3600;
-    beijing_minute = (beijing_total_seconds % 3600) / 60;
-    beijing_second = beijing_total_seconds % 60;
-
-    time_output[0] = 'B';
-    time_output[1] = 'J';
-    time_output[2] = ' ';
-    time_output[3] = (char)('0' + (beijing_hour / 10));
-    time_output[4] = (char)('0' + (beijing_hour % 10));
-    time_output[5] = ':';
-    time_output[6] = (char)('0' + (beijing_minute / 10));
-    time_output[7] = (char)('0' + (beijing_minute % 10));
-    time_output[8] = ':';
-    time_output[9] = (char)('0' + (beijing_second / 10));
-    time_output[10] = (char)('0' + (beijing_second % 10));
-    time_output[11] = '\0';
+    time_output[0] = 'U';
+    time_output[1] = 'T';
+    time_output[2] = 'C';
+    time_output[3] = ' ';
+    time_output[4] = BuildTime[0];
+    time_output[5] = BuildTime[1];
+    time_output[6] = ':';
+    time_output[7] = BuildTime[3];
+    time_output[8] = BuildTime[4];
+    time_output[9] = ':';
+    time_output[10] = BuildTime[6];
+    time_output[11] = BuildTime[7];
+    time_output[12] = ' ';
+    time_output[13] = '+';
+    time_output[14] = '8';
+    time_output[15] = ':';
+    time_output[16] = '0';
+    time_output[17] = '0';
+    time_output[18] = '\0';
 }
 
 static void UI_MENU_FormatBuildDateSlash(char *date_output, const size_t output_size)
@@ -2736,7 +2721,7 @@ void UI_DisplayMenu(void)
                 uint8_t info_line3_y_end = 0u;
                 uint8_t info_label_print_y_start = 0u;
                 uint8_t info_label_print_y_end = 0u;
-                char beijing_build_time[16];
+                char beijing_build_time[20];
                 char build_date_slash[16];
 
                 UI_MENU_FormatBuildTimeBeijing(beijing_build_time, sizeof(beijing_build_time));

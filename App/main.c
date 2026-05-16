@@ -182,7 +182,14 @@ void Main(void)
          KEYBOARD_Poll() != KEY_INVALID ||
          BootMode != BOOT_MODE_NORMAL)
     {   // keys are pressed
-        UI_DisplayReleaseKeys();
+        #ifndef ENABLE_AIRCOPY
+            if (BootMode == BOOT_MODE_SIDE2_ERROR) {
+                UI_DisplaySideKeyError();
+            } else
+        #endif
+        {
+            UI_DisplayReleaseKeys();
+        }
         BACKLIGHT_TurnOn();
 
         // 500ms

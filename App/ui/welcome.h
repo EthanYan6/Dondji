@@ -18,6 +18,7 @@
 #define UI_WELCOME_H
 
 void UI_DisplayReleaseKeys(void);
+void UI_DisplaySideKeyError(void);
 void UI_DisplayWelcome(void);
 
 #endif

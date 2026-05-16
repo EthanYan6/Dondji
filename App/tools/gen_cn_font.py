@@ -326,6 +326,11 @@ PINYIN_MAP = {
     '留': 'liu',
     '橘': 'ju',
     '桔': 'jie,ju',
+    '错': 'cuo',
+    '那': 'na,nei',
+    '吧': 'ba',
+    '吨': 'dun',
+    '架': 'jia',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin

@@ -189,6 +189,39 @@ void UI_DisplayReleaseKeys(void)
     ST7565_BlitFullScreen();
 }
 
+void UI_DisplaySideKeyError(void)
+{
+    const char *line_one_text = "Wrong key!";
+    const char *line_two_text = "Use the top one.";
+
+    memset(gStatusLine,  0, sizeof(gStatusLine));
+#if defined(ENABLE_FEAT_F4HWN_CTR) || defined(ENABLE_FEAT_F4HWN_INV)
+        ST7565_ContrastAndInv();
+#endif
+    UI_DisplayClear();
+
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        line_one_text = "按错了吧";
+        line_two_text = "是上面那个键";
+    }
+#endif
+
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        UI_PrintStringSmallAtPixel(line_one_text, 0, 127, 10u, 24u, 3u);
+        UI_PrintStringSmallAtPixel(line_two_text, 0, 127, 34u, 48u, 3u);
+    } else
+#endif
+    {
+        UI_PrintString(line_one_text, 0, 127, 1, 10);
+        UI_PrintString(line_two_text, 0, 127, 3, 10);
+    }
+
+    ST7565_BlitStatusLine();
+    ST7565_BlitFullScreen();
+}
+
 void UI_DisplayWelcome(void)
 {
 #ifndef ENABLE_FEAT_F4HWN

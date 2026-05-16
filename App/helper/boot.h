@@ -28,7 +28,9 @@ enum BOOT_Mode_t
         BOOT_MODE_RESCUE_OPS,
     #endif
     #ifdef ENABLE_AIRCOPY
-        BOOT_MODE_AIRCOPY
+        BOOT_MODE_AIRCOPY,
+    #else
+        BOOT_MODE_SIDE2_ERROR
     #endif
 };
 
