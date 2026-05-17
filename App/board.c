@@ -92,6 +92,7 @@ void BOARD_GPIO_Init(void)
 
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_6); // LCD A0
     LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_2); // LCD CS
+    LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_8); // Audio PA
 
     InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
 
