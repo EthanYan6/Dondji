@@ -188,8 +188,8 @@ const char gSubMenu_SET_TOT_CN[][7] = {
 };
 
 const char gSubMenu_SET_LCK_CN[][12] = {
-    "\xe4\xbb\x85\xe6\x8c\x89\xe9\x94\xae",
-    "\xe6\x8c\x89\xe9\x94\xae+PTT",
+    "\xe4\xbb\x85\xe9\x94\xae\xe7\x9b\x98",
+    "\xe9\x94\xae\xe7\x9b\x98+PTT",
 };
 
 const char gSubMenu_SET_MET_CN[][8] = {

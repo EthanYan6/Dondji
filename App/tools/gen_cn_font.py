@@ -331,6 +331,8 @@ PINYIN_MAP = {
     '吧': 'ba',
     '吨': 'dun',
     '架': 'jia',
+    '支': 'zhi',
+    '凰': 'huang',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin

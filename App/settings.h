@@ -334,14 +334,14 @@ void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO,
 // CN font SPI Flash layout (data written via web tool)
 // NOTE: these must match the output of gen_cn_font.py / cn_font_data.h
 #define CN_FONT_FLASH_BASE      0x010200u
-#define CN_FONT_CHAR_COUNT      1324u
-#define CN_FONT_BITMAP_SIZE     31776u
-#define CN_FONT_INDEX_SIZE      5296u
-#define CN_FONT_PY_OFFSET       37072u
+#define CN_FONT_CHAR_COUNT      1326u
+#define CN_FONT_BITMAP_SIZE     31824u
+#define CN_FONT_INDEX_SIZE      5304u
+#define CN_FONT_PY_OFFSET       37128u
 #define CN_FONT_PY_COUNT        331u
 #define CN_FONT_VERSION         2u
-#define CN_FONT_VERSION_OFFSET  41460u
-#define CN_FONT_PY_TOTAL_SIZE   4388u
+#define CN_FONT_VERSION_OFFSET  41520u
+#define CN_FONT_PY_TOTAL_SIZE   4392u
 #endif
 
 #ifdef ENABLE_CHINESE
