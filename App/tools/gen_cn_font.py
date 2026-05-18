@@ -333,6 +333,12 @@ PINYIN_MAP = {
     '架': 'jia',
     '支': 'zhi',
     '凰': 'huang',
+    '非': 'fei',
+    '蓟': 'ji',
+    '舒': 'shu',
+    '吊': 'diao',
+    '笼': 'long',
+    '杉': 'shan',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin

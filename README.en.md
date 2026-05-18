@@ -72,7 +72,7 @@ Flash firmware and font data directly from your browser — no software installa
 | Feature | Description |
 |---------|-------------|
 | Flash Firmware | Pull latest from GitHub Releases, or select a local .bin file |
-| Flash Font | Write 1326 Chinese characters to SPI Flash for channel naming |
+| Flash Font | Write 1332 Chinese characters to SPI Flash for channel naming |
 | Dump Calibration | Export device calibration data |
 | Restore Calibration | Restore calibration from backup |
 
@@ -89,9 +89,9 @@ Flash firmware and font data directly from your browser — no software installa
 |-----------|-------|
 | Font file | `docs/font/cn_font.bin` |
 | SPI Flash start address | `0x010200` |
-| Character count | 1326 |
-| Font size | 41,521 bytes (about 40.5 KB) |
-| SPI Flash usage | 1.97% (total capacity 2MB) |
+| Character count | 1332 |
+| Font size | 41,707 bytes (about 40.7 KB) |
+| SPI Flash usage | 1.99% (total capacity 2MB) |
 
 ---
 
