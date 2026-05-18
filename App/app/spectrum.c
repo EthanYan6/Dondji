@@ -1232,30 +1232,52 @@ static void DrawStatus()
 }
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
+static bool IsPureAscii(const char *str)
+{
+    while (*str) {
+        if ((unsigned char)*str >= 0x80)
+            return false;
+        str++;
+    }
+    return true;
+}
+
 static void ShowChannelName(uint32_t f)
 {
     static uint32_t channelF = 0;
-    static char channelName[24]; 
+    static char channelName[24];
+    static int channelNum = -1;
 
     if (isListening)
     {
         if (f != channelF) {
             channelF = f;
-            unsigned int i;
+            channelNum = -1;
             memset(channelName, 0, sizeof(channelName));
-            for (i = 0; IS_MR_CHANNEL(i); i++)
+            for (unsigned int i = 0; IS_MR_CHANNEL(i); i++)
             {
                 if (RADIO_CheckValidChannel(i, false, 0))
                 {
                     if (SETTINGS_FetchChannelFrequency(i) == channelF)
                     {
                         SETTINGS_FetchChannelName(channelName, i);
+                        channelNum = (int)i;
                         break;
                     }
                 }
             }
         }
-        if (channelName[0] != 0) {
+        if (channelNum >= 0 && channelName[0] != 0) {
+            const char *displayText;
+            char channelStr[8];
+
+            if (IsPureAscii(channelName)) {
+                displayText = channelName;
+            } else {
+                sprintf(channelStr, "CH-%03d", channelNum + 1);
+                displayText = channelStr;
+            }
+
             uint8_t right_limit_x = SPECTRUM_STATUS_RIGHT_RESERVED_X;
             if (right_limit_x > LCD_WIDTH)
                 right_limit_x = LCD_WIDTH;
@@ -1264,7 +1286,7 @@ static void ShowChannelName(uint32_t f)
             if (right_limit_x > SPECTRUM_STATUS_CH_NAME_X0)
                 clear_width_max = (uint8_t)(right_limit_x - SPECTRUM_STATUS_CH_NAME_X0);
 
-            uint8_t clear_width = DualVfoU8g2_GetSmallTextWidth(channelName);
+            uint8_t clear_width = DualVfoU8g2_GetSmallTextWidth(displayText);
             if (clear_width < SPECTRUM_STATUS_CH_NAME_CLR_W)
                 clear_width = SPECTRUM_STATUS_CH_NAME_CLR_W;
 
@@ -1272,7 +1294,7 @@ static void ShowChannelName(uint32_t f)
                 clear_width = clear_width_max;
 
             memset(&gStatusLine[SPECTRUM_STATUS_CH_NAME_X0], 0, clear_width);
-            DualVfoU8g2_DrawSmallTextStatus(channelName, SPECTRUM_STATUS_CH_NAME_X0, 2u, true);
+            DualVfoU8g2_DrawSmallTextStatus(displayText, SPECTRUM_STATUS_CH_NAME_X0, 2u, true);
         }
     }
     else
