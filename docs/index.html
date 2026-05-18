@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.css?v=20260509">
+  <link rel="stylesheet" href="css/style.min.css?v=20260518d">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.abbr.min.js" defer></script>
   <script>
     (function () {
@@ -62,7 +62,7 @@
       </span>
     </div>
   </div>
-  <div class="top-right-buttons">
+  <div class="top-right-buttons" style="position:fixed;top:44px;right:12px;z-index:9998;">
     <a href="help.html" class="help-btn" title="帮助文档" aria-label="帮助文档">
       <svg class="help-btn__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10"/>
@@ -91,7 +91,7 @@
       <button type="button" class="flash-device-warning-modal__btn" id="flashDeviceWarningOkBtn">我已了解</button>
     </div>
   </div>
-  <div class="subtitle-chips" aria-label="社交平台账号">
+  <div class="subtitle-chips" aria-label="社交平台账号" style="position:fixed;right:10px;bottom:20px;z-index:9980;">
     <span class="subtitle-chip subtitle-chip--douyin" title="抖音 · 小闫连不上">
       <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 3v9.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
@@ -200,7 +200,7 @@
             <span class="flash-step-index">3</span>
             <span class="flash-step-name">清除数据</span>
             <span class="flash-step-help" aria-hidden="true">?</span>
-            <span class="flash-step-tooltip" role="tooltip">初次刷入叮咚鸡固件后需要此步骤。关机后，同时按PTT键和紧挨着PTT键下方的侧键，一起按下后，再开机，解锁全部功能菜单。在“其它”中“恢复出厂”里选择全部。重置设备存储的信道与配置。</span>
+            <span class="flash-step-tooltip" role="tooltip">初次刷入叮咚鸡固件后需要此步骤。建议先"备份配置"。关机后，同时按PTT键和紧挨着PTT键下方的侧键，一起按下后，再开机，解锁全部功能菜单。在"其它"中"恢复出厂"里选择全部。重置设备存储的信道与配置。之后可通过"恢复配置"还原设置项。</span>
           </li>
           <li class="flash-step-item" tabindex="0">
             <span class="flash-step-index">4</span>
@@ -229,8 +229,7 @@
       恢复校准使用原厂固件初始备份。不需要每次备份校准，后面的也许备份是错的！
     </p>
     <p style="text-align: center; color: red; font-weight: bold; font-size: 0.85em; margin: 8px 0;">
-      哪个小倒霉蛋刷了V5.0.0后，变雪花屏了，肯定是校准有问题。<br>
-      下载刷入校准即可<a href="archive/calibration_k1.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K1)</a> | <a href="archive/calibration_k6v3.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K6V3)</a>。
+      哪个小倒霉蛋刷了V5.0.0后，变雪花屏了，肯定是校准有问题。下载刷入校准即可<a href="archive/calibration_k1.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K1)</a> | <a href="archive/calibration_k6v3.dat" download style="color: #0066cc; text-decoration: underline;">点击下载校准(K6V3)</a>。
     </p>
 
     <div class="container">
@@ -242,6 +241,8 @@
       <button class="tab" type="button" data-tab="restore" id="tabRestore">恢复校准</button>
       <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq">写频</button>
       <button class="tab" type="button" data-tab="logo" id="tabLogo">开机图片</button>
+      <button class="tab" type="button" data-tab="backupcfg" id="tabBackupcfg">备份配置</button>
+      <button class="tab" type="button" data-tab="restorecfg" id="tabRestorecfg">恢复配置</button>
       <button class="tab" type="button" data-tab="toolbox" id="tabToolbox">应急工具箱</button>
     </div>
 
@@ -305,11 +306,8 @@
     <!-- DUMP CALIBRATION TAB -->
     <div class="tab-content" id="dump-content">
       <section class="section">
-        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
-          从设备导出校准数据备份
-        </p>
         <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
-          ⚠️ 请先<strong>正常开机进入使用界面</strong>（能显示信道、菜单），再连接 USB 并导出。勿停在仅 Bootloader / 刷机黑屏界面——该模式下无法应答校准协议。
+          ⚠️ 仅需原厂固件刷机前备份一次。先<strong>正常开机进入使用界面</strong>（能显示信道、菜单），再连接 USB 并导出。
         </p>
         <button id="dumpBtn">导出校准数据</button>
       </section>
@@ -479,6 +477,46 @@
       </div>
     </div>
 
+    <!-- BACKUP CONFIG TAB -->
+    <div class="tab-content" id="backupcfg-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          备份设备配置数据（菜单设置、按键设置等），用于恢复出厂设置后快速恢复所有设置项。
+        </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 请先<strong>正常开机进入使用界面</strong>后再连接 USB 进行备份。
+        </p>
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          使用场景：先备份配置 → 刷了其它固件又刷回来后，清除了全部数据 → 通过"恢复配置"恢复所有设置项。
+        </p>
+        <button id="backupCfgBtn">导出配置数据</button>
+      </section>
+      <div class="download-link" id="backupCfgDownload">
+        <a href="#" id="backupCfgLink" download="config_backup.dat">下载 config_backup.dat</a>
+      </div>
+    </div>
+
+    <!-- RESTORE CONFIG TAB -->
+    <div class="tab-content" id="restorecfg-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;">
+          恢复之前备份的配置数据，快速还原所有菜单设置项。
+        </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;">
+          ⚠️ 恢复前同样需<strong>正常开机进入使用界面</strong>后再连接 USB；写入完成后设备会自动重启。
+        </p>
+        <label>选择配置备份文件 (.dat)</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="cfgBackupFile" accept=".dat">
+          <div class="file-input-label" id="cfgBackupFileLabel">
+            <span class="file-name" id="cfgBackupFileName">未选择文件</span>
+            <span class="file-button">选择文件</span>
+          </div>
+        </div>
+      </section>
+      <button id="restoreCfgBtn" disabled>恢复配置数据</button>
+    </div>
+
     <!-- TOOLBOX TAB -->
     <div class="tab-content" id="toolbox-content">
       <section class="section">
@@ -617,6 +655,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/flash.js?v=20250509b"></script>
+  <script src="js/flash.min.js?v=20260518d"></script>
 </body>
 </html>

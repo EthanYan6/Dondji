@@ -117,13 +117,12 @@ body.writefreq-full .subtitle-chips { display: none; }
 .subtitle-chips {
   position: fixed;
   right: calc(10px + env(safe-area-inset-right, 0px));
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 9980;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 8px;
   width: max-content;
   max-width: min(280px, calc(100vw - 24px));
@@ -360,32 +359,114 @@ a.subtitle-chip:focus-visible {
 .tabs {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border-default);
   padding-bottom: 0;
-  max-width: 720px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+  background: linear-gradient(180deg, transparent 0%, rgba(88, 166, 255, 0.03) 100%);
+  padding-top: 8px;
 }
 .tab {
-  background: none;
-  border: none;
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.08) 0%, rgba(88, 166, 255, 0.02) 100%);
+  border: 1px solid rgba(88, 166, 255, 0.15);
+  border-bottom: none;
   color: var(--text-muted);
-  padding: 10px 16px;
+  padding: 10px 20px;
   cursor: pointer;
-  font-size: 0.9em;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  font-size: 0.88em;
+  font-weight: 500;
+  font-style: italic;
+  border-radius: 0;
+  transition: all 0.25s ease;
   width: auto;
   flex: 0 0 auto;
   margin-bottom: 0;
+  position: relative;
+  letter-spacing: 0.03em;
+  transform: skewX(-15deg);
+  transform-origin: bottom;
 }
-.tab:hover { color: var(--text-primary); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab span,
+.tab {
+  display: inline-block;
+}
+.tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(88, 166, 255, 0.4) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.tab::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.4) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.tab:hover {
+  color: var(--accent);
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.18) 0%, rgba(88, 166, 255, 0.06) 100%);
+  border-color: rgba(88, 166, 255, 0.4);
+  box-shadow: 
+    0 4px 16px rgba(88, 166, 255, 0.2),
+    inset 0 1px 0 rgba(88, 166, 255, 0.15);
+}
+.tab:hover::before,
+.tab:hover::after {
+  opacity: 1;
+}
+.tab.active {
+  color: var(--accent);
+  background: linear-gradient(180deg, rgba(88, 166, 255, 0.25) 0%, rgba(88, 166, 255, 0.08) 100%);
+  border-color: var(--accent);
+  border-bottom-color: var(--bg-page);
+  font-weight: 600;
+  box-shadow: 
+    0 -3px 12px rgba(88, 166, 255, 0.25),
+    0 4px 20px rgba(88, 166, 255, 0.15),
+    inset 0 1px 0 rgba(88, 166, 255, 0.2);
+}
+.tab.active::before {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  box-shadow: 0 0 8px var(--accent);
+}
+.tab.active::after {
+  opacity: 1;
+  background: linear-gradient(180deg, var(--accent) 0%, rgba(88, 166, 255, 0.3) 100%);
+  box-shadow: 0 0 6px var(--accent);
+}
+html.theme-light .tab {
+  background: linear-gradient(180deg, rgba(9, 105, 218, 0.08) 0%, rgba(9, 105, 218, 0.02) 100%);
+  border-color: rgba(9, 105, 218, 0.2);
+}
+html.theme-light .tab:hover {
+  background: linear-gradient(180deg, rgba(9, 105, 218, 0.15) 0%, rgba(9, 105, 218, 0.05) 100%);
+  border-color: rgba(9, 105, 218, 0.4);
+  box-shadow: 
+    0 4px 16px rgba(9, 105, 218, 0.15),
+    inset 0 1px 0 rgba(9, 105, 218, 0.12);
+}
+html.theme-light .tab.active {
+  background: linear-gradient(180deg, rgba(9, 105, 218, 0.2) 0%, rgba(9, 105, 218, 0.06) 100%);
+  border-color: var(--accent);
+  border-bottom-color: var(--bg-page);
+}
 
 /* Tab content */
 .tab-content { display: none; }
