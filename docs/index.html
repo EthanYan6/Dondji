@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260518d">
+  <link rel="stylesheet" href="css/style.css?v=20260520a">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.abbr.min.js" defer></script>
   <script>
     (function () {
@@ -168,6 +168,16 @@
         </svg>
         <span>由 <strong class="subtitle-call">BD1AHN</strong> 开发</span>
       </div>
+      <button type="button" class="coffee-btn" id="coffeeBtn" title="点击打开页面进行打赏" aria-label="请他喝杯咖啡">
+        <svg class="coffee-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        <span class="coffee-text">请他喝杯咖啡</span>
+      </button>
     </div>
     </div>
 
@@ -525,6 +535,17 @@
         </p>
       </section>
       <div class="toolbox-grid">
+        <button type="button" class="toolbox-card" id="downgradeGuideBtn">
+          <div class="toolbox-card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div class="toolbox-card-title">刷回官方解锁写频密码</div>
+          <div class="toolbox-card-filename">点击查看详情</div>
+        </button>
         <a href="archive/calibration_k1.dat" download class="toolbox-card">
           <div class="toolbox-card-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -651,10 +672,168 @@
   </main>
   </div>
 
+  <div id="coffeeModal" class="coffee-modal" hidden aria-hidden="true">
+    <div class="coffee-modal__backdrop" data-coffee-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="coffee-modal__panel" role="dialog" aria-modal="true" aria-labelledby="coffeeModalTitle">
+      <h2 id="coffeeModalTitle" class="coffee-modal__title">☕ 请作者喝杯咖啡</h2>
+      <div class="coffee-modal__content">
+        <p class="coffee-modal__text">
+          感谢您使用叮咚鸡固件！维护这个网站和固件需要投入大量时间和精力，服务器、开发测试等都需要成本支持。
+        </p>
+        <p class="coffee-modal__text">
+          如果这个项目对您有帮助，欢迎打赏支持！<strong>打赏时请备注您的呼号</strong>，方便我感谢您的支持！
+        </p>
+        <div class="coffee-modal__qrcodes">
+          <div class="coffee-modal__qrcode-item">
+            <img src="images/wechat_pay.jpg" alt="微信收款码" class="coffee-modal__qrcode-img">
+            <span class="coffee-modal__qrcode-label">微信支付</span>
+          </div>
+          <div class="coffee-modal__qrcode-item">
+            <img src="images/ali_pay.jpg" alt="支付宝收款码" class="coffee-modal__qrcode-img">
+            <span class="coffee-modal__qrcode-label">支付宝</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="coffee-modal__btn" id="coffeeModalCloseBtn">退出</button>
+    </div>
+  </div>
+
+  <div id="downgradeGuideModal" class="coffee-modal coffee-modal--wide" hidden aria-hidden="true">
+    <div class="coffee-modal__backdrop" data-downgrade-dismiss tabindex="-1" aria-hidden="true"></div>
+    <div class="coffee-modal__panel" role="dialog" aria-modal="true" aria-labelledby="downgradeGuideModalTitle">
+      <h2 id="downgradeGuideModalTitle" class="coffee-modal__title">🔧 刷回官方解锁写频密码</h2>
+      <div class="coffee-modal__content">
+        <p class="coffee-modal__text">
+          <strong>叮咚鸡降级官方解锁写频密码：</strong>
+        </p>
+        <ol class="downgrade-steps" style="text-align: left; margin: 12px 0; padding-left: 20px; color: var(--text-muted); line-height: 1.6; font-size: 0.9em;">
+          <li style="margin-bottom: 8px;">
+            <strong style="color: var(--accent);">恢复全部出厂设置：</strong><br>
+            按住 "PTT+ 侧键 1" 开机，选择：恢复出厂->全部->确定。
+          </li>
+          <li style="margin-bottom: 8px;">
+            <strong style="color: var(--accent);">降级到 V4.3.2 版本：</strong><br>
+            刷 "f4hwn.IOTCU_K1_v4.323_b02.bin" 固件
+          </li>
+          <li style="margin-bottom: 8px;">
+            <strong style="color: var(--accent);">恢复降级配置：</strong><br>
+            恢复 "00 降级配置.bin"<br>恢复配置地址：<a href="https://k5.vicicode.cn/#/tool/backup" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">https://k5.vicicode.cn/#/tool/backup</a><br>
+            <span style="color: #f0883e; font-size: 0.9em;">注意：进度正常卡到 50%-60% 左右，直接关机就行，不用重复恢复。</span>
+          </li>
+          <li style="margin-bottom: 8px;">
+            <strong style="color: var(--accent);">恢复全部出厂设置：</strong><br>
+            按住 PTT+ 侧键 1 开机，选择：恢复出厂设置->全部参数->确定。
+          </li>
+          <li style="margin-bottom: 8px;">
+            <strong style="color: var(--accent);">官方 CPS 写频软件更新官方固件：</strong><br>
+            设备->升级程序->升级。
+          </li>
+        </ol>
+        <div class="downgrade-files" style="margin-top: 16px;">
+          <p class="coffee-modal__text" style="margin-bottom: 8px;"><strong>所需文件下载：</strong></p>
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <a href="archive/00 降级配置.bin" download class="downgrade-file-btn">
+              <svg style="width: 16px; height: 16px; vertical-align: middle;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              00 降级配置.bin
+            </a>
+            <a href="archive/f4hwn.IOTCU_K1_v4.323_b02.bin" download class="downgrade-file-btn">
+              <svg style="width: 16px; height: 16px; vertical-align: middle;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              f4hwn.IOTCU_K1_v4.323_b02.bin
+            </a>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="coffee-modal__btn" id="downgradeGuideModalCloseBtn">关闭</button>
+    </div>
+  </div>
+
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="js/flash.min.js?v=20260518d"></script>
+  <script>
+  (function() {
+    var coffeeBtn = document.getElementById('coffeeBtn');
+    var coffeeModal = document.getElementById('coffeeModal');
+    var coffeeModalCloseBtn = document.getElementById('coffeeModalCloseBtn');
+    var coffeeBackdrop = coffeeModal.querySelector('.coffee-modal__backdrop');
+
+    function openCoffeeModal() {
+      coffeeModal.hidden = false;
+      coffeeModal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeCoffeeModal() {
+      coffeeModal.hidden = true;
+      coffeeModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      showCenterToast('感谢大佬打赏！', 'success');
+    }
+
+    function showCenterToast(message, type) {
+      var toast = document.createElement('div');
+      toast.className = 'coffee-toast coffee-toast--center coffee-toast--' + (type || 'info');
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(function() {
+        toast.classList.add('coffee-toast--fadeout');
+        setTimeout(function() {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 300);
+      }, 2000);
+    }
+
+    coffeeBtn.addEventListener('click', openCoffeeModal);
+    coffeeModalCloseBtn.addEventListener('click', closeCoffeeModal);
+    coffeeBackdrop.addEventListener('click', closeCoffeeModal);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !coffeeModal.hidden) {
+        closeCoffeeModal();
+      }
+    });
+  })();
+
+  (function() {
+    var downgradeBtn = document.getElementById('downgradeGuideBtn');
+    var downgradeModal = document.getElementById('downgradeGuideModal');
+    var downgradeModalCloseBtn = document.getElementById('downgradeGuideModalCloseBtn');
+    var downgradeBackdrop = downgradeModal.querySelector('.coffee-modal__backdrop');
+
+    function openDowngradeModal() {
+      downgradeModal.hidden = false;
+      downgradeModal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDowngradeModal() {
+      downgradeModal.hidden = true;
+      downgradeModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    downgradeBtn.addEventListener('click', openDowngradeModal);
+    downgradeModalCloseBtn.addEventListener('click', closeDowngradeModal);
+    downgradeBackdrop.addEventListener('click', closeDowngradeModal);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !downgradeModal.hidden) {
+        closeDowngradeModal();
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
