@@ -2443,7 +2443,7 @@ function writefreqBuildMissingCnFontToastMessage(channelNameInput, finalText, co
       ' 字）中：' +
       missingJoined;
   }
-  const douyinPrivateMsgHint = '\n\n如需补充上述汉字，请抖音私信联系。';
+  const douyinPrivateMsgHint = '\n\n如需补充上述汉字，请在写频页面，填写补充表单。';
   const fullText = bodyText + douyinPrivateMsgHint;
   return fullText;
 }
