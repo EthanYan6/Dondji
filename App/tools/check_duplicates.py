@@ -1,61 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Check for duplicate characters in unique_chars
-"""
+"""检测字库中是否有重复汉字"""
 
-import os
 import sys
-from collections import Counter
-
-# Add tools directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from gen_cn_font import load_gb2312_chars, load_cn_chars_append, CN_CHARS_500
+import os
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, script_dir)
 
-# Load GB2312
-gb2312_chars = load_gb2312_chars(script_dir)
+from gen_cn_font import CN_CHARS_500, load_cn_chars_append
 
-# Load existing
-existing_chars_text = "".join(CN_CHARS_500)
-append_segment = load_cn_chars_append(script_dir)
-existing_chars_text += append_segment
+def check_duplicates():
+    append_chars = load_cn_chars_append(script_dir)
+    all_chars = CN_CHARS_500 + append_chars
+    
+    seen = {}
+    duplicates = []
+    
+    for i, char in enumerate(all_chars):
+        if char in seen:
+            duplicates.append({
+                'char': char,
+                'first_pos': seen[char],
+                'second_pos': i,
+                'in_base': seen[char] < len(CN_CHARS_500),
+                'in_append': i >= len(CN_CHARS_500)
+            })
+        else:
+            seen[char] = i
+    
+    if duplicates:
+        print("=" * 60)
+        print("发现重复汉字：")
+        print("=" * 60)
+        for dup in duplicates:
+            print(f"汉字: {dup['char']}")
+            print(f"  首次出现位置: {dup['first_pos']} (在{'基础字库' if dup['in_base'] else '追加字库'})")
+            print(f"  重复出现位置: {dup['second_pos']} (在{'基础字库' if not dup['in_append'] else '追加字库'})")
+            print()
+        print(f"总计发现 {len(duplicates)} 个重复汉字")
+        return False
+    else:
+        print("=" * 60)
+        print("[OK] 未发现重复汉字")
+        print("=" * 60)
+        print(f"基础字库: {len(CN_CHARS_500)} 个汉字")
+        print(f"追加字库: {len(append_chars)} 个汉字")
+        print(f"总计: {len(all_chars)} 个汉字 (去重后)")
+        return True
 
-seen = set()
-existing_chars = []
-for char in existing_chars_text:
-    if char not in seen and ord(char) >= 0x4E00:
-        seen.add(char)
-        existing_chars.append(char)
-
-# Merge
-unique_chars = list(existing_chars)
-existing_set = set(existing_chars)
-for char in gb2312_chars:
-    if char not in existing_set:
-        unique_chars.append(char)
-        existing_set.add(char)
-
-print(f"Total characters: {len(unique_chars)}")
-print(f"Unique characters: {len(set(unique_chars))}")
-
-# Check for duplicates
-counter = Counter(unique_chars)
-duplicates = [(char, count) for char, count in counter.items() if count > 1]
-
-if duplicates:
-    print(f"\nFound {len(duplicates)} duplicate characters:")
-    for char, count in duplicates[:20]:
-        print(f"  U+{ord(char):04X} ('{char}') appears {count} times")
-else:
-    print("\nNo duplicate characters found")
-
-# Check if missing 'wei' chars are in the list
-print(f"\nChecking missing 'wei' characters:")
-missing_wei = [0x8ECE, 0x709C, 0x7168, 0x9C94]
-for unicode_val in missing_wei:
-    char = chr(unicode_val)
-    count = counter.get(char, 0)
-    print(f"  U+{unicode_val:04X} ('{char}') appears {count} times")
+if __name__ == "__main__":
+    success = check_duplicates()
+    sys.exit(0 if success else 1)
