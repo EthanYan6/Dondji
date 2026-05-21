@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "UV-K1 / UV-K5(K6) V3 Web Tool",
   "scripts": {
-    "minify": "node node_modules/javascript-obfuscator/bin/javascript-obfuscator.js js/flash.js --output js/flash.min.js --compact true --control-flow-flattening true --string-array true --string-array-encoding rc4 && node node_modules/clean-css-cli/bin/cleancss -o css/style.min.css css/style.css && node node_modules/clean-css-cli/bin/cleancss -o css/help.min.css css/help.css"
+    "minify": "node node_modules/javascript-obfuscator/bin/javascript-obfuscator js/flash.js --output js/flash.min.js --compact true --control-flow-flattening true --string-array true --string-array-encoding rc4 && node node_modules/clean-css-cli/bin/cleancss -o css/style.min.css css/style.css && node node_modules/clean-css-cli/bin/cleancss -o css/help.min.css css/help.css"
   },
   "devDependencies": {
     "javascript-obfuscator": "^4.1.0",
