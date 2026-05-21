@@ -990,6 +990,8 @@ void RADIO_SetupRegisters(bool switchToForeground)
     BK4819_EnableDTMF();
     InterruptMask |= BK4819_REG_3F_DTMF_5TONE_FOUND;
 
+    BK4819_DisableMDC1200Rx();
+
     if (gEeprom.ROGER == ROGER_MODE_MDC)
     {
         BK4819_EnableMDC1200Rx();

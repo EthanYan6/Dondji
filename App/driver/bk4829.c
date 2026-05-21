@@ -1055,7 +1055,7 @@ void BK4819_PlaySingleTone(const unsigned int tone_Hz, const unsigned int delay,
     }
 
     BK4819_WriteRegister(BK4819_REG_70, 0x0000);
-    BK4819_WriteRegister(BK4819_REG_30, 0xC1FE);
+    BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);
     BK4819_ExitTxMute();
 }
 
@@ -1191,7 +1191,7 @@ void BK4819_TxOn_Beep(void)
     BK4819_WriteRegister(BK4819_REG_37, 0x9D1F);
     BK4819_WriteRegister(BK4819_REG_52, 0x028F);
     BK4819_WriteRegister(BK4819_REG_30, 0x0000);
-    BK4819_WriteRegister(BK4819_REG_30, 0xC1FE);
+    BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);
 }
 
 void BK4819_ExitSubAu(void)
@@ -1267,7 +1267,7 @@ void BK4819_ExitDTMF_TX(bool bKeep)
     BK4819_SetAF(BK4819_AF_MUTE);
     BK4819_WriteRegister(BK4819_REG_70, 0x0000);
     BK4819_DisableDTMF();
-    BK4819_WriteRegister(BK4819_REG_30, 0xC1FE);
+    BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);
     if (!bKeep)
         BK4819_ExitTxMute();
 }
@@ -1282,7 +1282,7 @@ void BK4819_EnableTXLink(void)
         BK4819_REG_30_ENABLE_DISC_MODE |
         BK4819_REG_30_ENABLE_PLL_VCO   |
         BK4819_REG_30_ENABLE_PA_GAIN   |
-        BK4819_REG_30_DISABLE_MIC_ADC  |
+        BK4819_REG_30_ENABLE_MIC_ADC   |
         BK4819_REG_30_ENABLE_TX_DSP    |
         BK4819_REG_30_DISABLE_RX_DSP);
 }
@@ -1771,7 +1771,7 @@ static void BK4819_PlayRogerNormal(void)
     BK4819_EnterTxMute();
 
     BK4819_WriteRegister(BK4819_REG_70, 0x0000);
-    BK4819_WriteRegister(BK4819_REG_30, 0xC1FE);   // 1 1 0000 0 1 1111 1 1 1 0
+    BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);   // 1 1 0000 1 1 1111 1 1 1 0 (启用AF_DAC)
 }
 
 
@@ -1962,7 +1962,14 @@ void BK4819_PlayMDC1200(const uint8_t *data, const unsigned int size, const bool
 void BK4819_DisableMDC1200Rx(void)
 {
     BK4819_WriteRegister(BK4819_REG_70, 0);
+    BK4819_WriteRegister(BK4819_REG_72, 0);
     BK4819_WriteRegister(BK4819_REG_58, 0);
+    BK4819_WriteRegister(BK4819_REG_59, 0x0068);
+    BK4819_WriteRegister(BK4819_REG_5A, 0);
+    BK4819_WriteRegister(BK4819_REG_5B, 0);
+    BK4819_WriteRegister(BK4819_REG_5C, 0);
+    BK4819_WriteRegister(BK4819_REG_5D, 0);
+    BK4819_WriteRegister(BK4819_REG_5E, 0);
 }
 
 void BK4819_EnableMDC1200Rx(void)

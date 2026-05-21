@@ -1340,6 +1340,7 @@ void MENU_AcceptSetting(void)
 
         case MENU_ROGER:
             gEeprom.ROGER = gSubMenuSelection;
+            gFlagReconfigureVfos = true;
             break;
 
         case MENU_AM:
