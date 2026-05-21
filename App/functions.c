@@ -253,6 +253,24 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
     const FUNCTION_Type_t PreviousFunction = gCurrentFunction;
     const bool bWasPowerSave = PreviousFunction == FUNCTION_POWER_SAVE;
 
+    const bool bWasTxOrRx = (PreviousFunction == FUNCTION_TRANSMIT ||
+                              PreviousFunction == FUNCTION_INCOMING ||
+                              PreviousFunction == FUNCTION_RECEIVE ||
+                              PreviousFunction == FUNCTION_MONITOR);
+
+    const bool bIsTxOrRx = (Function == FUNCTION_TRANSMIT ||
+                             Function == FUNCTION_INCOMING ||
+                             Function == FUNCTION_RECEIVE ||
+                             Function == FUNCTION_MONITOR);
+
+    if (bIsTxOrRx && !bWasTxOrRx) {
+        gBatteryUpdatePaused = true;
+    }
+    else if (!bIsTxOrRx && bWasTxOrRx) {
+        gBatteryUpdatePaused = false;
+        gBatteryUpdateDelayCountdown = 300;
+    }
+
     gCurrentFunction = Function;
 
     if (bWasPowerSave && Function != FUNCTION_POWER_SAVE) {

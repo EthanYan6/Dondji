@@ -1777,9 +1777,14 @@ void APP_TimeSlice500ms(void)
 
         if ((gBatteryCheckCounter & 1) == 0)
         {
-            BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[gBatteryVoltageIndex++], &gBatteryCurrent);
-            if (gBatteryVoltageIndex > 3)
-                gBatteryVoltageIndex = 0;
+            if (!gBatteryUpdatePaused && gBatteryUpdateDelayCountdown == 0) {
+                BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[gBatteryVoltageIndex++], &gBatteryCurrent);
+                if (gBatteryVoltageIndex > 3)
+                    gBatteryVoltageIndex = 0;
+            }
+            if (gBatteryUpdateDelayCountdown > 0) {
+                gBatteryUpdateDelayCountdown--;
+            }
             BATTERY_GetReadings(true);
         }
     }

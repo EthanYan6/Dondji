@@ -34,6 +34,10 @@ extern bool              gLowBattery;
 extern bool              gLowBatteryConfirmed;
 extern uint16_t          gBatteryCheckCounter;
 
+extern bool              gBatteryUpdatePaused;
+
+extern uint16_t          gBatteryUpdateDelayCountdown;
+
 extern volatile uint16_t gPowerSave_10ms;
 
 typedef enum {

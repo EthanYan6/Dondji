@@ -40,6 +40,10 @@ bool              gLowBattery;
 bool              gLowBatteryConfirmed;
 uint16_t          gBatteryCheckCounter;
 
+bool              gBatteryUpdatePaused = false;
+
+uint16_t          gBatteryUpdateDelayCountdown = 0;
+
 typedef enum {
     BATTERY_LOW_INACTIVE,
     BATTERY_LOW_ACTIVE,
@@ -132,6 +136,10 @@ unsigned int BATTERY_VoltsToPercent(const unsigned int voltage_10mV)
 
 void BATTERY_GetReadings(const bool bDisplayBatteryLevel)
 {
+    if (gBatteryUpdatePaused) {
+        return;
+    }
+
     const uint8_t  PreviousBatteryLevel = gBatteryDisplayLevel;
     const uint16_t Voltage              = (gBatteryVoltages[0] + gBatteryVoltages[1] + gBatteryVoltages[2] + gBatteryVoltages[3]) / 4;
 
