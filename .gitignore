@@ -5,11 +5,11 @@
 /compiled-firmware
 .cache
 compile_commands.json
-.vscode
-.claude
 k5_eeprom.raw
 
 /build
 /serialtool/__pycache__
 
 .DS_Store
+node_modules
+package-lock.json

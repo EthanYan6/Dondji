@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.css?v=20260520a">
+  <link rel="stylesheet" href="css/style.min.css?v=20260521f">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script>
   <script>
     (function () {
@@ -672,29 +672,56 @@
   </main>
   </div>
 
-  <div id="coffeeModal" class="coffee-modal" hidden aria-hidden="true">
+  <div id="coffeeModal" class="coffee-modal coffee-modal--donation" hidden aria-hidden="true">
     <div class="coffee-modal__backdrop" data-coffee-dismiss tabindex="-1" aria-hidden="true"></div>
     <div class="coffee-modal__panel" role="dialog" aria-modal="true" aria-labelledby="coffeeModalTitle">
       <h2 id="coffeeModalTitle" class="coffee-modal__title">☕ 请作者喝杯咖啡</h2>
-      <div class="coffee-modal__content">
-        <p class="coffee-modal__text">
-          感谢您使用叮咚鸡固件！维护这个网站和固件需要投入大量时间和精力，服务器、开发测试等都需要成本支持。
-        </p>
-        <p class="coffee-modal__text">
-          如果这个项目对您有帮助，欢迎打赏支持！<strong>打赏时请备注您的呼号</strong>，方便我感谢您的支持！
-        </p>
-        <div class="coffee-modal__qrcodes">
-          <div class="coffee-modal__qrcode-item">
-            <img src="images/wechat_pay.jpg" alt="微信收款码" class="coffee-modal__qrcode-img">
-            <span class="coffee-modal__qrcode-label">微信支付</span>
+      <div class="coffee-modal__body">
+        <div class="coffee-modal__left">
+          <div class="coffee-modal__content">
+            <p class="coffee-modal__text">
+              感谢您使用叮咚鸡固件！维护这个网站和固件需要投入大量时间和精力，运营、开发、测试等都需要成本支持。
+            </p>
+            <p class="coffee-modal__text">
+              如果这个项目对您有帮助，欢迎打赏支持！<strong>打赏时请备注您的呼号</strong>，方便我感谢您的支持！
+            </p>
+            <div class="coffee-modal__qrcodes">
+              <div class="coffee-modal__qrcode-item">
+                <img src="images/wechat_pay.jpg" alt="微信收款码" class="coffee-modal__qrcode-img">
+                <span class="coffee-modal__qrcode-label">微信支付</span>
+              </div>
+              <div class="coffee-modal__qrcode-item">
+                <img src="images/ali_pay.jpg" alt="支付宝收款码" class="coffee-modal__qrcode-img">
+                <span class="coffee-modal__qrcode-label">支付宝</span>
+              </div>
+            </div>
           </div>
-          <div class="coffee-modal__qrcode-item">
-            <img src="images/ali_pay.jpg" alt="支付宝收款码" class="coffee-modal__qrcode-img">
-            <span class="coffee-modal__qrcode-label">支付宝</span>
+        </div>
+        <div class="coffee-modal__right">
+          <div class="donation-board">
+            <div class="donation-board__header">打赏榜单</div>
+            <div class="donation-board__scroll">
+              <table class="donation-board__table">
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>昵称</th>
+                    <th>金额</th>
+                    <th>留言</th>
+                  </tr>
+                </thead>
+                <tbody id="donationTableBody">
+                  <tr><td colspan="4" class="donation-loading">加载中...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
-      <button type="button" class="coffee-modal__btn" id="coffeeModalCloseBtn">退出</button>
+      <div class="coffee-modal__footer">
+        <p class="coffee-modal__notice">量力而行，心意至上，拒绝攀比，自愿为主。</p>
+        <button type="button" class="coffee-modal__btn" id="coffeeModalCloseBtn">退出</button>
+      </div>
     </div>
   </div>
 
@@ -759,18 +786,135 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/flash.min.js?v=20260518d"></script>
+  <script src="js/flash.min.js?v=20260521a"></script>
   <script>
   (function() {
     var coffeeBtn = document.getElementById('coffeeBtn');
     var coffeeModal = document.getElementById('coffeeModal');
     var coffeeModalCloseBtn = document.getElementById('coffeeModalCloseBtn');
     var coffeeBackdrop = coffeeModal.querySelector('.coffee-modal__backdrop');
+    var donationDataLoaded = false;
+    var scrollInterval = null;
+    var defaultDonationData = '时间,昵称,金额,留言\n2026-05-20 15:46:49,BI4BEO,8.88,谢谢博主';
+
+    function parseDonationCSV(csvText) {
+      var tbody = document.getElementById('donationTableBody');
+      if (!tbody) return false;
+      
+      var lines = csvText.trim().split('\n');
+      if (lines.length <= 1) {
+        tbody.innerHTML = '<tr><td colspan="4" class="donation-loading">暂无打赏记录</td></tr>';
+        return false;
+      }
+      
+      var dataLines = [];
+      for (var i = 1; i < lines.length; i++) {
+        var cols = lines[i].split(',');
+        if (cols.length >= 4) {
+          dataLines.push(cols);
+        }
+      }
+      
+      dataLines.reverse();
+      
+      var html = '';
+      for (var j = 0; j < dataLines.length; j++) {
+        var cols = dataLines[j];
+        html += '<tr>';
+        html += '<td>' + cols[0].trim() + '</td>';
+        html += '<td>' + cols[1].trim() + '</td>';
+        html += '<td>¥' + cols[2].trim() + '</td>';
+        html += '<td><span class="scroll-text">' + cols[3].trim() + '</span></td>';
+        html += '</tr>';
+      }
+      tbody.innerHTML = html;
+      return true;
+    }
+
+    function loadDonationData() {
+      if (donationDataLoaded) return;
+      
+      fetch('data/donations.csv')
+        .then(function(response) {
+          if (!response.ok) throw new Error('无法加载打赏数据');
+          return response.text();
+        })
+        .then(function(csvText) {
+          if (parseDonationCSV(csvText)) {
+            donationDataLoaded = true;
+            startAutoScroll();
+          }
+        })
+        .catch(function(error) {
+          if (parseDonationCSV(defaultDonationData)) {
+            donationDataLoaded = true;
+            startAutoScroll();
+          }
+        });
+    }
+
+    function startAutoScroll() {
+      var scrollContainer = document.querySelector('.donation-board__scroll');
+      if (!scrollContainer) return;
+      
+      var table = scrollContainer.querySelector('.donation-board__table');
+      if (!table) return;
+      
+      if (scrollContainer.scrollHeight <= scrollContainer.clientHeight) {
+        return;
+      }
+      
+      var scrollSpeed = 1;
+      var direction = 1;
+      var pauseTime = 2000;
+      var isPaused = false;
+      
+      scrollContainer.addEventListener('mouseenter', function() {
+        isPaused = true;
+      });
+      
+      scrollContainer.addEventListener('mouseleave', function() {
+        isPaused = false;
+      });
+      
+      function scroll() {
+        if (isPaused) {
+          requestAnimationFrame(scroll);
+          return;
+        }
+        
+        var currentScroll = scrollContainer.scrollTop;
+        var maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+        
+        if (direction === 1 && currentScroll >= maxScroll) {
+          direction = -1;
+          setTimeout(function() {
+            isPaused = false;
+          }, pauseTime);
+          isPaused = true;
+        } else if (direction === -1 && currentScroll <= 0) {
+          direction = 1;
+          setTimeout(function() {
+            isPaused = false;
+          }, pauseTime);
+          isPaused = true;
+        }
+        
+        if (!isPaused) {
+          scrollContainer.scrollTop += scrollSpeed * direction;
+        }
+        
+        requestAnimationFrame(scroll);
+      }
+      
+      scroll();
+    }
 
     function openCoffeeModal() {
       coffeeModal.hidden = false;
       coffeeModal.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
+      loadDonationData();
     }
 
     function closeCoffeeModal() {

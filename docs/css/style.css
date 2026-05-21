@@ -1814,30 +1814,29 @@ html.theme-light .flash-device-warning-modal__backdrop {
 .coffee-modal__qrcodes {
   display: flex;
   justify-content: center;
-  gap: 24px;
+  gap: 12px;
   margin-top: 20px;
-  flex-wrap: wrap;
 }
 
 .coffee-modal__qrcode-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .coffee-modal__qrcode-img {
-  width: 180px;
-  height: 180px;
+  width: 130px;
+  height: 130px;
   object-fit: contain;
   border-radius: 8px;
   border: 2px solid var(--border-default);
   background: #fff;
-  padding: 8px;
+  padding: 6px;
 }
 
 .coffee-modal__qrcode-label {
-  font-size: 0.9em;
+  font-size: 0.85em;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2017,4 +2016,190 @@ html.theme-light .flash-device-warning-modal__backdrop {
   background: var(--bg-elevated);
   color: var(--accent);
   transform: translateY(-1px);
+}
+
+.coffee-modal--donation .coffee-modal__panel {
+  max-width: 920px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.coffee-modal__body {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.coffee-modal__left {
+  flex: 0 0 auto;
+  width: 320px;
+}
+
+.coffee-modal__right {
+  flex: 1;
+  min-width: 0;
+}
+
+.donation-board {
+  background: var(--bg-muted);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.donation-board__header {
+  padding: 10px 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: center;
+}
+
+.donation-board__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 280px;
+  position: relative;
+}
+
+.donation-board__scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.donation-board__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.donation-board__scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+.donation-board__scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-subtle);
+}
+
+.donation-board__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7em;
+  table-layout: fixed;
+}
+
+.donation-board__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-muted);
+}
+
+.donation-board__table th {
+  padding: 6px 4px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-subtle);
+  font-size: 0.9em;
+}
+
+.donation-board__table th:nth-child(1) {
+  width: 28%;
+}
+
+.donation-board__table th:nth-child(2) {
+  width: 18%;
+}
+
+.donation-board__table th:nth-child(3) {
+  width: 14%;
+}
+
+.donation-board__table th:nth-child(4) {
+  width: 40%;
+}
+
+.donation-board__table td {
+  padding: 5px 4px;
+  color: var(--text-muted);
+}
+
+.donation-board__table td:nth-child(4) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donation-board__table td:nth-child(4) .scroll-text {
+  display: inline-block;
+}
+
+.donation-board__table tr:hover td:nth-child(4) .scroll-text {
+  animation: textScroll 3s linear infinite alternate;
+}
+
+@keyframes textScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.donation-board__table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.donation-board__table tbody tr:hover {
+  background: rgba(88, 166, 255, 0.05);
+}
+
+.donation-board__table td:nth-child(3) {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.donation-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-subtle);
+}
+
+.coffee-modal__footer {
+  border-top: 1px solid var(--border-default);
+  padding-top: 16px;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.coffee-modal__notice {
+  font-size: 0.8em;
+  color: var(--text-subtle);
+  text-align: center;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+@keyframes donationScroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.donation-board__scroll--auto {
+  animation: donationScroll 20s linear infinite;
+}
+
+.donation-board__scroll--auto:hover {
+  animation-play-state: paused;
 }

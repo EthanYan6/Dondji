@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>帮助文档 - 叮咚鸡（Dondji）</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260518d">
-  <link rel="stylesheet" href="css/help.min.css?v=20260518d">
+  <link rel="stylesheet" href="css/style.min.css?v=20260521f">
+  <link rel="stylesheet" href="css/help.min.css?v=20260521f">
   <script>
     (function () {
       try {
@@ -155,13 +155,13 @@
 
       function loadWithXhr() {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'help.md?v=' + Date.now(), true);
+        xhr.open('GET', 'data/help.md?v=' + Date.now(), true);
         xhr.onreadystatechange = function() {
           if (xhr.readyState === 4) {
             if (xhr.status === 200 || xhr.status === 0) {
               renderMarkdown(xhr.responseText);
             } else {
-              contentEl.innerHTML = '<div class="help-content-error"><p>加载文档失败</p><p>请确保 help.md 文件存在。</p></div>';
+              contentEl.innerHTML = '<div class="help-content-error"><p>加载文档失败</p><p>请确保 data/help.md 文件存在。</p></div>';
               tocEl.innerHTML = '<div class="help-toc-empty">加载失败</div>';
             }
           }
@@ -169,7 +169,7 @@
         xhr.send();
       }
 
-      fetch('help.md?v=' + Date.now())
+      fetch('data/help.md?v=' + Date.now())
         .then(function(response) {
           if (!response.ok) {
             throw new Error('无法加载文档: ' + response.status);

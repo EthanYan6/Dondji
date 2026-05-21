@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/gen_cn_font.py)",
+      "Bash(python -c ' *)",
+      "Bash(cmake --build build/Custom)",
+      "Bash(python update_cn_font.py --append \"芙蓉祈福叁始象矩屏\")",
+      "Bash(gh release *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s \"https://api.github.com/repos/armel/uv-k1-k5v3-firmware-custom/releases/tags/v5.5.0\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('body','NO BODY'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('body','NO BODY'\\)\\)\")",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/armel/uv-k1-k5v3-firmware-custom/v5.5.0/app/spectrum.c\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/armel/uv-k1-k5v3-firmware-custom/v5.5.0/app/aircopy.c\")",
+      "Bash(curl -s \"https://api.github.com/repos/armel/uv-k1-k5v3-firmware-custom/contents/app/spectrum.c?ref=v5.5.0\")",
+      "Bash(curl -s \"https://api.github.com/repos/armel/uv-k1-k5v3-firmware-custom/git/trees/v5.5.0?recursive=1\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/armel/uv-k1-k5v3-firmware-custom/contents/App/app/spectrum.h?ref=v5.5.0\")",
+      "Bash(grep -v \"//\")",
+      "Bash(python update_cn_font.py)",
+      "Bash(python App/tools/gen_cn_font.py)",
+      "Bash(git stash *)"
+    ]
+  }
+}
