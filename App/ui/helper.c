@@ -743,7 +743,7 @@ void UI_DisplayPopup(const char *string)
         const uint8_t title_y_bottom = 31u;
         const uint8_t footer_y_top = 46u;
         const uint8_t footer_y_bottom = 57u;
-        const uint8_t latin_down_mixed = 3u;
+        const uint8_t latin_down_mixed = 0u;
 
         const int low_battery_cmp = strcmp(string, english_low_battery);
         const bool use_cn_low_battery_title = (low_battery_cmp == 0);
