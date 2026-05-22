@@ -104,10 +104,6 @@ uint16_t rssiHistory[128];
 static uint8_t waterfallHistory[128][WATERFALL_HISTORY_DEPTH / 2];
 static uint8_t waterfallIndex = 0;
 
-static uint8_t peakHoldY[128];
-static uint8_t peakHoldAge[64];
-#define PEAK_HOLD_DELAY 15
-#define PEAK_HOLD_INIT 0xFF
 int vfo;
 uint8_t freqInputIndex = 0;
 uint8_t freqInputDotIndex = 0;
@@ -591,8 +587,6 @@ static void RelaunchScan()
 #endif
     preventKeypress = true;
     scanInfo.rssiMin = RSSI_MAX_VALUE;
-    memset(peakHoldY, PEAK_HOLD_INIT, sizeof(peakHoldY));
-    memset(peakHoldAge, 0, sizeof(peakHoldAge));
     memset(waterfallHistory, 0, sizeof(waterfallHistory));
     waterfallIndex = 0;
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
