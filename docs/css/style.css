@@ -2121,11 +2121,11 @@ html.theme-light .flash-device-warning-modal__backdrop {
 }
 
 .donation-board__table th:nth-child(4) {
-  width: 38%;
+  width: 35%;
 }
 
 .donation-board__table th:nth-child(5) {
-  width: 12%;
+  width: 15%;
 }
 
 .donation-board__table td {
