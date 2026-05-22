@@ -2089,7 +2089,7 @@ html.theme-light .flash-device-warning-modal__backdrop {
 .donation-board__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.7em;
+  font-size: 0.65em;
   table-layout: fixed;
 }
 
@@ -2101,7 +2101,7 @@ html.theme-light .flash-device-warning-modal__backdrop {
 }
 
 .donation-board__table th {
-  padding: 6px 4px;
+  padding: 4px 3px;
   text-align: left;
   font-weight: 500;
   color: var(--text-subtle);
@@ -2109,23 +2109,27 @@ html.theme-light .flash-device-warning-modal__backdrop {
 }
 
 .donation-board__table th:nth-child(1) {
-  width: 28%;
+  width: 22%;
 }
 
 .donation-board__table th:nth-child(2) {
-  width: 18%;
+  width: 16%;
 }
 
 .donation-board__table th:nth-child(3) {
-  width: 14%;
+  width: 12%;
 }
 
 .donation-board__table th:nth-child(4) {
-  width: 40%;
+  width: 38%;
+}
+
+.donation-board__table th:nth-child(5) {
+  width: 12%;
 }
 
 .donation-board__table td {
-  padding: 5px 4px;
+  padding: 4px 3px;
   color: var(--text-muted);
 }
 
@@ -2164,6 +2168,12 @@ html.theme-light .flash-device-warning-modal__backdrop {
 .donation-board__table td:nth-child(3) {
   color: var(--accent);
   font-weight: 500;
+}
+
+.donation-board__table td:nth-child(5) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .donation-loading {
