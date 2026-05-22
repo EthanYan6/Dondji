@@ -708,10 +708,11 @@
                     <th>昵称</th>
                     <th>金额</th>
                     <th>留言</th>
+                    <th>来源</th>
                   </tr>
                 </thead>
                 <tbody id="donationTableBody">
-                  <tr><td colspan="4" class="donation-loading">加载中...</td></tr>
+                  <tr><td colspan="5" class="donation-loading">加载中...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -795,7 +796,7 @@
     var coffeeBackdrop = coffeeModal.querySelector('.coffee-modal__backdrop');
     var donationDataLoaded = false;
     var scrollInterval = null;
-    var defaultDonationData = '时间,昵称,金额,留言\n2026-05-20 15:46:49,BI4BEO,8.88,谢谢博主';
+    var defaultDonationData = '时间,昵称,金额,留言,来源\n2026-05-20 15:46:49,BI4BEO,8.88,谢谢博主,来自微信';
 
     function parseDonationCSV(csvText) {
       var tbody = document.getElementById('donationTableBody');
@@ -803,14 +804,14 @@
       
       var lines = csvText.trim().split('\n');
       if (lines.length <= 1) {
-        tbody.innerHTML = '<tr><td colspan="4" class="donation-loading">暂无打赏记录</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="donation-loading">暂无打赏记录</td></tr>';
         return false;
       }
       
       var dataLines = [];
       for (var i = 1; i < lines.length; i++) {
         var cols = lines[i].split(',');
-        if (cols.length >= 4) {
+        if (cols.length >= 5) {
           dataLines.push(cols);
         }
       }
@@ -825,6 +826,7 @@
         html += '<td>' + cols[1].trim() + '</td>';
         html += '<td>¥' + cols[2].trim() + '</td>';
         html += '<td><span class="scroll-text">' + cols[3].trim() + '</span></td>';
+        html += '<td>' + cols[4].trim() + '</td>';
         html += '</tr>';
       }
       tbody.innerHTML = html;
