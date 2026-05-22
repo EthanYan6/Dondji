@@ -97,6 +97,13 @@ SpectrumSettings settings = {.stepsCount = STEPS_64,
 uint32_t fMeasure = 0;
 uint32_t currentFreq, tempFreq;
 uint16_t rssiHistory[128];
+
+#define WATERFALL_HISTORY_DEPTH  16U
+#define WATERFALL_COLOR_LEVELS   16U
+#define WF_FLOOR_MIN_LEVEL       2U
+static uint8_t waterfallHistory[128][WATERFALL_HISTORY_DEPTH / 2];
+static uint8_t waterfallIndex = 0;
+
 static uint8_t peakHoldY[128];
 static uint8_t peakHoldAge[64];
 #define PEAK_HOLD_DELAY 15
@@ -586,6 +593,8 @@ static void RelaunchScan()
     scanInfo.rssiMin = RSSI_MAX_VALUE;
     memset(peakHoldY, PEAK_HOLD_INIT, sizeof(peakHoldY));
     memset(peakHoldAge, 0, sizeof(peakHoldAge));
+    memset(waterfallHistory, 0, sizeof(waterfallHistory));
+    waterfallIndex = 0;
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
     SaveSettings();
 #endif
@@ -962,6 +971,120 @@ static bool IsBlacklisted(uint16_t idx)
 
 // Draw things
 
+static void SetWaterfallLevel(uint8_t x, uint8_t y, uint8_t level)
+{
+    if (x >= 128 || y >= WATERFALL_HISTORY_DEPTH) return;
+    uint8_t row = y >> 1;
+    if (!(y & 1))
+        waterfallHistory[x][row] = (waterfallHistory[x][row] & 0xF0) | (level & 0x0F);
+    else
+        waterfallHistory[x][row] = (waterfallHistory[x][row] & 0x0F) | (level << 4);
+}
+
+static uint8_t GetWaterfallLevel(uint8_t x, uint8_t y)
+{
+    if (x >= 128 || y >= WATERFALL_HISTORY_DEPTH) return 0;
+    uint8_t row = y >> 1;
+    if (!(y & 1)) return waterfallHistory[x][row] & 0x0F;
+    return (waterfallHistory[x][row] >> 4) & 0x0F;
+}
+
+static void UpdateWaterfall(void)
+{
+    waterfallIndex = (waterfallIndex + 1) % WATERFALL_HISTORY_DEPTH;
+
+    uint16_t stepsCount = GetStepsCount();
+    uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
+
+    uint16_t minRssi = 0xFFFF, maxRssi = 0;
+    uint16_t validSamples = 0;
+    for (uint8_t x = 0; x < bars; x++)
+    {
+        uint16_t rssi = rssiHistory[x];
+        if (rssi != RSSI_MAX_VALUE && rssi != 0)
+        {
+            if (rssi < minRssi) minRssi = rssi;
+            if (rssi > maxRssi) maxRssi = rssi;
+            validSamples++;
+        }
+    }
+
+    uint16_t range = (maxRssi > minRssi) ? (maxRssi - minRssi) : 1;
+
+    for (uint8_t x = 0; x < bars; x++)
+    {
+        uint16_t rssi = rssiHistory[x];
+        uint8_t level = 0;
+        if (rssi != RSSI_MAX_VALUE && rssi != 0 && validSamples > 0)
+        {
+            uint8_t dither = (x ^ waterfallIndex) & 0x01;
+            level = (uint8_t)((((uint32_t)(rssi - minRssi) * 15 + dither) / range));
+            if (level == 0 && (rssi & 0x01)) level = 1;
+            if (level == 1) level = WF_FLOOR_MIN_LEVEL;
+        }
+        SetWaterfallLevel(x, waterfallIndex, level);
+    }
+
+    for (uint8_t x = bars; x < 128; x++)
+    {
+        SetWaterfallLevel(x, waterfallIndex, 0);
+    }
+}
+
+static void DrawWaterfall(void)
+{
+    static const uint8_t bayerMatrix[4][4] = {
+        { 0, 8, 2, 10 }, { 12, 4, 14, 6 },
+        { 3, 11, 1, 9 },  { 15, 7, 13, 5 }
+    };
+
+    const uint8_t WATERFALL_START_Y = 40;
+    uint16_t stepsCount = GetStepsCount();
+    uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
+
+    for (uint8_t y_offset = 0; y_offset < WATERFALL_HISTORY_DEPTH; y_offset++)
+    {
+        uint8_t y_pos = WATERFALL_START_Y + y_offset;
+        if (y_pos > 63) break;
+
+        int16_t historyRow = (int16_t)waterfallIndex - y_offset;
+        while (historyRow < 0) historyRow += WATERFALL_HISTORY_DEPTH;
+
+        uint8_t currentFade = 16;
+        if (y_offset > 10)
+        {
+            uint8_t drop = (y_offset - 10) * 2;
+            currentFade = (drop >= 16) ? 0 : 16 - drop;
+        }
+
+        for (uint8_t x = 0; x < 128; x++)
+        {
+            uint16_t specIdx;
+            if (bars <= 1)
+                specIdx = 0;
+            else
+                specIdx = ((uint32_t)x * bars) / 128;
+            if (specIdx >= bars) specIdx = bars - 1;
+
+            uint8_t level = GetWaterfallLevel((uint8_t)specIdx, (uint8_t)historyRow);
+
+            if (currentFade < 16)
+            {
+                level = (level * currentFade) >> 4;
+            }
+
+            if (level > bayerMatrix[y_pos & 3][x & 3])
+            {
+                gFrameBuffer[y_pos >> 3][x] &= ~(1 << (y_pos & 7));
+            }
+            else
+            {
+                gFrameBuffer[y_pos >> 3][x] |= (1 << (y_pos & 7));
+            }
+        }
+    }
+}
+
 static uint8_t iSqrt(uint16_t value)
 {
     if (value == 0)
@@ -979,11 +1102,6 @@ static uint8_t iSqrt(uint16_t value)
     }
 
     return (uint8_t)current;
-}
-
-static bool IsRssiHistoryInvalid(uint16_t rssi)
-{
-    return rssi == 0 || rssi == RSSI_MAX_VALUE;
 }
 
 // applied x2 to prevent initial rounding
@@ -1010,175 +1128,40 @@ uint8_t Rssi2Y(uint16_t rssi)
     return DrawingEndY - Rssi2PX(rssi, 0, DrawingEndY - DrawingTopY);
 }
 
-static uint16_t InterpolateRssi(uint8_t bars, uint16_t pos256)
+static void DrawLine(int x0, int y0, int x1, int y1, bool fill);
+static uint8_t GetSpectrumBaseY(void);
+static uint8_t SpecIdxToX(uint16_t idx);
+
+static void DrawSpectrumEnhanced(void)
 {
-    uint8_t leftIndex = pos256 >> 8;
-    uint8_t fraction = pos256 & 0xFF;
+    const uint16_t bars = GetStepsCount();
+    const uint8_t SHADE_MAX_Y = GetSpectrumBaseY();
 
-    if (leftIndex >= bars - 1)
-    {
-        leftIndex = bars - 1;
-        fraction = 0;
-    }
+    uint8_t prevX = SpecIdxToX(0);
+    uint8_t prevY = Rssi2Y(rssiHistory[0]);
 
-    uint8_t rightIndex = (leftIndex + 1 < bars) ? (leftIndex + 1) : leftIndex;
-    uint16_t leftRssi = rssiHistory[leftIndex];
-    uint16_t rightRssi = rssiHistory[rightIndex];
+    for (uint16_t i = 1; i < bars; i++) {
+        uint8_t currX = SpecIdxToX(i);
+        uint8_t currY = Rssi2Y(rssiHistory[i]);
 
-    if (IsRssiHistoryInvalid(leftRssi) && IsRssiHistoryInvalid(rightRssi))
-    {
-        return RSSI_MAX_VALUE;
-    }
-    if (IsRssiHistoryInvalid(leftRssi))
-    {
-        return rightRssi;
-    }
-    if (IsRssiHistoryInvalid(rightRssi))
-    {
-        return leftRssi;
-    }
+        DrawLine(prevX, prevY, currX, currY, 1);
 
-    return ((uint32_t)leftRssi * (256 - fraction) + (uint32_t)rightRssi * fraction) >> 8;
-}
-
-#define SPECTRUM_TOPY_SKIP 0xFF
-
-static void BuildSpectrumTopY(uint8_t *topY, uint8_t bars)
-{
-    if (bars <= 1)
-    {
-        uint16_t singleRssi = (bars == 0) ? RSSI_MAX_VALUE : rssiHistory[0];
-        uint8_t singleY = IsRssiHistoryInvalid(singleRssi) ? SPECTRUM_TOPY_SKIP : Rssi2Y(singleRssi);
-
-        for (uint8_t index = 0; index < 128; ++index)
-        {
-            topY[index] = singleY;
-        }
-        return;
-    }
-
-    uint16_t step256 = ((uint16_t)(bars - 1) << 8) / 127;
-    for (uint8_t x = 0; x < 128; ++x)
-    {
-        uint16_t rssi = InterpolateRssi(bars, (uint16_t)x * step256);
-        if (rssi == RSSI_MAX_VALUE)
-        {
-            topY[x] = SPECTRUM_TOPY_SKIP;
-        }
-        else
-        {
-            topY[x] = Rssi2Y(rssi);
-        }
-    }
-}
-
-static void SmoothTopY(uint8_t *topY)
-{
-    uint8_t previousValue = topY[0];
-    for (uint8_t x = 1; x < 127; ++x)
-    {
-        uint8_t currentValue = topY[x];
-        uint8_t nextValue = topY[x + 1];
-
-        if (currentValue == SPECTRUM_TOPY_SKIP)
-        {
-            previousValue = currentValue;
-            continue;
-        }
-
-        uint16_t sum = currentValue;
-        uint8_t count = 1;
-
-        if (previousValue != SPECTRUM_TOPY_SKIP)
-        {
-            sum += previousValue;
-            count++;
-        }
-        if (nextValue != SPECTRUM_TOPY_SKIP)
-        {
-            sum += nextValue;
-            count++;
-        }
-
-        previousValue = currentValue;
-        topY[x] = (sum + count / 2) / count;
-    }
-}
-
-static void DrawSpectrum()
-{
-#ifdef ENABLE_FEAT_F4HWN
-    uint16_t stepsCount = GetStepsCount();
-    uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
-#else
-    uint8_t bars = 128 >> settings.stepsCount;
-#endif
-    uint8_t topY[128];
-    BuildSpectrumTopY(topY, bars);
-    if (!monitorMode)
-        SmoothTopY(topY);
-
-    for (uint8_t x = 0; x < 128; ++x)
-    {
-        uint8_t spectrumY = topY[x];
-        if (spectrumY == SPECTRUM_TOPY_SKIP || spectrumY > DrawingEndY)
-        {
-            peakHoldY[x] = PEAK_HOLD_INIT;
-            continue;
-        }
-
-        uint8_t previousPeakY = peakHoldY[x];
-        if (previousPeakY == PEAK_HOLD_INIT || spectrumY <= previousPeakY)
-        {
-            peakHoldY[x] = spectrumY;
-            peakHoldAge[x >> 1] = 0;
-        }
-        else
-        {
-            if (peakHoldAge[x >> 1] < PEAK_HOLD_DELAY)
-            {
-                if ((x & 1) == 0)
-                {
-                    peakHoldAge[x >> 1]++;
-                }
-            }
-            else
-            {
-                uint8_t droppedPeakY = previousPeakY + 2;
-                if (droppedPeakY <= DrawingEndY)
-                {
-                    peakHoldY[x] = droppedPeakY;
-                }
-                else
-                {
-                    peakHoldY[x] = PEAK_HOLD_INIT;
+        if (currX >= prevX) {
+            for (uint8_t x = prevX; x <= currX; x++) {
+                uint8_t dx = currX - prevX + 1;
+                uint8_t yStart = prevY + ((currY - prevY) * (x - prevX) / dx);
+                
+                if (yStart <= SHADE_MAX_Y) {
+                    for (uint8_t y = yStart; y <= SHADE_MAX_Y; y++) {
+                        if ((x ^ y) & 0x01) {
+                            gFrameBuffer[y >> 3][x] |= (1 << (y & 7));
+                        }
+                    }
                 }
             }
         }
-    }
-
-    for (uint8_t x = 0; x < 128; ++x)
-    {
-        uint8_t spectrumY = topY[x];
-        if (spectrumY != SPECTRUM_TOPY_SKIP && spectrumY <= DrawingEndY)
-        {
-            for (uint8_t y = spectrumY; y <= DrawingEndY; ++y)
-            {
-                if (((x + y) & 1) == 0)
-                {
-                    PutPixel(x, y, true);
-                }
-            }
-        }
-
-        uint8_t peakY = peakHoldY[x];
-        if (peakY != PEAK_HOLD_INIT && peakY <= DrawingEndY)
-        {
-            if (((x + peakY) & 1) == 0)
-            {
-                PutPixel(x, peakY, true);
-            }
-        }
+        prevX = currX;
+        prevY = currY;
     }
 }
 
@@ -1427,23 +1410,23 @@ static void DrawNums()
             if (total_w_u <= (uint32_t)LCD_WIDTH)
                 x0 = (uint8_t)(((uint32_t)LCD_WIDTH - total_w_u) / 2u);
 
-            DualVfoU8g2_DrawSmallText(part_left, x0, 49u, true);
+            DualVfoU8g2_DrawSmallText(part_left, x0, 34u, true);
             {
                 const uint8_t x_stack =
                     (uint8_t)(x0 + width_left + gap_px + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                Spectrum_U8g2DrawPlusMinus(x_stack, 49u, true);
+                Spectrum_U8g2DrawPlusMinus(x_stack, 34u, true);
             }
             {
                 const uint8_t x_khz = (uint8_t)(x0 + width_left + gap_px + width_col + gap_px +
                                                SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                DualVfoU8g2_DrawSmallText(part_khz, x_khz, 49u, true);
+                DualVfoU8g2_DrawSmallText(part_khz, x_khz, 34u, true);
             }
         }
 #else
         sprintf(String, "%u.%05u \x7F%u.%02uk", currentFreq / 100000,
                 currentFreq % 100000, settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
-        GUI_DisplaySmallest(String, 36, 49, false, true);
+        GUI_DisplaySmallest(String, 36, 34, false, true);
 #endif
     }
     else
@@ -1468,7 +1451,7 @@ static void DrawNums()
             sprintf(line_step, "%u.%02uk", step_khz_whole, step_khz_frac);
             sprintf(line_end, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
 
-            DualVfoU8g2_DrawSmallText(line_start, 0u, 49u, true);
+            DualVfoU8g2_DrawSmallText(line_start, 0u, 34u, true);
 
             const uint8_t width_start = DualVfoU8g2_GetSmallTextWidth(line_start);
             const uint8_t width_col   = Spectrum_U8g2PlusMinusColumnWidth();
@@ -1499,18 +1482,18 @@ static void DrawNums()
 
             {
                 const uint8_t x_pm = (uint8_t)(x_step + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                Spectrum_U8g2DrawPlusMinus(x_pm, 49u, true);
+                Spectrum_U8g2DrawPlusMinus(x_pm, 34u, true);
             }
             {
                 const uint8_t x_khz = (uint8_t)(x_step + gap_px + width_col + gap_px +
                                                SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                DualVfoU8g2_DrawSmallText(line_step, x_khz, 49u, true);
+                DualVfoU8g2_DrawSmallText(line_step, x_khz, 34u, true);
             }
-            DualVfoU8g2_DrawSmallText(line_end, x_end, 49u, true);
+            DualVfoU8g2_DrawSmallText(line_end, x_end, 34u, true);
         }
 #else
         sprintf(String, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
-        GUI_DisplaySmallest(String, 0, 49, false, true);
+        GUI_DisplaySmallest(String, 0, 34, false, true);
 
 #ifdef ENABLE_SCAN_RANGES
         if (gScanRangeStart)
@@ -1522,10 +1505,10 @@ static void DrawNums()
 #endif
         sprintf(String, "\x7F%u.%02uk", settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
-        GUI_DisplaySmallest(String, 48, 49, false, true);
+        GUI_DisplaySmallest(String, 48, 34, false, true);
 
         sprintf(String, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
-        GUI_DisplaySmallest(String, 93, 49, false, true);
+        GUI_DisplaySmallest(String, 93, 34, false, true);
 #endif
     }
 }
@@ -1541,35 +1524,73 @@ static void DrawRssiTriggerLevel()
     }
 }
 
-static void DrawTicks()
+static void DrawLine(int x0, int y0, int x1, int y1, bool fill)
 {
-    uint32_t f = GetFStart();
-    uint32_t span = GetFEnd() - GetFStart();
-    uint32_t step = span / 128;
-    for (uint8_t i = 0; i < 128; i += (1 << settings.stepsCount))
-    {
-        f = GetFStart() + span * i / 128;
-        uint8_t barValue = 0b00000001;
-        (f % 10000) < step && (barValue |= 0b00000010);
-        (f % 50000) < step && (barValue |= 0b00000100);
-        (f % 100000) < step && (barValue |= 0b00011000);
+    int dx = my_abs(x1 - x0);
+    int sx = x0 < x1 ? 1 : -1;
+    int dy = -my_abs(y1 - y0);
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
 
-        gFrameBuffer[5][i] |= barValue;
+    while (true)
+    {
+        if (x0 >= 0 && x0 < 128 && y0 >= 0 && y0 < 64)
+        {
+            UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)x0, (uint8_t)y0, fill);
+        }
+        if (x0 == x1 && y0 == y1)
+            break;
+        int e2 = 2 * err;
+        if (e2 >= dy)
+        {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx)
+        {
+            err += dx;
+            y0 += sy;
+        }
     }
+}
 
-    // center
-    if (IsCenterMode())
-    {
-        memset(gFrameBuffer[5] + 62, 0x80, 5);
-        gFrameBuffer[5][64] = 0xff;
-    }
-    else
-    {
-        memset(gFrameBuffer[5] + 1, 0x80, 3);
-        memset(gFrameBuffer[5] + 124, 0x80, 3);
+static uint8_t GetSpectrumBaseY(void)
+{
+    return DrawingEndY + 6;
+}
 
-        gFrameBuffer[5][0] = 0xff;
-        gFrameBuffer[5][127] = 0xff;
+static uint8_t SpecIdxToX(uint16_t idx)
+{
+    uint16_t bars = GetStepsCount();
+    if (bars <= 1)
+        return 64;
+    return (uint8_t)(((uint32_t)idx * 127) / (bars - 1));
+}
+
+static void DrawGridBackground(void)
+{
+    for (uint8_t x = 0; x < 128; x++)
+    {
+        bool isVerticalLinePos = (x % 16 == 0 || x == 127);
+        bool isHorizontalDot = (x % 2 == 0);
+
+        uint8_t r1 = 0;
+        if (isVerticalLinePos) r1 |= 0xA0;
+        if (isHorizontalDot)   r1 |= 0x10;
+        gFrameBuffer[1][x] |= r1;
+
+        for (uint8_t r = 2; r <= 3; r++) {
+            uint8_t pattern = 0;
+            if (isVerticalLinePos) pattern |= 0xAA;
+            if (isHorizontalDot)   pattern |= 0x01;
+            if (isHorizontalDot)   pattern |= 0x10;
+            gFrameBuffer[r][x] |= pattern;
+        }
+
+        uint8_t r4 = 0;
+        if (isVerticalLinePos) r4 |= 0x01;
+        if (isHorizontalDot)   r4 |= 0x01;
+        gFrameBuffer[4][x] |= r4;
     }
 }
 
@@ -1580,7 +1601,17 @@ static void DrawArrow(uint8_t x)
         signed v = x + i;
         if (!(v & 128))
         {
-            gFrameBuffer[5][v] |= (0b01111000 << my_abs(i)) & 0b01111000;
+            uint8_t p3 = 0;
+            uint8_t p4 = 0;
+
+            p4 |= 0b00000010;
+
+            if (i >= -1 && i <= 1) p4 |= 0b00000001;
+
+            if (i == 0) p3 |= 0b10000000;
+
+            gFrameBuffer[3][v] |= p3;
+            gFrameBuffer[4][v] |= p4;
         }
     }
 }
@@ -1842,19 +1873,26 @@ static void RenderStatus()
 
 static void RenderSpectrum()
 {
+    for (uint8_t r = 1; r <= 5; r++)
+    {
+        memset(gFrameBuffer[r], 0, sizeof(gFrameBuffer[r]));
+    }
+
+    DrawGridBackground();
+
     uint16_t stepsCount = GetStepsCount();
     uint8_t arrowX = 0;
     if (stepsCount > 1)
     {
         arrowX = (uint8_t)(128u * peak.i / (stepsCount - 1));
     }
-
-    DrawTicks();
     DrawArrow(arrowX);
-    DrawSpectrum();
+    
+    DrawSpectrumEnhanced();
     DrawRssiTriggerLevel();
     DrawF(peak.f);
     DrawNums();
+    DrawWaterfall();
 }
 
 static void RenderStill()
@@ -2066,6 +2104,8 @@ static void UpdateScan()
         memset(&rssiHistory[scanInfo.measurementsCount], 0,
                sizeof(rssiHistory) - scanInfo.measurementsCount * sizeof(rssiHistory[0]));
 
+    UpdateWaterfall();
+
     redrawScreen = true;
     preventKeypress = false;
 
@@ -2125,6 +2165,17 @@ static void UpdateListening()
     }
 
     peak.rssi = scanInfo.rssi;
+
+    if (currentState == SPECTRUM)
+    {
+        static uint8_t listenWfCounter = 0;
+        if (++listenWfCounter >= 6)
+        {
+            listenWfCounter = 0;
+            UpdateWaterfall();
+        }
+    }
+
     redrawScreen = true;
 
     #ifdef ENABLE_FEAT_F4HWN_SPECTRUM

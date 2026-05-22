@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static const uint8_t DrawingEndY = 40;
+static const uint8_t DrawingEndY = 27;
 static const uint8_t DrawingTopY = 8;
 
 static const uint8_t U8RssiMap[] = {
