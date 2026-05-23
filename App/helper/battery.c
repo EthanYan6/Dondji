@@ -287,11 +287,7 @@ void BATTERY_TimeSlice500ms(void)
 
     gLowBatteryBlink = ++lowBatteryCountdown & 1;
 
-    if (!gLowBatteryConfirmed) {
-        UI_DisplayBattery(0, gLowBatteryBlink);
-    } else {
-        gUpdateStatus = true;
-    }
+    gUpdateStatus = true;
 
     if (gCurrentFunction == FUNCTION_TRANSMIT) {
         return;

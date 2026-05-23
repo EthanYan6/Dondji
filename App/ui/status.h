@@ -23,6 +23,10 @@
 void UI_DisplayStatus();
 void UI_DisplayMainOnlyStatusBar(void);
 
+#ifdef ENABLE_FEAT_F4HWN
+bool UI_IsDualVfoMainScreen(void);
+#endif
+
 /* 频谱顶栏：仅左侧 dB 范围小字 + 右侧电池与百分比（不写 gStatusLine 外；不 Blit，由调用方 Blit） */
 void UI_SpectrumDrawStatusLineDbRangeAndBattery(const char *db_range_text);
 
