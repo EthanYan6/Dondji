@@ -339,6 +339,11 @@ PINYIN_MAP = {
     '吊': 'diao',
     '笼': 'long',
     '杉': 'shan',
+    '夫': 'fu',
+    '嗨': 'hai',
+    '仑': 'lun',
+    '鹦': 'ying',
+    '鹉': 'wu',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
