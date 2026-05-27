@@ -78,6 +78,23 @@ uint8_t FM_FindNextChannel(uint8_t Channel, uint8_t Direction)
     return 0xFF;
 }
 
+uint8_t FM_FindSaveChannel(uint16_t Frequency)
+{
+    uint8_t firstEmpty = 0xFF;
+
+    for (uint8_t i = 0; i < FM_CHANNELS_MAX; i++) {
+        if (gFM_Channels[i] == Frequency)
+            return i;
+        if (firstEmpty == 0xFF && gFM_Channels[i] == 0xFFFF)
+            firstEmpty = i;
+    }
+
+    if (firstEmpty == 0xFF)
+        firstEmpty = FM_CHANNELS_MAX - 1;
+
+    return firstEmpty;
+}
+
 int FM_ConfigureChannelState(void)
 {
     /* In MR mode, playing freq comes from memory slots, not FM_SelectedFrequency (VFO). */
@@ -465,6 +482,8 @@ static void Key_MENU(uint8_t state)
             if (gAskToSave) {
                 gFM_Channels[gFM_ChannelPosition] = gEeprom.FM_FrequencyPlaying;
                 gRequestSaveFM = true;
+            } else {
+                gFM_ChannelPosition = FM_FindSaveChannel(gEeprom.FM_FrequencyPlaying);
             }
             gAskToSave = !gAskToSave;
         }
@@ -490,6 +509,8 @@ static void Key_MENU(uint8_t state)
         if (gAskToSave) {
             gFM_Channels[gFM_ChannelPosition] = gEeprom.FM_FrequencyPlaying;
             gRequestSaveFM = true;
+        } else {
+            gFM_ChannelPosition = FM_FindSaveChannel(gEeprom.FM_FrequencyPlaying);
         }
         gAskToSave = !gAskToSave;
     }

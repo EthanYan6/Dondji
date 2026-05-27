@@ -37,15 +37,7 @@ static uint8_t FM_UI_CnMemorySlotForPlaying(void)
     const uint16_t play = gEeprom.FM_FrequencyPlaying;
 
     for (unsigned i = 0; i < FM_CHANNELS_MAX; i++) {
-        if (!FM_CheckValidChannel((uint8_t)i))
-            continue;
-        const uint16_t mem = gFM_Channels[i];
-        if (mem == play)
-            return (uint8_t)(i + 1u);
-        if (mem > play) {
-            if (mem - play <= 1u)
-                return (uint8_t)(i + 1u);
-        } else if (play - mem <= 1u)
+        if (gFM_Channels[i] == play)
             return (uint8_t)(i + 1u);
     }
     return 0;
@@ -233,11 +225,24 @@ void UI_DisplayFM(void)
     } else if (gFM_AutoScan) {
 #ifdef ENABLE_CHINESE
         if (gUiLanguage == UI_LANGUAGE_CN)
-            sprintf(String, "\xe9\xa2\x91\xe7\x8e\x87\xe6\x89\xab\xe6\x8f\x8f(%u)", (unsigned)gFM_ChannelPosition);
+            pPrintStr = "\xe9\xa2\x91\xe7\x8e\x87\xe6\x89\xab\xe6\x8f\x8f";
         else
 #endif
-            sprintf(String, "A-SCAN(%u)", gFM_ChannelPosition);
-        pPrintStr = String;
+            pPrintStr = "A-SCAN";
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            UI_PrintStringSmallAtPixel("\xe6\x89\xab\xe6\x8f\x8f", 61, LCD_WIDTH - 1, 34, 46, 0);
+        else
+#endif
+            UI_PrintStringSmallNormalAt("A-SCAN", gEeprom.FM_IsMrMode ? 70 : 66, 28);
+        sprintf(String, "(CH%02u)", (unsigned)gFM_ChannelPosition + 1u);
+#ifdef ENABLE_CHINESE
+        if (gUiLanguage == UI_LANGUAGE_CN)
+            UI_PrintStringSmallAtPixel(String, 61, LCD_WIDTH - 1, 46, 58, 0);
+        else
+#endif
+            UI_PrintStringSmallNormalAt(String, gEeprom.FM_IsMrMode ? 70 : 66, 36);
+        goto ScanDone;
     } else {
 #ifdef ENABLE_CHINESE
         if (gUiLanguage == UI_LANGUAGE_CN)
@@ -252,7 +257,10 @@ void UI_DisplayFM(void)
         UI_PrintStringSmallAtPixel(pPrintStr, 61, LCD_WIDTH - 1, 34, 46, 0);
     else
 #endif
-        UI_PrintStringSmallNormalAt(pPrintStr, 70, 28);
+        UI_PrintStringSmallNormalAt(pPrintStr, gEeprom.FM_IsMrMode ? 70 : 66, 28);
+
+ScanDone:
+    (void)0;
 
 #ifdef ENABLE_FEAT_F4HWN
     if (gEeprom.KEY_LOCK && gKeypadLocked > 0) {

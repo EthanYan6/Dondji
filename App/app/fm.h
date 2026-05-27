@@ -44,6 +44,7 @@ extern uint16_t          gFM_RestoreCountdown_10ms;
 bool    FM_CheckValidChannel(uint8_t Channel);
 // returns first valid channel starting at Channel
 uint8_t FM_FindNextChannel(uint8_t Channel, uint8_t Direction);
+uint8_t FM_FindSaveChannel(uint16_t Frequency);
 int     FM_ConfigureChannelState(void);
 void    FM_TurnOff(void);
 void    FM_EraseChannels(void);
