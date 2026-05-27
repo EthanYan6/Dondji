@@ -1220,6 +1220,178 @@ html.theme-light .flash-device-warning-modal__backdrop {
   outline-offset: 2px;
 }
 
+/* 校准检查弹窗 */
+.calib-check-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  box-sizing: border-box;
+}
+.calib-check-modal[hidden] { display: none; }
+.calib-check-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 4, 9, 0.72);
+  backdrop-filter: blur(4px);
+}
+html.theme-light .calib-check-modal__backdrop {
+  background: rgba(31, 35, 40, 0.45);
+}
+.calib-check-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 960px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(210, 153, 34, 0.55);
+  background: linear-gradient(155deg, var(--toast-1) 0%, var(--toast-2) 55%, var(--toast-3) 100%);
+  box-shadow: 0 24px 64px var(--shadow-kicker), 0 0 0 1px rgba(210, 153, 34, 0.15) inset;
+}
+.calib-check-modal__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 0;
+}
+.calib-check-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.calib-check-modal__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-bottom: 0;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  width: auto;
+  min-width: unset;
+}
+.calib-check-modal__close:hover {
+  color: var(--text-bright);
+  background: var(--toast-close-hover-bg);
+}
+.calib-check-modal__toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.calib-check-modal__toolbar button {
+  width: auto;
+  margin-bottom: 0;
+  padding: 8px 14px;
+  font-size: 0.8em;
+}
+.calib-check-modal__table-wrap {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  min-height: 0;
+}
+.calib-check-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+}
+.calib-check-table th,
+.calib-check-table td {
+  border: 1px solid var(--border-default);
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.calib-check-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  color: var(--text-bright);
+  font-weight: 600;
+  z-index: 1;
+}
+.calib-check-table__col-desc {
+  width: 200px;
+  min-width: 160px;
+  text-align: left;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.calib-check-table__col-data {
+  min-width: 160px;
+  text-align: center;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+.calib-check-table__col-backup {
+  min-width: 160px;
+  text-align: center;
+}
+.calib-check-table td.calib-desc {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.calib-check-table td.calib-val {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  text-align: center;
+  color: var(--text-muted);
+}
+.calib-check-table td.calib-val.calib-val--empty {
+  color: var(--text-disabled);
+}
+.calib-check-table td.calib-val.calib-val--invalid {
+  background: #f85149;
+  color: #000;
+  font-weight: 700;
+}
+.calib-check-table td.calib-backup-cell {
+  padding: 2px 4px;
+}
+.calib-check-table td.calib-backup-cell input {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.95em;
+  text-align: center;
+  box-sizing: border-box;
+}
+.calib-check-table td.calib-backup-cell input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.calib-check-table tr:hover td {
+  background: rgba(88, 166, 255, 0.04);
+}
+.calib-check-modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.calib-check-modal__actions button {
+  width: auto;
+  margin-bottom: 0;
+  padding: 10px 24px;
+  font-size: 0.9em;
+}
+
 /* Version Timeline Sidebar */
 .timeline-sidebar::-webkit-scrollbar { width: 6px; }
 .timeline-sidebar::-webkit-scrollbar-track { background: transparent; }

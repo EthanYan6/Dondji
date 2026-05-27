@@ -1247,6 +1247,376 @@ $('restoreBtn').addEventListener('click', async () => {
   }
 });
 
+// ========== CALIBRATION CHECK ==========
+(function() {
+  // 校准字段定义：每行一个值，offset 相对于校准区基址
+  var CALIB_FIELDS = [
+    { offset: 0xC0, size: 2, label: 'RSSI 校准 Band3', idx: 1 },
+    { offset: 0xC2, size: 2, label: 'RSSI 校准 Band3', idx: 2 },
+    { offset: 0xC4, size: 2, label: 'RSSI 校准 Band3', idx: 3 },
+    { offset: 0xC6, size: 2, label: 'RSSI 校准 Band3', idx: 4 },
+    { offset: 0xC8, size: 2, label: 'RSSI 校准 Band0', idx: 1 },
+    { offset: 0xCA, size: 2, label: 'RSSI 校准 Band0', idx: 2 },
+    { offset: 0xCC, size: 2, label: 'RSSI 校准 Band0', idx: 3 },
+    { offset: 0xCE, size: 2, label: 'RSSI 校准 Band0', idx: 4 },
+    { offset: 0x140, size: 2, label: '电池校准' },
+    { offset: 0x142, size: 2, label: '电池校准' },
+    { offset: 0x144, size: 2, label: '电池校准' },
+    { offset: 0x146, size: 2, label: '电池校准' },
+    { offset: 0x148, size: 2, label: '电池校准' },
+    { offset: 0x14A, size: 2, label: '电池校准' },
+    { offset: 0x150, size: 2, label: 'VOX1 阈值', idx: 1 },
+    { offset: 0x152, size: 2, label: 'VOX1 阈值', idx: 2 },
+    { offset: 0x154, size: 2, label: 'VOX1 阈值', idx: 3 },
+    { offset: 0x156, size: 2, label: 'VOX1 阈值', idx: 4 },
+    { offset: 0x158, size: 2, label: 'VOX1 阈值', idx: 5 },
+    { offset: 0x15A, size: 2, label: 'VOX1 阈值', idx: 6 },
+    { offset: 0x15C, size: 2, label: 'VOX1 阈值', idx: 7 },
+    { offset: 0x15E, size: 2, label: 'VOX1 阈值', idx: 8 },
+    { offset: 0x160, size: 2, label: 'VOX1 阈值', idx: 9 },
+    { offset: 0x162, size: 2, label: 'VOX1 阈值', idx: 10 },
+    { offset: 0x168, size: 2, label: 'VOX0 阈值', idx: 1 },
+    { offset: 0x16A, size: 2, label: 'VOX0 阈值', idx: 2 },
+    { offset: 0x16C, size: 2, label: 'VOX0 阈值', idx: 3 },
+    { offset: 0x16E, size: 2, label: 'VOX0 阈值', idx: 4 },
+    { offset: 0x170, size: 2, label: 'VOX0 阈值', idx: 5 },
+    { offset: 0x172, size: 2, label: 'VOX0 阈值', idx: 6 },
+    { offset: 0x174, size: 2, label: 'VOX0 阈值', idx: 7 },
+    { offset: 0x176, size: 2, label: 'VOX0 阈值', idx: 8 },
+    { offset: 0x178, size: 2, label: 'VOX0 阈值', idx: 9 },
+    { offset: 0x17A, size: 2, label: 'VOX0 阈值', idx: 10 },
+    { offset: 0x188, size: 2, label: '晶振频率偏移 (Hz)', signed: true },
+    { offset: 0x18A, size: 2, label: 'EEPROM_1F8A' },
+    { offset: 0x18C, size: 2, label: 'EEPROM_1F8C' },
+    { offset: 0x18E, size: 1, label: '音量增益 (0-63)' },
+    { offset: 0x18F, size: 1, label: 'DAC增益 (0-15)' }
+  ];
+
+  var calibOfficialData = null;   // 0x1E00 读取的512字节
+  var calibThirdPartyData = null; // 0xB000 读取的512字节
+  var calibBackupData = null;     // 备份校准512字节
+
+  /** 读取单个校准值 */
+  function readCalibVal(buf, off, size, signed) {
+    if (!buf) return null;
+    if (size === 1) return buf[off];
+    var raw = buf[off] | (buf[off + 1] << 8);
+    return signed && raw > 0x7FFF ? raw - 0x10000 : raw;
+  }
+
+  /** 检测单个值是否无效 */
+  function isValInvalid(buf, off, size) {
+    if (!buf) return false;
+    return size === 1 ? buf[off] === 0xFF : (buf[off] | (buf[off + 1] << 8)) === 0xFFFF;
+  }
+
+  function renderCalibTable() {
+    var tbody = $('calibCheckBody');
+    tbody.innerHTML = '';
+    CALIB_FIELDS.forEach(function(f) {
+      var tr = document.createElement('tr');
+      var label = f.label + (f.idx ? ' [' + f.idx + ']' : '');
+
+      // 描述列
+      var tdDesc = document.createElement('td');
+      tdDesc.className = 'calib-desc';
+      tdDesc.textContent = label;
+      tdDesc.title = '0x' + f.offset.toString(16).toUpperCase();
+      tr.appendChild(tdDesc);
+
+      // 官方地址列
+      var tdOff = document.createElement('td');
+      var offV = readCalibVal(calibOfficialData, f.offset, f.size, f.signed);
+      var offBad = isValInvalid(calibOfficialData, f.offset, f.size);
+      tdOff.className = 'calib-val' + (offV !== null ? '' : ' calib-val--empty') + (offBad ? ' calib-val--invalid' : '');
+      tdOff.textContent = offV !== null ? String(offV) : '--';
+      tr.appendChild(tdOff);
+
+      // 第三方地址列
+      var tdTp = document.createElement('td');
+      var tpV = readCalibVal(calibThirdPartyData, f.offset, f.size, f.signed);
+      var tpBad = isValInvalid(calibThirdPartyData, f.offset, f.size);
+      tdTp.className = 'calib-val' + (tpV !== null ? '' : ' calib-val--empty') + (tpBad ? ' calib-val--invalid' : '');
+      tdTp.textContent = tpV !== null ? String(tpV) : '--';
+      tr.appendChild(tdTp);
+
+      // 备份列（单行输入）
+      var tdBackup = document.createElement('td');
+      tdBackup.className = 'calib-backup-cell';
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.dataset.offset = f.offset;
+      inp.dataset.size = f.size;
+      inp.dataset.signed = f.signed ? '1' : '';
+      inp.placeholder = '0';
+      var bv = readCalibVal(calibBackupData, f.offset, f.size, f.signed);
+      inp.value = bv !== null ? String(bv) : '';
+      inp.addEventListener('change', function() { updateBackupField(f.offset, f.size, this.value, f.signed); });
+      tdBackup.appendChild(inp);
+      tr.appendChild(tdBackup);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  /** 将十进制文本解析回二进制写入 calibBackupData */
+  function updateBackupField(offset, size, text, signed) {
+    if (!calibBackupData) {
+      calibBackupData = new Uint8Array(CALIB_SIZE).fill(0xFF);
+    }
+    var v = parseInt(text.trim(), 10);
+    if (isNaN(v)) return;
+    if (size === 1) {
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      calibBackupData[offset] = v;
+    } else {
+      if (signed) {
+        if (v < -32768) v = -32768;
+        if (v > 32767) v = 32767;
+        v = v < 0 ? v + 0x10000 : v;
+      } else {
+        if (v < 0) v = 0;
+        if (v > 0xFFFF) v = 0xFFFF;
+      }
+      calibBackupData[offset] = v & 0xFF;
+      calibBackupData[offset + 1] = (v >> 8) & 0xFF;
+    }
+  }
+
+  function openCalibCheckModal() {
+    var modal = $('calibCheckModal');
+    if (!modal) return;
+    modal.removeAttribute('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    renderCalibTable();
+  }
+
+  function closeCalibCheckModal() {
+    var modal = $('calibCheckModal');
+    if (!modal) return;
+    modal.setAttribute('hidden', '');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  // 读取单个地址的校准数据
+  async function readCalibFromDevice(baseAddr, label) {
+    log('读取校准数据 @ 0x' + baseAddr.toString(16) + '...', 'info');
+    var session = await requestDeviceInfoForCalib(label);
+    var data = new Uint8Array(CALIB_SIZE);
+    var ts = session.timestamp;
+    var offset = baseAddr;
+    for (var i = 0; i < CALIB_SIZE; i += CALIB_CHUNK) {
+      var msg = createMessage(MSG_READ_EEPROM, 8);
+      var v = new DataView(msg.buffer);
+      v.setUint16(4, offset, true);
+      v.setUint16(6, CALIB_CHUNK, true);
+      v.setUint32(8, ts, true);
+      await sendMessage(msg);
+      var ok = false;
+      for (var a = 0; a < 300 && !ok; a++) {
+        await sleep(10);
+        var resp = fetchMessage(readBuffer);
+        if (!resp) continue;
+        if (resp.msgType === MSG_READ_EEPROM_RESP) {
+          var rv = new DataView(resp.data.buffer);
+          if (rv.getUint16(0, true) === offset && resp.data[2] === CALIB_CHUNK) {
+            for (var j = 0; j < CALIB_CHUNK; j++) data[i + j] = resp.data[4 + j];
+            ok = true;
+            offset += CALIB_CHUNK;
+          }
+        }
+      }
+      if (!ok) throw new Error('读取失败 @ 0x' + offset.toString(16));
+    }
+    log('校准读取完成 @ 0x' + baseAddr.toString(16), 'success');
+    return data;
+  }
+
+  // 读取设备校准（两个地址都读）
+  $('calibReadDeviceBtn').addEventListener('click', async function() {
+    if (isRestoring || isDumping) return;
+    this.disabled = true;
+    $('progressContainer').style.display = 'block';
+    updateProgress(0);
+    try {
+      if (!port) await connect();
+      readBuffer = [];
+      await sleep(1000);
+      calibOfficialData = await readCalibFromDevice(0x1E00, '校准检查-官方');
+      updateProgress(50);
+      // 需要重新连接以读取第二个地址（设备可能重启或状态变化）
+      // 实际上同一连接可以继续读，只需重置 readBuffer
+      readBuffer = [];
+      calibThirdPartyData = await readCalibFromDevice(0xB000, '校准检查-第三方');
+      updateProgress(100);
+      renderCalibTable();
+      log('设备校准读取完成', 'success');
+    } catch(e) {
+      log('错误: ' + e.message, 'error');
+    } finally {
+      this.disabled = false;
+      if (port) await disconnect();
+      setTimeout(function() { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+    }
+  });
+
+  // 加载备份校准文件
+  $('calibLoadBackupBtn').addEventListener('click', function() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.dat';
+    input.addEventListener('change', function(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var fr = new FileReader();
+      fr.onload = function(ev) {
+        var buf = new Uint8Array(ev.target.result);
+        if (buf.length !== CALIB_SIZE) {
+          log('文件大小错误: ' + buf.length + ' (需要 ' + CALIB_SIZE + ')', 'error');
+          return;
+        }
+        calibBackupData = buf;
+        renderCalibTable();
+        log('备份校准已加载: ' + file.name, 'success');
+      };
+      fr.readAsArrayBuffer(file);
+    });
+    input.click();
+  });
+
+  // 导出备份校准
+  $('calibExportBackupBtn').addEventListener('click', function() {
+    if (!calibBackupData) {
+      log('没有备份校准数据可导出', 'error');
+      return;
+    }
+    // 收集表格中最新的输入值
+    var inputs = $('calibCheckBody').querySelectorAll('input[data-offset]');
+    inputs.forEach(function(inp) {
+      updateBackupField(parseInt(inp.dataset.offset, 10), parseInt(inp.dataset.size, 10), inp.value);
+    });
+    var blob = new Blob([calibBackupData], { type: 'application/octet-stream' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'calibration_backup.dat';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    log('备份校准已导出', 'success');
+  });
+
+  // 写入校准到指定地址
+  async function writeCalibToAddress(baseAddr, label) {
+    // 从表格收集最新数据
+    if (!calibBackupData) {
+      calibBackupData = new Uint8Array(CALIB_SIZE).fill(0xFF);
+    }
+    var inputs = $('calibCheckBody').querySelectorAll('input[data-offset]');
+    inputs.forEach(function(inp) {
+      updateBackupField(parseInt(inp.dataset.offset, 10), parseInt(inp.dataset.size, 10), inp.value);
+    });
+
+    log('写入校准到 0x' + baseAddr.toString(16) + '...', 'info');
+    var session = await requestDeviceInfoForCalib(label);
+    var ts = session.timestamp;
+    var offset = baseAddr;
+    for (var i = 0; i < CALIB_SIZE; i += CALIB_CHUNK) {
+      var msg = createMessage(MSG_WRITE_EEPROM, 24);
+      var v = new DataView(msg.buffer);
+      v.setUint16(4, offset, true);
+      v.setUint16(6, CALIB_CHUNK, true);
+      msg[7] = 1;
+      v.setUint32(8, ts, true);
+      for (var j = 0; j < CALIB_CHUNK; j++) msg[12 + j] = calibBackupData[i + j];
+      await sendMessage(msg);
+      var ok = false;
+      for (var a = 0; a < 300 && !ok; a++) {
+        await sleep(10);
+        var resp = fetchMessage(readBuffer);
+        if (!resp) continue;
+        if (resp.msgType === MSG_WRITE_EEPROM_RESP) {
+          if (new DataView(resp.data.buffer).getUint16(0, true) === offset) {
+            ok = true;
+            offset += CALIB_CHUNK;
+          }
+        }
+      }
+      if (!ok) throw new Error('写入失败 @ 0x' + offset.toString(16));
+    }
+    log('校准写入完成！正在重启...', 'success');
+    await sendMessage(createMessage(MSG_REBOOT, 0));
+    await sleep(500);
+    log('设备已重启', 'success');
+  }
+
+  // 写入官方地址
+  $('calibWriteOfficialBtn').addEventListener('click', async function() {
+    if (isRestoring || isDumping) return;
+    if (!calibBackupData && !$('calibCheckBody').querySelector('input[data-offset]')) {
+      log('没有备份校准数据可写入', 'error');
+      return;
+    }
+    this.disabled = true;
+    $('calibWriteThirdPartyBtn').disabled = true;
+    $('progressContainer').style.display = 'block';
+    updateProgress(0);
+    try {
+      if (!port) await connect();
+      readBuffer = [];
+      await sleep(1000);
+      await writeCalibToAddress(0x1E00, '写入官方');
+      updateProgress(100);
+    } catch(e) {
+      log('错误: ' + e.message, 'error');
+    } finally {
+      this.disabled = false;
+      $('calibWriteThirdPartyBtn').disabled = false;
+      if (port) await disconnect();
+      setTimeout(function() { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+    }
+  });
+
+  // 写入第三方地址
+  $('calibWriteThirdPartyBtn').addEventListener('click', async function() {
+    if (isRestoring || isDumping) return;
+    if (!calibBackupData && !$('calibCheckBody').querySelector('input[data-offset]')) {
+      log('没有备份校准数据可写入', 'error');
+      return;
+    }
+    this.disabled = true;
+    $('calibWriteOfficialBtn').disabled = true;
+    $('progressContainer').style.display = 'block';
+    updateProgress(0);
+    try {
+      if (!port) await connect();
+      readBuffer = [];
+      await sleep(1000);
+      await writeCalibToAddress(0xB000, '写入第三方');
+      updateProgress(100);
+    } catch(e) {
+      log('错误: ' + e.message, 'error');
+    } finally {
+      this.disabled = false;
+      $('calibWriteOfficialBtn').disabled = false;
+      if (port) await disconnect();
+      setTimeout(function() { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+    }
+  });
+
+  // 弹窗事件绑定
+  $('checkCalibBtn').addEventListener('click', openCalibCheckModal);
+  $('calibCheckModal').querySelectorAll('[data-calib-check-dismiss]').forEach(function(el) {
+    el.addEventListener('click', closeCalibCheckModal);
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !$('calibCheckModal').hidden) {
+      closeCalibCheckModal();
+    }
+  });
+})();
+
 // ========== BACKUP CONFIG ==========
 $('backupCfgBtn').addEventListener('click', async () => {
   if (isBackupCfg) return;

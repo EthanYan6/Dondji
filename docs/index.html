@@ -333,15 +333,53 @@
           ⚠️ 恢复前同样需<strong>正常开机进入使用界面</strong>后再连接 USB；写入完成后设备会自动重启。请使用与本机固件版本匹配的备份文件（512 字节）。
         </p>
         <label>选择校准备份文件 (.dat)</label>
-        <div class="file-input-wrapper">
-          <input type="file" id="calibFile" accept=".dat">
+        <div class="file-input-wrapper file-input-wrapper--dual">
           <div class="file-input-label" id="calibFileLabel">
             <span class="file-name" id="calibFileName">未选择文件</span>
-            <span class="file-button">选择文件</span>
+            <div class="file-input-actions">
+              <button type="button" class="btn-fetch file-action-remote" id="checkCalibBtn">检查校准</button>
+              <div class="file-local-trigger">
+                <input type="file" id="calibFile" accept=".dat" aria-label="选择本地校准文件">
+                <span class="file-button">本地选择</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
       <button id="restoreBtn" disabled>恢复校准数据</button>
+    </div>
+
+    <!-- CALIBRATION CHECK MODAL -->
+    <div id="calibCheckModal" class="calib-check-modal" hidden aria-hidden="true">
+      <div class="calib-check-modal__backdrop" data-calib-check-dismiss tabindex="-1" aria-hidden="true"></div>
+      <div class="calib-check-modal__panel" role="dialog" aria-modal="true" aria-labelledby="calibCheckModalTitle">
+        <div class="calib-check-modal__header">
+          <h2 id="calibCheckModalTitle" class="calib-check-modal__title">校准数据检查</h2>
+          <button type="button" class="calib-check-modal__close" data-calib-check-dismiss aria-label="关闭">&times;</button>
+        </div>
+        <div class="calib-check-modal__toolbar">
+          <button type="button" class="btn-fetch" id="calibReadDeviceBtn">读取设备校准</button>
+          <button type="button" class="btn-secondary" id="calibLoadBackupBtn">加载备份校准文件</button>
+          <button type="button" class="btn-secondary" id="calibExportBackupBtn">导出备份校准</button>
+        </div>
+        <div class="calib-check-modal__table-wrap">
+          <table class="calib-check-table" id="calibCheckTable">
+            <thead>
+              <tr>
+                <th class="calib-check-table__col-desc">校准解读</th>
+                <th class="calib-check-table__col-data">官方/v4+ 校准地址(0x1E00)</th>
+                <th class="calib-check-table__col-data">第三方固件/v5+ 校准地址(0xB000)</th>
+                <th class="calib-check-table__col-backup">备份校准</th>
+              </tr>
+            </thead>
+            <tbody id="calibCheckBody"></tbody>
+          </table>
+        </div>
+        <div class="calib-check-modal__actions">
+          <button type="button" id="calibWriteOfficialBtn">写入官方地址</button>
+          <button type="button" id="calibWriteThirdPartyBtn">写入第三方地址</button>
+        </div>
+      </div>
     </div>
 
     <!-- WRITE FREQUENCY (MR CHANNELS) TAB -->

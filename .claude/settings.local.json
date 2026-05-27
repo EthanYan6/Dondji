@@ -22,7 +22,8 @@
       "Bash(grep -v \"//\")",
       "Bash(python update_cn_font.py)",
       "Bash(python App/tools/gen_cn_font.py)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(npm run *)"
     ]
   }
 }
