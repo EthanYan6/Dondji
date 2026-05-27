@@ -605,7 +605,8 @@ uint32_t APP_SetFreqByStepAndLimits(VFO_Info_t *pInfo, int8_t direction, uint32_
 
 uint32_t APP_SetFrequencyByStep(VFO_Info_t *pInfo, int8_t direction)
 {
-    return APP_SetFreqByStepAndLimits(pInfo, direction, frequencyBandTable[pInfo->Band].lower, frequencyBandTable[pInfo->Band].upper);
+    const uint8_t band = (pInfo->Band < BAND_N_ELEM) ? pInfo->Band : BAND6_400MHz;
+    return APP_SetFreqByStepAndLimits(pInfo, direction, frequencyBandTable[band].lower, frequencyBandTable[band].upper);
 }
 
 #ifdef ENABLE_NOAA

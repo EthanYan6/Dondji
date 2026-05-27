@@ -205,7 +205,8 @@ static uint8_t DBm2S(int dbm)
 
 static int Rssi2DBm(uint16_t rssi)
 {
-    return (rssi / 2) - 160 + dBmCorrTable[gRxVfo->Band];
+    const uint8_t band = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
+    return (rssi / 2) - 160 + dBmCorrTable[band];
 }
 
 static uint16_t GetRegMenuValue(uint8_t st)
@@ -689,7 +690,8 @@ static void Measure()
 
 static uint16_t dbm2rssi(int dBm)
 {
-    return (dBm + 160 - dBmCorrTable[gRxVfo->Band]) * 2;
+    const uint8_t band = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
+    return (dBm + 160 - dBmCorrTable[band]) * 2;
 }
 
 static void ClampRssiTriggerLevel()

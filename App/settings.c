@@ -553,12 +553,49 @@ void SETTINGS_LoadCalibration(void)
     memcpy(gEEPROM_RSSI_CALIB[1], gEEPROM_RSSI_CALIB[0], 8);
     memcpy(gEEPROM_RSSI_CALIB[2], gEEPROM_RSSI_CALIB[0], 8);
 
+    // validate RSSI calibration (erased flash = 0xFFFF, or non-ascending = invalid)
+    if (gEEPROM_RSSI_CALIB[0][0] == 0xFFFF || gEEPROM_RSSI_CALIB[3][0] == 0xFFFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[0][1] - gEEPROM_RSSI_CALIB[0][0]) > 0x7FFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[0][2] - gEEPROM_RSSI_CALIB[0][1]) > 0x7FFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[0][3] - gEEPROM_RSSI_CALIB[0][2]) > 0x7FFF)
+    {
+        gEEPROM_RSSI_CALIB[0][0] = 116;
+        gEEPROM_RSSI_CALIB[0][1] = 146;
+        gEEPROM_RSSI_CALIB[0][2] = 176;
+        gEEPROM_RSSI_CALIB[0][3] = 206;
+        memcpy(gEEPROM_RSSI_CALIB[1], gEEPROM_RSSI_CALIB[0], 8);
+        memcpy(gEEPROM_RSSI_CALIB[2], gEEPROM_RSSI_CALIB[0], 8);
+    }
+    if (gEEPROM_RSSI_CALIB[3][0] == 0xFFFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[3][1] - gEEPROM_RSSI_CALIB[3][0]) > 0x7FFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[3][2] - gEEPROM_RSSI_CALIB[3][1]) > 0x7FFF ||
+        (uint16_t)(gEEPROM_RSSI_CALIB[3][3] - gEEPROM_RSSI_CALIB[3][2]) > 0x7FFF)
+    {
+        gEEPROM_RSSI_CALIB[3][0] = 116;
+        gEEPROM_RSSI_CALIB[3][1] = 146;
+        gEEPROM_RSSI_CALIB[3][2] = 176;
+        gEEPROM_RSSI_CALIB[3][3] = 206;
+    }
+    memcpy(gEEPROM_RSSI_CALIB[4], gEEPROM_RSSI_CALIB[3], 8);
+    memcpy(gEEPROM_RSSI_CALIB[5], gEEPROM_RSSI_CALIB[3], 8);
+    memcpy(gEEPROM_RSSI_CALIB[6], gEEPROM_RSSI_CALIB[3], 8);
+
     // 0x1F40
     PY25Q16_ReadBuffer(0x010000 + 0x140, gBatteryCalibration, 12);
     if (gBatteryCalibration[0] >= 5000)
     {
         gBatteryCalibration[0] = 1900;
         gBatteryCalibration[1] = 2000;
+    }
+    // validate battery calibration divisor (index 3): must be in [1500, 3500]
+    // if 0 → division by zero; if out of range → false overvoltage/undervoltage alarm
+    if (gBatteryCalibration[3] < 1500 || gBatteryCalibration[3] > 3500)
+    {
+        gBatteryCalibration[0] = 1900;
+        gBatteryCalibration[1] = 2000;
+        gBatteryCalibration[2] = 2112;
+        gBatteryCalibration[3] = 2200;
+        gBatteryCalibration[4] = 2234;
     }
     gBatteryCalibration[5] = 2300;
 
@@ -567,6 +604,11 @@ void SETTINGS_LoadCalibration(void)
         PY25Q16_ReadBuffer(0x010000 + 0x150 + (gEeprom.VOX_LEVEL * 2), &gEeprom.VOX1_THRESHOLD, 2);
         // 0x1F68
         PY25Q16_ReadBuffer(0x010000 + 0x168 + (gEeprom.VOX_LEVEL * 2), &gEeprom.VOX0_THRESHOLD, 2);
+        // validate VOX thresholds (erased flash = 0xFFFF → invalid)
+        if (gEeprom.VOX1_THRESHOLD == 0xFFFF)
+            gEeprom.VOX1_THRESHOLD = 80;
+        if (gEeprom.VOX0_THRESHOLD == 0xFFFF)
+            gEeprom.VOX0_THRESHOLD = 60;
     #endif
 
     //PY25Q16_ReadBuffer(0x1F80 + gEeprom.MIC_SENSITIVITY, &Mic, 1);

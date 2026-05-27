@@ -878,7 +878,10 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
 
         if (rxActive)
         {
-            rssi_dBm = BK4819_GetRSSI_dBm() + dBmCorrTable[gRxVfo->Band];
+            {
+                const uint8_t b = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
+                rssi_dBm = BK4819_GetRSSI_dBm() + dBmCorrTable[b];
+            }
 #ifdef ENABLE_AM_FIX
             if (gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM)
                 rssi_dBm = (int16_t)(rssi_dBm + AM_fix_get_gain_diff());
@@ -1941,12 +1944,13 @@ static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
         return;
     }
 
+    const uint8_t band_corr = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
     int16_t rssi_dBm =
         BK4819_GetRSSI_dBm()
 #ifdef ENABLE_AM_FIX
         + ((gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM) ? AM_fix_get_gain_diff() : 0)
 #endif
-        + dBmCorrTable[gRxVfo->Band];
+        + dBmCorrTable[band_corr];
 
     const int16_t s9_dBm = -93;
     const int16_t s0_dBm = -141;
@@ -2117,12 +2121,13 @@ void DisplayRSSIBar(const bool now)
         memset(p_line, 0, LCD_WIDTH);
 
 #ifdef ENABLE_FEAT_F4HWN
+    const uint8_t band_rssi = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
     int16_t rssi_dBm =
         BK4819_GetRSSI_dBm()
 #ifdef ENABLE_AM_FIX
         + ((gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM) ? AM_fix_get_gain_diff() : 0)
 #endif
-        + dBmCorrTable[gRxVfo->Band];
+        + dBmCorrTable[band_rssi];
 
     // S9 = -93 dBm, S0 = -141 dBm (IARU standard)
     const int16_t s9_dBm = -93;
@@ -2154,12 +2159,13 @@ void DisplayRSSIBar(const bool now)
     }
 #else
     const int16_t s0_dBm   = -gEeprom.S0_LEVEL;                  // S0 .. base level
+    const uint8_t band_corr2 = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
     const int16_t rssi_dBm =
         BK4819_GetRSSI_dBm()
 #ifdef ENABLE_AM_FIX
         + ((gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM) ? AM_fix_get_gain_diff() : 0)
 #endif
-        + dBmCorrTable[gRxVfo->Band];
+        + dBmCorrTable[band_corr2];
 
     int s0_9 = gEeprom.S0_LEVEL - gEeprom.S9_LEVEL;
     const uint8_t s_level = MIN(MAX((int32_t)(rssi_dBm - s0_dBm)*100 / (s0_9*100/9), 0), 9); // S0 - S9
@@ -2222,13 +2228,14 @@ void DisplayRSSIBar(const bool now)
     int16_t rssi = BK4819_GetRSSI();
     uint8_t Level;
 
-    if (rssi >= gEEPROM_RSSI_CALIB[gRxVfo->Band][3]) {
+    const uint8_t band = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
+    if (rssi >= gEEPROM_RSSI_CALIB[band][3]) {
         Level = 6;
-    } else if (rssi >= gEEPROM_RSSI_CALIB[gRxVfo->Band][2]) {
+    } else if (rssi >= gEEPROM_RSSI_CALIB[band][2]) {
         Level = 4;
-    } else if (rssi >= gEEPROM_RSSI_CALIB[gRxVfo->Band][1]) {
+    } else if (rssi >= gEEPROM_RSSI_CALIB[band][1]) {
         Level = 2;
-    } else if (rssi >= gEEPROM_RSSI_CALIB[gRxVfo->Band][0]) {
+    } else if (rssi >= gEEPROM_RSSI_CALIB[band][0]) {
         Level = 1;
     } else {
         Level = 0;
@@ -2458,12 +2465,13 @@ void UI_DisplayMain(void)
             const int rightEdge = (int)(LCD_WIDTH - 1);
             if (FUNCTION_IsRx()) {
                 char dBmStr[12];
+                const uint8_t b = (gRxVfo->Band < BAND_N_ELEM) ? gRxVfo->Band : BAND6_400MHz;
                 int16_t rssi_dBm =
                     BK4819_GetRSSI_dBm()
 #ifdef ENABLE_AM_FIX
                     + ((gSetting_AM_fix && gRxVfo->Modulation == MODULATION_AM) ? AM_fix_get_gain_diff() : 0)
 #endif
-                    + dBmCorrTable[gRxVfo->Band];
+                    + dBmCorrTable[b];
                 rssi_dBm = -rssi_dBm;
                 if (rssi_dBm > 141) rssi_dBm = 141;
                 if (rssi_dBm < 53) rssi_dBm = 53;

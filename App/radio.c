@@ -299,13 +299,15 @@ void RADIO_ConfigureChannel(const unsigned int VFO, const unsigned int configure
         channel = FREQ_CHANNEL_LAST - 1;
 
     ChannelAttributes_t* att = MR_GetChannelAttributes(channel);
-    if (att->__val == 0xFFFF) { // invalid/unused channel
+    if (att == NULL || att->__val == 0xFFFF) { // invalid/unused channel
         if (IS_MR_CHANNEL(channel)) {
             channel                    = gEeprom.FreqChannel[VFO];
             gEeprom.ScreenChannel[VFO] = channel;
         }
 
         uint16_t bandIdx = channel - FREQ_CHANNEL_FIRST;
+        if (bandIdx >= BAND_N_ELEM)
+            bandIdx = BAND6_400MHz;
         RADIO_InitInfo(pVfo, channel, frequencyBandTable[bandIdx].lower);
         return;
     }
