@@ -1512,6 +1512,7 @@ static void DrawRssiTriggerLevel()
     if (settings.rssiTriggerLevel == RSSI_MAX_VALUE || monitorMode)
         return;
     uint8_t y = Rssi2Y(settings.rssiTriggerLevel);
+    if (y < DrawingTopY) y = DrawingTopY;
     for (uint8_t x = 0; x < 128; x += 2)
     {
         PutPixel(x, y, true);
@@ -1581,10 +1582,7 @@ static void DrawGridBackground(void)
             gFrameBuffer[r][x] |= pattern;
         }
 
-        uint8_t r4 = 0;
-        if (isVerticalLinePos) r4 |= 0x01;
-        if (isHorizontalDot)   r4 |= 0x01;
-        gFrameBuffer[4][x] |= r4;
+        gFrameBuffer[4][x] |= 0x01;
     }
 }
 
@@ -1596,16 +1594,16 @@ static void DrawArrow(uint8_t x)
         if (!(v & 128))
         {
             uint8_t p3 = 0;
-            uint8_t p4 = 0;
 
-            p4 |= 0b00000010;
+            p3 |= 0b10000000;
 
-            if (i >= -1 && i <= 1) p4 |= 0b00000001;
+            if (i >= -1 && i <= 1) p3 |= 0b01000000;
 
-            if (i == 0) p3 |= 0b10000000;
+            if (i == 0) p3 |= 0b00100000;
+
+            p3 |= 0b00010000;
 
             gFrameBuffer[3][v] |= p3;
-            gFrameBuffer[4][v] |= p4;
         }
     }
 }
@@ -1880,12 +1878,13 @@ static void RenderSpectrum()
     {
         arrowX = (uint8_t)(128u * peak.i / (stepsCount - 1));
     }
-    DrawArrow(arrowX);
-    
     DrawSpectrumEnhanced();
+    DrawArrow(arrowX);
     DrawRssiTriggerLevel();
     DrawF(peak.f);
     DrawNums();
+    for (uint8_t x = 0; x < 128; x++)
+        gFrameBuffer[4][x] &= 0b11111101;
     DrawWaterfall();
 }
 
