@@ -1310,10 +1310,10 @@ static void DrawF(uint32_t f)
         uint8_t       x_mod            = 0u;
         if (LCD_WIDTH > 2u + text_width_mod)
             x_mod = (uint8_t)(LCD_WIDTH - 2u - text_width_mod);
-        DualVfoU8g2_DrawSmallText(String, x_mod, 1u, true);
+        DualVfoU8g2_DrawSmallText(String, x_mod, 0u, true);
     }
 #else
-    GUI_DisplaySmallest(String, 116, 1, false, true);
+    GUI_DisplaySmallest(String, 116, 0, false, true);
 #endif
 
     sprintf(String, "%4sk", bwOptions[settings.listenBw]);
@@ -1323,10 +1323,10 @@ static void DrawF(uint32_t f)
         uint8_t       x_bw          = 0u;
         if (LCD_WIDTH > 2u + text_width_bw)
             x_bw = (uint8_t)(LCD_WIDTH - 2u - text_width_bw);
-        DualVfoU8g2_DrawSmallText(String, x_bw, 7u, true);
+        DualVfoU8g2_DrawSmallText(String, x_bw, 6u, true);
     }
 #else
-    GUI_DisplaySmallest(String, 108, 7, false, true);
+    GUI_DisplaySmallest(String, 108, 6, false, true);
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
@@ -1371,13 +1371,13 @@ static void DrawNums()
             sprintf(String, "%ux", GetStepsCount());
         }
 #ifdef ENABLE_FEAT_F4HWN
-        DualVfoU8g2_DrawSmallText(String, 0u, 1u, true);
+        DualVfoU8g2_DrawSmallText(String, 0u, 0u, true);
         sprintf(String, "%u.%02uk", GetScanStep() / 100, GetScanStep() % 100);
-        DualVfoU8g2_DrawSmallText(String, 0u, 7u, true);
+        DualVfoU8g2_DrawSmallText(String, 0u, 6u, true);
 #else
-        GUI_DisplaySmallest(String, 0, 1, false, true);
+        GUI_DisplaySmallest(String, 0, 0, false, true);
         sprintf(String, "%u.%02uk", GetScanStep() / 100, GetScanStep() % 100);
-        GUI_DisplaySmallest(String, 0, 7, false, true);
+        GUI_DisplaySmallest(String, 0, 6, false, true);
 #endif
     }
 
