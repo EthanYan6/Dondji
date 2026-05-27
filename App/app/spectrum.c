@@ -103,6 +103,11 @@ uint16_t rssiHistory[128];
 #define WF_FLOOR_MIN_LEVEL       2U
 static uint8_t waterfallHistory[128][WATERFALL_HISTORY_DEPTH / 2];
 static uint8_t waterfallIndex = 0;
+static uint16_t scanReg30 = 0;
+static uint8_t renderTimer = 0;
+static uint8_t renderPage = 0;
+#define RENDER_PERIOD_TICKS 20
+#define FRAME_LINES 8
 
 int vfo;
 uint8_t freqInputIndex = 0;
@@ -372,6 +377,16 @@ static void SetF(uint32_t f)
     BK4819_WriteRegister(BK4819_REG_30, reg);
 }
 
+static void SetFScan(uint32_t f)
+{
+    if ((f < 28000000) != (fMeasure < 28000000))
+        BK4819_PickRXFilterPathBasedOnFrequency(f);
+    fMeasure = f;
+    BK4819_SetFrequency(f);
+    BK4819_WriteRegister(BK4819_REG_30, 0);
+    BK4819_WriteRegister(BK4819_REG_30, scanReg30);
+}
+
 // Spectrum related
 
 bool IsPeakOverLevel() { return peak.rssi >= settings.rssiTriggerLevel; }
@@ -479,12 +494,12 @@ uint8_t GetBWRegValueForScan()
 
 uint16_t GetRssi()
 {
-    // SYSTICK_DelayUs(800);
-    // testing autodelay based on Glitch value
-    while ((BK4819_ReadRegister(0x63) & 0b11111111) >= 255)
+    uint8_t guard = 50;
+    while (guard-- && (BK4819_ReadRegister(0x63) & 0xFF) >= 200)
     {
-        SYSTICK_DelayUs(100);
+        SYSTICK_DelayUs(1);
     }
+    BK4819_GetRSSI(); // discard first read for AGC settling
     uint16_t rssi = BK4819_GetRSSI();
 #ifdef ENABLE_AM_FIX
     if (settings.modulationType == MODULATION_AM && gSetting_AM_fix)
@@ -563,6 +578,7 @@ static void InitScan()
 
     scanInfo.scanStep = GetScanStep();
     scanInfo.measurementsCount = GetStepsCount();
+    scanReg30 = BK4819_ReadRegister(BK4819_REG_30) & ~(1u << 9);
 }
 
 static void ResetBlacklist()
@@ -2021,8 +2037,6 @@ static void Render()
         RenderStill();
         break;
     }
-
-    ST7565_BlitFullScreen();
 }
 
 static bool HandleUserInput()
@@ -2072,7 +2086,7 @@ static void Scan()
 #endif
     )
     {
-        SetF(scanInfo.f);
+        SetFScan(scanInfo.f);
         Measure();
         UpdateScanInfo();
     }
@@ -2216,10 +2230,9 @@ static void Tick()
     {
         gNextTimeslice_500ms = false;
 
-        // if a lot of steps then it takes long time
-        // we don't want to wait for whole scan
-        // listening has it's own timer
-        if (GetStepsCount() > 128 && !isListening)
+        // periodically allow key input during scanning
+        // so user can EXIT, change step, etc.
+        if (!isListening)
         {
             UpdatePeakInfo();
             if (IsPeakOverLevel())
@@ -2263,7 +2276,7 @@ static void Tick()
         RenderStatus();
         redrawStatus = false;
     }
-    if (redrawScreen)
+    if (redrawScreen || ++renderTimer >= RENDER_PERIOD_TICKS)
     {
         Render();
         // For screenshot
@@ -2271,7 +2284,11 @@ static void Tick()
             SCREENSHOT_Update(false);
         #endif
         redrawScreen = false;
+        renderTimer = 0;
     }
+    ST7565_BlitLine(renderPage);
+    if (++renderPage >= FRAME_LINES)
+        renderPage = 0;
 }
 
 void APP_RunSpectrum()
