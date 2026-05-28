@@ -23,7 +23,13 @@
       "Bash(python update_cn_font.py)",
       "Bash(python App/tools/gen_cn_font.py)",
       "Bash(git stash *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(gh repo *)",
+      "Bash(curl -s \"https://api.github.com/repos/wh0am1i/FmoDeck\")",
+      "Bash(curl -s \"https://api.github.com/repos/wh0am1i/FmoDeck/contents\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/wh0am1i/FmoDeck/main/README.md\")",
+      "Bash(curl *)",
+      "Bash(wget -q \"https://raw.githubusercontent.com/wh0am1i/FmoDeck/main/README.md\" -O -)"
     ]
   }
 }
