@@ -891,7 +891,7 @@ void RADIO_SetupRegisters(bool switchToForeground)
     BK4819_WriteRegister(BK4819_REG_48,
         (11u << 12)                 |     // ??? .. 0 ~ 15, doesn't seem to make any difference
         ( 0u << 10)                 |     // AF Rx Gain-1
-        (gEeprom.VOLUME_GAIN << 4) |     // AF Rx Gain-2
+        ((gMute ? 0 : gEeprom.VOLUME_GAIN) << 4) |     // AF Rx Gain-2
         (gEeprom.DAC_GAIN    << 0));     // AF DAC Gain (after Gain-1 and Gain-2)
 
 
@@ -1156,18 +1156,24 @@ void RADIO_SetModulation(ModulationMode_t modulation)
     #endif
 
     BK4819_AF_Type_t mod;
-    switch(modulation) {
-        default:
-        case MODULATION_FM:
-            mod = BK4819_AF_FM;
-            break;
-        case MODULATION_AM:
-            mod = BK4819_AF_FM; // AM no longer needs special AF setting
-            break;
-        case MODULATION_USB:
-            mod = BK4819_AF_BASEBAND2;
-            break;
-
+    
+    // If muted, keep audio output in mute mode
+    if(gMute) {
+        mod = BK4819_AF_MUTE;
+    }
+    else {
+        switch(modulation) {
+            default:
+            case MODULATION_FM:
+                mod = BK4819_AF_FM;
+                break;
+            case MODULATION_AM:
+                mod = BK4819_AF_FM; // AM no longer needs special AF setting
+                break;
+            case MODULATION_USB:
+                mod = BK4819_AF_BASEBAND2;
+                break;
+        }
     }
 
     BK4819_SetAF(mod);

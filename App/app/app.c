@@ -543,7 +543,7 @@ void APP_StartListening(FUNCTION_Type_t function)
     BK4819_WriteRegister(BK4819_REG_48,
         (11u << 12)                |     // ??? .. 0 to 15, doesn't seem to make any difference
         ( 0u << 10)                |     // AF Rx Gain-1
-        (gEeprom.VOLUME_GAIN << 4) |     // AF Rx Gain-2
+        ((gMute ? 0 : gEeprom.VOLUME_GAIN) << 4) |     // AF Rx Gain-2
         (gEeprom.DAC_GAIN    << 0));     // AF DAC Gain (after Gain-1 and Gain-2)
 
 #ifdef ENABLE_VOICE

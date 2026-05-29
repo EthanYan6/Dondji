@@ -1529,6 +1529,8 @@ void MENU_AcceptSetting(void)
         #ifdef ENABLE_FEAT_F4HWN_VOL
             case MENU_SET_VOL:
                 gEeprom.VOLUME_GAIN = gSubMenuSelection;
+                if(gSubMenuSelection > 0)
+                    gMute = false;
                 break;
         #endif
         #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS

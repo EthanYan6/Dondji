@@ -699,7 +699,21 @@ void ACTION_Mute(void)
     #ifdef ENABLE_FMRADIO
         BK1080_WriteRegister(BK1080_REG_05_SYSTEM_CONFIGURATION2, gMute ? 0x0A10 : 0x0A1F);
     #endif
-    gEeprom.VOLUME_GAIN = gMute ? 0 : gEeprom.VOLUME_GAIN_BACKUP;
+    
+    if(gMute)
+    {
+        // Set audio output to mute mode for complete silence
+        BK4819_SetAF(BK4819_AF_MUTE);
+        gEeprom.VOLUME_GAIN = 0;
+    }
+    else
+    {
+        // Restore normal audio mode
+        gEeprom.VOLUME_GAIN = gEeprom.VOLUME_GAIN_BACKUP;
+        RADIO_SetModulation(gRxVfo->Modulation);
+    }
+    
+    // Update volume gain register
     BK4819_WriteRegister(BK4819_REG_48,
         (11u << 12)                |  // ??? .. 0 ~ 15, doesn't seem to make any difference
         (0u << 10)                 |  // AF Rx Gain-1
