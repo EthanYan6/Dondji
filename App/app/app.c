@@ -204,17 +204,21 @@ static void HandleIncoming(void)
     }
 #endif
 
-    if (g_CTCSS_Lost && gCurrentCodeType == CODE_TYPE_CONTINUOUS_TONE) {
-        bFlag       = true;
-        gFoundCTCSS = false;
+    // 使用REG_0C实时状态位判断CTCSS/DCS匹配（参考V526G方案）
+    // REG_0C bit[11:10]: CTCSS状态 (01=匹配, 00=未检测到)
+    // REG_0C bit[15:14]: DCS状态   (01=匹配, 00=未检测到)
+    // 这种方式比REG_02中断方式更可靠，避免了位定义错误和中断不触发的问题
+    if (gCurrentCodeType == CODE_TYPE_CONTINUOUS_TONE) {
+        uint16_t reg0c = BK4819_ReadRegister(BK4819_REG_0C);
+        if (((reg0c >> 10) & 3u) != 1u)
+            return;
+    } else if (gCurrentCodeType == CODE_TYPE_DIGITAL || gCurrentCodeType == CODE_TYPE_REVERSE_DIGITAL) {
+        uint16_t reg0c = BK4819_ReadRegister(BK4819_REG_0C);
+        if (((reg0c >> 14) & 3u) != 1u)
+            return;
     }
 
-    if (g_CDCSS_Lost
-        && (gCurrentCodeType == CODE_TYPE_DIGITAL || gCurrentCodeType == CODE_TYPE_REVERSE_DIGITAL))
-    {
-        gFoundCDCSS = false;
-    }
-    else if (!bFlag)
+    if (!bFlag)
         return;
 
 #ifdef ENABLE_DTMF_CALLING
@@ -308,17 +312,6 @@ static void HandleReceive(void)
                     break;
 
                 case CODE_TYPE_CONTINUOUS_TONE:
-                    if (g_CTCSS_Lost)
-                    {
-                        gFoundCTCSS = false;
-                    }
-                    else
-                    if (!gFoundCTCSS)
-                    {
-                        gFoundCTCSS               = true;
-                        gFoundCTCSSCountdown_10ms = 100;   // 1 sec
-                    }
-
                     if (g_CxCSS_TAIL_Found)
                     {
                         Mode               = END_OF_RX_MODE_TTE;
@@ -328,17 +321,6 @@ static void HandleReceive(void)
 
                 case CODE_TYPE_DIGITAL:
                 case CODE_TYPE_REVERSE_DIGITAL:
-                    if (g_CDCSS_Lost)
-                    {
-                        gFoundCDCSS = false;
-                    }
-                    else
-                    if (!gFoundCDCSS)
-                    {
-                        gFoundCDCSS               = true;
-                        gFoundCDCSSCountdown_10ms = 100;   // 1 sec
-                    }
-
                     if (g_CxCSS_TAIL_Found)
                     {
                         if (BK4819_GetCTCType() == 1)
@@ -1568,9 +1550,15 @@ void APP_TimeSlice10ms(void)
 
 #ifdef ENABLE_FMRADIO
     if (gFmRadioMode && gFM_RestoreCountdown_10ms > 0) {
-        if (--gFM_RestoreCountdown_10ms == 0) { 
-            FM_Start(); // switch back to FM radio mode
-            GUI_SelectNextDisplay(DISPLAY_FM);
+        if (--gFM_RestoreCountdown_10ms == 0) {
+            if (gCurrentFunction == FUNCTION_RECEIVE ||
+                gCurrentFunction == FUNCTION_INCOMING ||
+                gCurrentFunction == FUNCTION_MONITOR) {
+                gFM_RestoreCountdown_10ms = fm_restore_countdown_10ms;
+            } else {
+                FM_Start();
+                GUI_SelectNextDisplay(DISPLAY_FM);
+            }
         }
     }
 #endif

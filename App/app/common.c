@@ -1,4 +1,7 @@
 #include "app/chFrScanner.h"
+#ifdef ENABLE_FMRADIO
+    #include "app/fm.h"
+#endif
 #include "audio.h"
 #include "functions.h"
 #include "misc.h"
@@ -25,6 +28,12 @@ void COMMON_KeypadLockToggle()
 
 void COMMON_SwitchVFOs()
 {
+#ifdef ENABLE_FMRADIO
+    if (gFmRadioMode) {
+        return;
+    }
+#endif
+
 #ifdef ENABLE_SCAN_RANGES    
     gScanRangeStart = 0;
 #endif
@@ -54,6 +63,12 @@ void COMMON_SwitchVFOs()
 
 void COMMON_SwitchVFOMode()
 {
+#ifdef ENABLE_FMRADIO
+    if (gFmRadioMode) {
+        return;
+    }
+#endif
+
 #ifdef ENABLE_NOAA
     if (gEeprom.VFO_OPEN && !IS_NOAA_CHANNEL(gTxVfo->CHANNEL_SAVE))
 #else
