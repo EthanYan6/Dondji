@@ -201,6 +201,8 @@ body.writefreq-full .subtitle-chips { display: none; }
 .subtitle-chip--redbook .subtitle-chip-label { color: #fca5a5; }
 .subtitle-chip--weixin .subtitle-icon { color: #22c55e; }
 .subtitle-chip--weixin .subtitle-chip-label { color: #4ade80; }
+.subtitle-chip--fmo .subtitle-icon { color: #f97316; }
+.subtitle-chip--fmo .subtitle-chip-label { color: #fb923c; }
 a.subtitle-chip {
   text-decoration: none;
   color: inherit;

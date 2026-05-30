@@ -29,7 +29,11 @@
       "Bash(curl -s \"https://api.github.com/repos/wh0am1i/FmoDeck/contents\")",
       "Bash(curl -s \"https://raw.githubusercontent.com/wh0am1i/FmoDeck/main/README.md\")",
       "Bash(curl *)",
-      "Bash(wget -q \"https://raw.githubusercontent.com/wh0am1i/FmoDeck/main/README.md\" -O -)"
+      "Bash(wget -q \"https://raw.githubusercontent.com/wh0am1i/FmoDeck/main/README.md\" -O -)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
