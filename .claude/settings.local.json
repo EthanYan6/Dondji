@@ -33,7 +33,8 @@
       "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git *)"
     ]
   }
 }
