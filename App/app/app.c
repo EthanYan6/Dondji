@@ -212,10 +212,12 @@ static void HandleIncoming(void)
         uint16_t reg0c = BK4819_ReadRegister(BK4819_REG_0C);
         if (((reg0c >> 10) & 3u) != 1u)
             return;
+        bFlag = true;
     } else if (gCurrentCodeType == CODE_TYPE_DIGITAL || gCurrentCodeType == CODE_TYPE_REVERSE_DIGITAL) {
         uint16_t reg0c = BK4819_ReadRegister(BK4819_REG_0C);
         if (((reg0c >> 14) & 3u) != 1u)
             return;
+        bFlag = true;
     }
 
     if (!bFlag)
@@ -271,24 +273,6 @@ static void HandleReceive(void)
         goto Skip;
     }
 
-    switch (gCurrentCodeType)
-    {
-        default:
-        case CODE_TYPE_OFF:
-            break;
-
-        case CODE_TYPE_CONTINUOUS_TONE:
-        case CODE_TYPE_DIGITAL:
-        case CODE_TYPE_REVERSE_DIGITAL:
-            if ((gFoundCTCSS && gFoundCTCSSCountdown_10ms == 0) || (gFoundCDCSS && gFoundCDCSSCountdown_10ms == 0))
-            {
-                gFoundCTCSS = false;
-                gFoundCDCSS = false;
-                Mode        = END_OF_RX_MODE_END;
-                goto Skip;
-            }
-            break;
-    }
 
     if (g_SquelchLost)
     {
