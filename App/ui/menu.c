@@ -1527,7 +1527,7 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
     UI_PrintStringSmallNormal(String, 0, left_end, 6);
 
     for (unsigned int i = 0; i < 7u; i++)
-        gFrameBuffer[i][(8u * 6u) + 1u] = 0xAAu;
+        gFrameBuffer[i][(8u * 6u) + 4u] = 0xAAu;
 }
 
 /* Level 3 (edit): menu title top-left; main body uses full width from menu_value_x1 (values below title). */

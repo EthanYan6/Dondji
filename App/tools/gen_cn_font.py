@@ -344,6 +344,19 @@ PINYIN_MAP = {
     '仑': 'lun',
     '鹦': 'ying',
     '鹉': 'wu',
+    '效': 'xiao',
+    '军': 'jun',
+    '寒': 'han',
+    '见': 'jian',
+    '男': 'nan',
+    '杰': 'jie',
+    '诚': 'cheng',
+    '玲': 'ling',
+    '焕': 'huan',
+    '官': 'guan',
+    '雁': 'yan',
+    '峨': 'e',
+    '栎': 'li',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
