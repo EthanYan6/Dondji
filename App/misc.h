@@ -223,6 +223,7 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     extern uint8_t           gSetting_mic_bar_display;
 #endif
 extern uint8_t               gSetting_boot_hint; /* 0=叮咚鸡 1=魅力北京 2=五五节纪念版 */
+extern uint8_t               gSetting_boot_sound; /* 0=关 1=开 */
 extern bool                  gSetting_live_DTMF_decoder;
 extern uint8_t               gSetting_battery_text;
 

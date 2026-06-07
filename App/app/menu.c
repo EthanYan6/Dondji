@@ -305,7 +305,8 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_F1LONG ||
         menu_id == MENU_F2SHRT ||
         menu_id == MENU_F2LONG ||
-        menu_id == MENU_MLONG)
+        menu_id == MENU_MLONG ||
+        menu_id == MENU_BOOT_SOUND)
     {
         in_settings = true;
     }
@@ -386,6 +387,7 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_F2SHRT) return 9u;
         if (menu_id == MENU_F2LONG) return 10u;
         if (menu_id == MENU_MLONG) return 11u;
+        if (menu_id == MENU_BOOT_SOUND) return 12u;
     }
 
     if (icon_index == 2u)
@@ -694,6 +696,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 
         case MENU_BOOT_HINT:
             *pMax = ARRAY_SIZE(gSubMenu_BOOT_HINT) - 1;
+            break;
+
+        case MENU_BOOT_SOUND:
+            *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
             break;
 
         case MENU_R_DCS:
@@ -1338,6 +1344,10 @@ void MENU_AcceptSetting(void)
             gSetting_boot_hint = (uint8_t)gSubMenuSelection;
             break;
 
+        case MENU_BOOT_SOUND:
+            gSetting_boot_sound = (uint8_t)gSubMenuSelection;
+            break;
+
         case MENU_ROGER:
             gEeprom.ROGER = gSubMenuSelection;
             gFlagReconfigureVfos = true;
@@ -1844,6 +1854,10 @@ void MENU_ShowCurrentSetting(void)
 
         case MENU_BOOT_HINT:
             gSubMenuSelection = gSetting_boot_hint;
+            return;
+
+        case MENU_BOOT_SOUND:
+            gSubMenuSelection = gSetting_boot_sound;
             return;
 
         case MENU_ROGER:

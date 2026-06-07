@@ -157,6 +157,7 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     uint8_t       gSetting_mic_bar_display = MIC_BAR_DISPLAY_OFF;
 #endif
 uint8_t           gSetting_boot_hint;
+uint8_t           gSetting_boot_sound;
 bool              gSetting_live_DTMF_decoder;
 uint8_t           gSetting_battery_text;
 

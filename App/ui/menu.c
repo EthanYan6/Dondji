@@ -435,6 +435,7 @@ const t_menu_item MenuList[] =
     {"Mic",         MENU_MIC           },
     {"POnMsg",      MENU_PONMSG        },
     {"BootHnt",     MENU_BOOT_HINT     },
+    {"BootSnd",     MENU_BOOT_SOUND    },
     {"BLTime",      MENU_ABR           }, // was "ABR"
     {"BLMin",       MENU_ABR_MIN       },
     {"BLMax",       MENU_ABR_MAX       },
@@ -2635,6 +2636,10 @@ void UI_DisplayMenu(void)
             {
                 strcpy(String, SUBV(gSubMenu_BOOT_HINT[gSubMenuSelection], gSubMenu_BOOT_HINT_CN[gSubMenuSelection]));
             }
+            break;
+
+        case MENU_BOOT_SOUND:
+            strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
             break;
 
         case MENU_ROGER:
