@@ -15,8 +15,16 @@ extern bool              gScanPauseMode;
 #ifdef ENABLE_SCAN_RANGES
 extern uint32_t          gScanRangeStart;
 extern uint32_t          gScanRangeStop;
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+extern DCS_CodeType_t    gScanRangeCssType;
+extern uint8_t           gScanRangeCssCode;
+#endif
+
 bool CHFRSCANNER_ExcludeCurrentScanRange(void);
 bool CHFRSCANNER_HasScanRangeExcludedOrdinal(uint32_t first_ordinal, uint32_t last_ordinal);
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+void CHFRSCANNER_UpdateCssDetection(void);
+#endif
 #endif
 
 void CHFRSCANNER_Found(void);

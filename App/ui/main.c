@@ -1233,6 +1233,26 @@ static void UI_FormatFrequency(uint32_t freq, char *buffer) {
     sprintf(buffer, "%3u.%05u", freq / 100000, freq % 100000);
 }
 
+#if defined(ENABLE_SCAN_RANGES) && defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+static void UI_PrintScanRangeCss(char *String, uint8_t LabelX, uint8_t ValueX, uint8_t Line)
+{
+    if (gScanRangeCssType == CODE_TYPE_CONTINUOUS_TONE)
+    {
+        strcpy(String, "CTCSS");
+        UI_PrintStringSmallNormalInverse(String, LabelX, 0, Line);
+        sprintf(String, "%u.%uHz", CTCSS_Options[gScanRangeCssCode] / 10, CTCSS_Options[gScanRangeCssCode] % 10);
+    }
+    else
+    {
+        strcpy(String, "DCS");
+        UI_PrintStringSmallNormalInverse(String, LabelX, 0, Line);
+        sprintf(String, "D%03o%c", DCS_Options[gScanRangeCssCode], gScanRangeCssType == CODE_TYPE_REVERSE_DIGITAL ? 'I' : 'N');
+    }
+
+    UI_PrintStringSmallNormal(String, ValueX, 0, Line);
+}
+#endif
+
 void UI_DisplayMain(void)
 {
     char               String[22];
@@ -1331,6 +1351,11 @@ void UI_DisplayMain(void)
                     UI_FormatFrequency(gScanRangeStop, String);
                     UI_PrintStringSmallNormal(String, 56, 0, line + shift + 1);
 
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+                    if (!isMainOnly() && gScanRangeCssCode != 0xFF)
+                        UI_PrintScanRangeCss(String, 6, 48, line + 2);
+#endif
+
                     if (!isMainOnly())
                         continue;
                 }
@@ -1344,6 +1369,12 @@ void UI_DisplayMain(void)
                 UI_PrintStringSmallNormal(String, 56, 0, line);
                 UI_FormatFrequency(gScanRangeStop, String);
                 UI_PrintStringSmallNormal(String, 56, 0, line + 1);
+
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+                if (gScanRangeCssCode != 0xFF)
+                    UI_PrintScanRangeCss(String, 2, 44, line + 2);
+#endif
+
                 continue;
 #endif
             }
@@ -2170,6 +2201,11 @@ void UI_DisplayMain(void)
 #ifdef ENABLE_AGC_SHOW_DATA
     center_line = CENTER_LINE_IN_USE;
     UI_MAIN_PrintAGC(false);
+#endif
+
+#if defined(ENABLE_SCAN_RANGES) && defined(ENABLE_FEAT_F4HWN) && defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+    if (isMainOnly() && gScanRangeStart && gScanRangeCssCode != 0xFF)
+        UI_PrintScanRangeCss(String, 2, 46, 6);
 #endif
 
     if (center_line == CENTER_LINE_NONE)

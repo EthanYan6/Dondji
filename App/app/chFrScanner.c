@@ -22,6 +22,13 @@ bool              gScanPauseMode;
 uint32_t          gScanRangeStart;
 uint32_t          gScanRangeStop;
 
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+DCS_CodeType_t    gScanRangeCssType  = CODE_TYPE_OFF;
+uint8_t           gScanRangeCssCode  = 0xFF;
+static uint8_t    scanRangeCssCandidate = 0xFF;
+static uint8_t    scanRangeCssHitCount  = 0;
+#endif
+
 #define SCAN_RANGE_SKIP_MAX 32
 #if (SCAN_RANGE_SKIP_MAX & (SCAN_RANGE_SKIP_MAX - 1)) != 0
     #error SCAN_RANGE_SKIP_MAX must be a power of two
@@ -183,6 +190,58 @@ bool CHFRSCANNER_HasScanRangeExcludedOrdinal(uint32_t first_ordinal, uint32_t la
 
     return false;
 }
+
+#if defined(ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE) && ENABLE_FEAT_F4HWN_SCAN_SUBAUDIBLE
+void CHFRSCANNER_UpdateCssDetection(void)
+{
+    if (!gScanRangeStart || !FUNCTION_IsRx())
+    {
+        gScanRangeCssType    = CODE_TYPE_OFF;
+        gScanRangeCssCode    = 0xFF;
+        scanRangeCssCandidate = 0xFF;
+        scanRangeCssHitCount  = 0;
+        return;
+    }
+
+    uint32_t cdcssFreq;
+    uint16_t ctcssFreq;
+    const BK4819_CssScanResult_t result = BK4819_GetCxCSSScanResult(&cdcssFreq, &ctcssFreq);
+
+    if (result == BK4819_CSS_RESULT_CDCSS)
+    {
+        const uint8_t Code = DCS_GetCdcssCode(cdcssFreq);
+        if (Code != 0xFF && Code != gScanRangeCssCode)
+        {
+            gScanRangeCssType    = CODE_TYPE_DIGITAL;
+            gScanRangeCssCode    = Code;
+            scanRangeCssCandidate = 0xFF;
+            scanRangeCssHitCount  = 0;
+            gUpdateDisplay = true;
+        }
+    }
+    else if (result == BK4819_CSS_RESULT_CTCSS)
+    {
+        const uint8_t Code = DCS_GetCtcssCode(ctcssFreq);
+        if (Code != 0xFF)
+        {
+            if (Code == scanRangeCssCandidate)
+            {
+                if (++scanRangeCssHitCount >= 2 && Code != gScanRangeCssCode)
+                {
+                    gScanRangeCssType = CODE_TYPE_CONTINUOUS_TONE;
+                    gScanRangeCssCode = Code;
+                    gUpdateDisplay    = true;
+                }
+            }
+            else
+            {
+                scanRangeCssCandidate = Code;
+                scanRangeCssHitCount  = 1;
+            }
+        }
+    }
+}
+#endif
 #endif
 
 static void CHFRSCANNER_AbortActiveReception(void)
