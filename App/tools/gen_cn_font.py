@@ -357,6 +357,11 @@ PINYIN_MAP = {
     '雁': 'yan',
     '峨': 'e',
     '栎': 'li',
+    # 缺字补充（第二批）
+    '勤': 'qin', '知': 'zhi', '萨': 'sa', '麋': 'mi', '混': 'hun',
+    '研': 'yan', '采': 'cai', '管': 'guan', '森': 'sen', '煲': 'bao',
+    '离': 'li', '总': 'zong', '游': 'you', '侠': 'xia', '埔': 'pu',
+    '融': 'rong', '媒': 'mei', '圩': 'wei,xu', '锚': 'mao', '娇': 'jiao',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin
