@@ -159,6 +159,7 @@ typedef struct SpectrumSettings
     int dbMax;
     ModulationMode_t modulationType;
     bool backlightState;
+    uint8_t displayMode;  // 0 = Simple, 1 = Expert
 } SpectrumSettings;
 
 typedef struct ScanInfo

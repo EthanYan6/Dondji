@@ -32,7 +32,7 @@
 #include "driver/eeprom.h"
 #include "driver/gpio.h"
 #include "driver/keyboard.h"
-#ifdef ENABLE_CHINESE
+#if defined(ENABLE_CHINESE) || defined(ENABLE_SPECTRUM)
 #include "driver/py25q16.h"
 #endif
 #include "frequencies.h"
@@ -327,6 +327,9 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
 #ifdef ENABLE_AUDIO_BAR
         || menu_id == MENU_MIC_BAR
 #endif
+#ifdef ENABLE_SPECTRUM
+        || menu_id == MENU_SPECTRUM_MODE
+#endif
         )
     {
         in_display = true;
@@ -407,6 +410,9 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_BAT_TXT) return 10u;
 #ifdef ENABLE_AUDIO_BAR
         if (menu_id == MENU_MIC_BAR) return 11u;
+#endif
+#ifdef ENABLE_SPECTRUM
+        if (menu_id == MENU_SPECTRUM_MODE) return 12u;
 #endif
     }
 
@@ -868,6 +874,12 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             *pMax = 1;
             break;
 
+#ifdef ENABLE_SPECTRUM
+        case MENU_SPECTRUM_MODE:
+            *pMax = 1;
+            break;
+#endif
+
 #ifdef ENABLE_DTMF_CALLING
         case MENU_D_HOLD:
             *pMin = 5;
@@ -1304,6 +1316,18 @@ void MENU_AcceptSetting(void)
             SETTINGS_SaveSettings();
             gUpdateDisplay = true;
             return;
+
+#ifdef ENABLE_SPECTRUM
+        case MENU_SPECTRUM_MODE:
+            gSetting_SpectrumDisplayMode = gSubMenuSelection & 1u;
+            {
+                uint8_t data[8];
+                PY25Q16_ReadBuffer(0x00A148, data, sizeof(data));
+                data[3] = (data[3] & ~0x01u) | (gSetting_SpectrumDisplayMode & 0x01u);
+                PY25Q16_WriteBuffer(0x00A148, data, sizeof(data));
+            }
+            return;
+#endif
 
 #ifdef ENABLE_DTMF_CALLING
         case MENU_D_DCD:
@@ -1834,6 +1858,12 @@ void MENU_ShowCurrentSetting(void)
         case MENU_LANGUAGE:
             gSubMenuSelection = gUiLanguage;
             return;
+
+#ifdef ENABLE_SPECTRUM
+        case MENU_SPECTRUM_MODE:
+            gSubMenuSelection = gSetting_SpectrumDisplayMode;
+            return;
+#endif
 
 #ifdef ENABLE_DTMF_CALLING
         case MENU_D_DCD:

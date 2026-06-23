@@ -160,6 +160,9 @@ enum
     #endif
 #endif
     MENU_BATCAL,  // battery voltage calibration
+#ifdef ENABLE_SPECTRUM
+    MENU_SPECTRUM_MODE,
+#endif
     MENU_F1SHRT,
     MENU_F1LONG,
     MENU_F2SHRT,
@@ -223,6 +226,10 @@ extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char        gSubMenu_LANGUAGE[2][8];
 extern const char        gSubMenu_BOOT_HINT[3][14];
 extern const char        gSubMenu_BATTYP[5][12];
+#ifdef ENABLE_SPECTRUM
+extern const char        gSubMenu_SPECTRUM_MODE[2][8];
+extern uint8_t           gSetting_SpectrumDisplayMode;
+#endif
 
 #ifndef ENABLE_FEAT_F4HWN
     extern const char        gSubMenu_SCRAMBLER[11][7];

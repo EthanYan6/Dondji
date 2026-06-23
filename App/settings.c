@@ -541,6 +541,14 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
     #endif
 
+#ifdef ENABLE_SPECTRUM
+    {
+        uint8_t spData[4];
+        PY25Q16_ReadBuffer(0x00A148, spData, sizeof(spData));
+        gSetting_SpectrumDisplayMode = spData[3] & 0x01u;
+    }
+#endif
+
 }
 
 void SETTINGS_LoadCalibration(void)

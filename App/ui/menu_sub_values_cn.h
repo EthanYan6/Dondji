@@ -72,6 +72,10 @@ extern const char gSubMenu_MEM_NONE_CN[];
 
 extern const char gSubMenu_MODULATION_CN[][8];
 
+#ifdef ENABLE_SPECTRUM
+extern const char gSubMenu_SPECTRUM_MODE_CN[][8];
+#endif
+
 #endif /* ENABLE_CHINESE */
 
 #endif

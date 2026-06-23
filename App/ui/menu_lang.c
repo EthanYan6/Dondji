@@ -156,6 +156,9 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
 #endif
     case MENU_BATCAL:       return "\xe7\x94\xb5\xe6\xb1\xa0\xe6\xa0\xa1\xe5\x87\x86";
     case MENU_BATTYP:       return "\xe7\x94\xb5\xe6\xb1\xa0\xe7\xb1\xbb\xe5\x9e\x8b";
+#ifdef ENABLE_SPECTRUM
+    case MENU_SPECTRUM_MODE: return "\xe9\xa2\x91\xe8\xb0\xb1\xe6\x98\xbe\xe7\xa4\xba";
+#endif
 #ifdef ENABLE_AUDIO_BAR
     case MENU_MIC_BAR:      return "\xe5\x8f\x91\xe5\xb0\x84\xe6\x8f\x90\xe7\xa4\xba"; /* 发射提示 */
 #endif

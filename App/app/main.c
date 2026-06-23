@@ -30,6 +30,7 @@
 
 #ifdef ENABLE_SPECTRUM
 #include "app/spectrum.h"
+extern uint8_t gSetting_SpectrumDisplayMode;
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_GAME
@@ -90,6 +91,10 @@ static void toggle_chan_scanlist(void)
 
     if(!IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
 #ifdef ENABLE_SCAN_RANGES
+#ifdef ENABLE_SPECTRUM
+        if (gSetting_SpectrumDisplayMode == 1u)
+            return;
+#endif
 #ifdef ENABLE_FEAT_F4HWN
         const bool is_main_only = (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF);
         if (is_main_only) {

@@ -128,6 +128,7 @@ RegisterSpec registerSpecs[] = {
 };
 
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
+extern uint8_t gSetting_SpectrumDisplayMode;
 const int8_t LNAsOptions[] = {-19, -16, -11, 0};
 const int8_t LNAOptions[] = {-24, -19, -14, -9, -6, -4, -2, 0};
 const int8_t VGAOptions[] = {-33, -27, -21, -15, -9, -6, -3, 0};
@@ -173,7 +174,9 @@ static void LoadSettings()
     // Data[2]: rssiTriggerLevel as uint8_t (0xFF = auto)
     settings.rssiTriggerLevel = (Data[2] == 0xFF) ? RSSI_MAX_VALUE : Data[2];
 
-    // Data[3] ~ Data[7] are free (for the moment...)
+    // Data[3] bit 0: spectrum display mode (0=Simple, 1=Expert)
+    // Loaded once at startup in SETTINGS_InitEEPROM; do not overwrite global here
+    settings.displayMode = gSetting_SpectrumDisplayMode;
 }
 
 static void SaveSettings()
@@ -189,6 +192,9 @@ static void SaveSettings()
 
     // Data[2]: rssiTriggerLevel as uint8_t (0xFF = auto)
     Data[2] = (settings.rssiTriggerLevel == RSSI_MAX_VALUE) ? 0xFF : (uint8_t)settings.rssiTriggerLevel;
+
+    // Data[3] bit 0: spectrum display mode
+    Data[3] = (Data[3] & ~0x01u) | (gSetting_SpectrumDisplayMode & 0x01u);
 
     PY25Q16_WriteBuffer(0x00A148, Data, sizeof(Data));
 }
@@ -431,6 +437,12 @@ bool IsCenterMode() { return settings.scanStepIndex < S_STEP_2_5kHz; }
 // scan step in 0.01khz
 uint16_t GetScanStep() { return scanStepValues[settings.scanStepIndex]; }
 
+// Maximum scan steps to prevent slow scanning on large ranges
+#define MAX_SCAN_STEPS 512
+
+// Effective scan step for large ranges (auto-adjusted)
+static uint16_t effectiveScanStep = 0;
+
 uint16_t GetStepsCount()
 {
 #ifdef ENABLE_SCAN_RANGES
@@ -438,10 +450,45 @@ uint16_t GetStepsCount()
     {
         uint32_t range = gScanRangeStop - gScanRangeStart;
         uint16_t step = GetScanStep();
-        return (range / step) + 1;  // +1 to include up limit
+        uint16_t steps = (range / step) + 1;  // +1 to include up limit
+        
+        // If steps exceed max, auto-adjust step to speed up scanning
+        if (steps > MAX_SCAN_STEPS)
+        {
+            // Calculate new step to fit within MAX_SCAN_STEPS
+            uint16_t newStep = (range / MAX_SCAN_STEPS) + 1;
+            // Round up to nearest standard step value for cleaner display
+            for (uint8_t i = 0; i < ARRAY_SIZE(scanStepValues); i++)
+            {
+                if (scanStepValues[i] >= newStep)
+                {
+                    effectiveScanStep = scanStepValues[i];
+                    break;
+                }
+            }
+            if (effectiveScanStep == 0)
+                effectiveScanStep = scanStepValues[ARRAY_SIZE(scanStepValues) - 1];
+            steps = (range / effectiveScanStep) + 1;
+            if (steps > MAX_SCAN_STEPS)
+                steps = MAX_SCAN_STEPS;
+        }
+        else
+        {
+            effectiveScanStep = 0;  // Use normal step
+        }
+        return steps;
     }
 #endif
+    effectiveScanStep = 0;  // Use normal step
     return 128 >> settings.stepsCount;
+}
+
+// Get effective scan step (may be larger for large ranges)
+static uint16_t GetEffectiveScanStep()
+{
+    if (effectiveScanStep > 0)
+        return effectiveScanStep;
+    return GetScanStep();
 }
 
 #ifdef ENABLE_SCAN_RANGES
@@ -455,7 +502,7 @@ static uint16_t GetStepsCountDisplay()
 }
 #endif
 
-uint32_t GetBW() { return GetStepsCount() * GetScanStep(); }
+uint32_t GetBW() { return GetStepsCount() * GetEffectiveScanStep(); }
 uint32_t GetFStart()
 {
     return IsCenterMode() ? currentFreq - (GetBW() >> 1) : currentFreq;
@@ -576,8 +623,9 @@ static void InitScan()
     scanInfo.i = 0;
     scanInfo.f = GetFStart();
 
-    scanInfo.scanStep = GetScanStep();
+    // GetStepsCount() must be called first to set effectiveScanStep
     scanInfo.measurementsCount = GetStepsCount();
+    scanInfo.scanStep = GetEffectiveScanStep();
     scanReg30 = BK4819_ReadRegister(BK4819_REG_30) & ~(1u << 9);
 }
 
@@ -1135,9 +1183,11 @@ uint8_t Rssi2PX(uint16_t rssi, uint8_t pxMin, uint8_t pxMax)
     return result;
 }
 
+static uint8_t GetSimpleYOffset(void);
+
 uint8_t Rssi2Y(uint16_t rssi)
 {
-    return DrawingEndY - Rssi2PX(rssi, 0, DrawingEndY - DrawingTopY);
+    return DrawingEndY + GetSimpleYOffset() - Rssi2PX(rssi, 0, DrawingEndY - DrawingTopY);
 }
 
 static void DrawLine(int x0, int y0, int x1, int y1, bool fill);
@@ -1148,13 +1198,30 @@ static void DrawSpectrumEnhanced(void)
 {
     const uint16_t bars = GetStepsCount();
     const uint8_t SHADE_MAX_Y = GetSpectrumBaseY();
+    
+    /* When bars > 128, we need to map to history slots correctly */
+    const uint16_t displayBars = (bars > 128) ? 128 : bars;
 
     uint8_t prevX = SpecIdxToX(0);
-    uint8_t prevY = Rssi2Y(rssiHistory[0]);
+    uint8_t prevY = Rssi2Y(rssiHistory[GetHistorySlot(0)]);
+    /* If slot 0 has no data (rssi=0), use minimum Y (bottom of spectrum) */
+    if (rssiHistory[GetHistorySlot(0)] == 0)
+        prevY = SHADE_MAX_Y;
 
-    for (uint16_t i = 1; i < bars; i++) {
-        uint8_t currX = SpecIdxToX(i);
-        uint8_t currY = Rssi2Y(rssiHistory[i]);
+    for (uint16_t i = 1; i < displayBars; i++) {
+        /* Map display index to actual scan index for X coordinate */
+        uint16_t actualIdx = (bars > 128) ? (i * bars / 128) : i;
+        uint8_t currX = SpecIdxToX(actualIdx);
+        /* Use history slot for Y coordinate */
+        uint8_t slot = GetHistorySlot(actualIdx);
+        uint16_t rssiVal = rssiHistory[slot];
+        uint8_t currY;
+        
+        /* If slot has no data (rssi=0), use bottom of spectrum */
+        if (rssiVal == 0)
+            currY = SHADE_MAX_Y;
+        else
+            currY = Rssi2Y(rssiVal);
 
         DrawLine(prevX, prevY, currX, currY, 1);
 
@@ -1375,6 +1442,29 @@ static void Spectrum_U8g2DrawPlusMinus(uint8_t x_left, uint8_t y_top, bool set_b
 
 static void DrawNums()
 {
+    /* Simple mode: spectrum ends at Y=36, arrow at Y=38-39, bottom line at Y=41, scale at Y=45 */
+    const uint8_t y_bottom = (gSetting_SpectrumDisplayMode == 0u) ? 45u : 34u;
+    const bool simple = (gSetting_SpectrumDisplayMode == 0u);
+    
+    if (simple)
+    {
+        /* Draw horizontal lines above and below arrow in simple mode */
+        /* Top line at Y=37 (arrow top) */
+        for (uint8_t x = 0; x < 128; x++)
+        {
+            gFrameBuffer[4][x] |= 0b00100000;  /* Y=37: row 4 bit 5 */
+        }
+        /* Bottom line at Y=41 (1 pixel below arrow) */
+        for (uint8_t x = 0; x < 128; x++)
+        {
+            gFrameBuffer[5][x] |= 0b00000010;  /* Y=41: row 5 bit 1 */
+        }
+        /* Draw scale tick marks at Y=42-43 (pointing up, connected to bottom line) */
+        /* Left tick mark */
+        gFrameBuffer[5][0] |= 0b00000110;  /* Y=42-43: bits 2-3 */
+        /* Right tick mark */
+        gFrameBuffer[5][127] |= 0b00000110;  /* Y=42-43: bits 2-3 */
+    }
 
     if (currentState == SPECTRUM)
     {
@@ -1422,23 +1512,23 @@ static void DrawNums()
             if (total_w_u <= (uint32_t)LCD_WIDTH)
                 x0 = (uint8_t)(((uint32_t)LCD_WIDTH - total_w_u) / 2u);
 
-            DualVfoU8g2_DrawSmallText(part_left, x0, 34u, true);
+            DualVfoU8g2_DrawSmallText(part_left, x0, y_bottom, true);
             {
                 const uint8_t x_stack =
                     (uint8_t)(x0 + width_left + gap_px + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                Spectrum_U8g2DrawPlusMinus(x_stack, 34u, true);
+                Spectrum_U8g2DrawPlusMinus(x_stack, y_bottom, true);
             }
             {
                 const uint8_t x_khz = (uint8_t)(x0 + width_left + gap_px + width_col + gap_px +
                                                SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                DualVfoU8g2_DrawSmallText(part_khz, x_khz, 34u, true);
+                DualVfoU8g2_DrawSmallText(part_khz, x_khz, y_bottom, true);
             }
         }
 #else
         sprintf(String, "%u.%05u \x7F%u.%02uk", currentFreq / 100000,
                 currentFreq % 100000, settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
-        GUI_DisplaySmallest(String, 36, 34, false, true);
+        GUI_DisplaySmallest(String, 36, y_bottom, false, true);
 #endif
     }
     else
@@ -1463,7 +1553,7 @@ static void DrawNums()
             sprintf(line_step, "%u.%02uk", step_khz_whole, step_khz_frac);
             sprintf(line_end, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
 
-            DualVfoU8g2_DrawSmallText(line_start, 0u, 34u, true);
+            DualVfoU8g2_DrawSmallText(line_start, 0u, y_bottom, true);
 
             const uint8_t width_start = DualVfoU8g2_GetSmallTextWidth(line_start);
             const uint8_t width_col   = Spectrum_U8g2PlusMinusColumnWidth();
@@ -1494,18 +1584,18 @@ static void DrawNums()
 
             {
                 const uint8_t x_pm = (uint8_t)(x_step + SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                Spectrum_U8g2DrawPlusMinus(x_pm, 34u, true);
+                Spectrum_U8g2DrawPlusMinus(x_pm, y_bottom, true);
             }
             {
                 const uint8_t x_khz = (uint8_t)(x_step + gap_px + width_col + gap_px +
                                                SPECTRUM_BOTTOM_STEP_BLOCK_SHIFT_RIGHT_PX);
-                DualVfoU8g2_DrawSmallText(line_step, x_khz, 34u, true);
+                DualVfoU8g2_DrawSmallText(line_step, x_khz, y_bottom, true);
             }
-            DualVfoU8g2_DrawSmallText(line_end, x_end, 34u, true);
+            DualVfoU8g2_DrawSmallText(line_end, x_end, y_bottom, true);
         }
 #else
         sprintf(String, "%u.%05u", GetFStart() / 100000, GetFStart() % 100000);
-        GUI_DisplaySmallest(String, 0, 34, false, true);
+        GUI_DisplaySmallest(String, 0, y_bottom, false, true);
 
 #ifdef ENABLE_SCAN_RANGES
         if (gScanRangeStart)
@@ -1517,10 +1607,10 @@ static void DrawNums()
 #endif
         sprintf(String, "\x7F%u.%02uk", settings.frequencyChangeStep / 100,
                 settings.frequencyChangeStep % 100);
-        GUI_DisplaySmallest(String, 48, 34, false, true);
+        GUI_DisplaySmallest(String, 48, y_bottom, false, true);
 
         sprintf(String, "%u.%05u", GetFEnd() / 100000, GetFEnd() % 100000);
-        GUI_DisplaySmallest(String, 93, 34, false, true);
+        GUI_DisplaySmallest(String, 93, y_bottom, false, true);
 #endif
     }
 }
@@ -1567,9 +1657,19 @@ static void DrawLine(int x0, int y0, int x1, int y1, bool fill)
     }
 }
 
+static uint8_t GetSimpleYOffset(void)
+{
+    return (gSetting_SpectrumDisplayMode == 0u) ? 9u : 0u;  /* Spectrum shifted down 9 pixels in simple mode */
+}
+
 static uint8_t GetSpectrumBaseY(void)
 {
-    return DrawingEndY + 6;
+    /* Professional mode: shade extends 6 pixels below spectrum (to Y=33) */
+    /* Simple mode: shade only to spectrum bottom, no extension */
+    if (gSetting_SpectrumDisplayMode == 0u) {
+        return DrawingEndY + GetSimpleYOffset();  /* Simple: spectrum bottom only */
+    }
+    return DrawingEndY + GetSimpleYOffset() + 6u;  /* Professional: extended */
 }
 
 static uint8_t SpecIdxToX(uint16_t idx)
@@ -1606,22 +1706,43 @@ static void DrawGridBackground(void)
 
 static void DrawArrow(uint8_t x)
 {
+    /* Professional mode: spectrum ends at Y=27, arrow at Y=30-32 (row 3 bits 6-7 + row 4 bit 0) */
+    /* Simple mode: horizontal lines at Y=37 and Y=41, arrow between them at Y=38-40 */
+    const bool simple = (gSetting_SpectrumDisplayMode == 0u);
+    
     for (signed i = -2; i <= 2; ++i)
     {
         signed v = x + i;
         if (!(v & 128))
         {
-            uint8_t p3 = 0;
-
-            p3 |= 0b10000000;
-
-            if (i >= -1 && i <= 1) p3 |= 0b01000000;
-
-            if (i == 0) p3 |= 0b00100000;
-
-            p3 |= 0b00010000;
-
-            gFrameBuffer[3][v] |= p3;
+            if (!simple)
+            {
+                /* Professional mode: arrow at Y=30-32 (moved down 2 pixels) */
+                /* Triangle pointing UP to spectrum: top narrow (Y=30), bottom wide (Y=32) */
+                uint8_t p3 = 0;
+                uint8_t p4 = 0;
+                
+                if (i == 0) p3 |= 0b01000000;  /* Y=30: top center point - narrow (closest to spectrum) */
+                if (i >= -1 && i <= 1) p3 |= 0b10000000;  /* Y=31: middle - medium */
+                p4 |= 0b00000001;  /* Y=32: bottom - wide (farthest from spectrum) */
+                
+                gFrameBuffer[3][v] |= p3;
+                gFrameBuffer[4][v] |= p4;
+            }
+            else
+            {
+                /* Simple mode: arrow at Y=38-40 (between horizontal lines) */
+                /* Triangle pointing UP to spectrum: top narrow (Y=38), bottom wide (Y=40) */
+                uint8_t p4 = 0;
+                uint8_t p5 = 0;
+                
+                if (i == 0) p4 |= 0b01000000;  /* Y=38: top center point - narrow (closest to spectrum) */
+                if (i >= -1 && i <= 1) p4 |= 0b10000000;  /* Y=39: middle - medium */
+                p5 |= 0b00000001;  /* Y=40: bottom - wide (farthest from spectrum) */
+                
+                gFrameBuffer[4][v] |= p4;
+                gFrameBuffer[5][v] |= p5;
+            }
         }
     }
 }
@@ -1720,9 +1841,17 @@ static void OnKeyDown(uint8_t key)
         break;
     case KEY_5:
 #ifdef ENABLE_SCAN_RANGES
-        if (!gScanRangeStart)
+        if (gScanRangeStart)
+            break;
+        if (gSetting_SpectrumDisplayMode == 0u && kbd.counter == 16)
+        {
+            SaveSettings();
+            CHFRSCANNER_ScanRange();
+            DeInitSpectrum();
+            break;
+        }
 #endif
-            FreqInput();
+        FreqInput();
         break;
     case KEY_0:
         ToggleModulation();
@@ -1831,6 +1960,15 @@ void OnKeyDownStill(KEY_Code_t key)
         UpdateRssiTriggerLevel(isTrue);
         break;
     case KEY_5:
+#ifdef ENABLE_SCAN_RANGES
+        if (gSetting_SpectrumDisplayMode == 0u && kbd.counter == 16)
+        {
+            SaveSettings();
+            CHFRSCANNER_ScanRange();
+            DeInitSpectrum();
+            break;
+        }
+#endif
         FreqInput();
         break;
     case KEY_0:
@@ -1883,12 +2021,18 @@ static void RenderStatus()
 
 static void RenderSpectrum()
 {
-    for (uint8_t r = 1; r <= 5; r++)
+    const bool simple = (gSetting_SpectrumDisplayMode == 0u);
+
+    /* Clear spectrum area before drawing */
+    /* Professional mode: clear rows 1-4 (spectrum at Y=8-27, rows 1-3) */
+    /* Simple mode: clear rows 1-3 (spectrum at Y=28-47, rows 4-6, already offset by Rssi2Y) */
+    for (uint8_t r = 1; r <= (simple ? 3u : 4u); r++)
     {
         memset(gFrameBuffer[r], 0, sizeof(gFrameBuffer[r]));
     }
 
-    DrawGridBackground();
+    if (!simple)
+        DrawGridBackground();
 
     uint16_t stepsCount = GetStepsCount();
     uint8_t arrowX = 0;
@@ -1901,9 +2045,12 @@ static void RenderSpectrum()
     DrawRssiTriggerLevel();
     DrawF(peak.f);
     DrawNums();
-    for (uint8_t x = 0; x < 128; x++)
-        gFrameBuffer[4][x] &= 0b11111101;
-    DrawWaterfall();
+    if (!simple)
+    {
+        for (uint8_t x = 0; x < 128; x++)
+            gFrameBuffer[4][x] &= 0b11111101;
+        DrawWaterfall();
+    }
 }
 
 static void RenderStill()

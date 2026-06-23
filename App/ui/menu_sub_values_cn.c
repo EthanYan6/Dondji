@@ -301,4 +301,11 @@ const char gSubMenu_MODULATION_CN[][8] = {
 
 _Static_assert(ARRAY_SIZE(gSubMenu_MODULATION_CN) == MODULATION_UKNOWN, "gSubMenu_MODULATION_CN");
 
+#ifdef ENABLE_SPECTRUM
+const char gSubMenu_SPECTRUM_MODE_CN[][8] = {
+    "\xe7\xae\x80\xe5\x8d\x95",     /* 简单 */
+    "\xe4\xb8\x93\xe4\xb8\x9a",     /* 专业 */
+};
+#endif
+
 #endif /* ENABLE_CHINESE */

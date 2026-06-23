@@ -517,6 +517,9 @@ const t_menu_item MenuList[] =
     {"MicBar",      MENU_MIC_BAR       },
 #endif
 #endif
+#ifdef ENABLE_SPECTRUM
+    {"SpDisp",      MENU_SPECTRUM_MODE },
+#endif
     // hidden menu items from here on
     // enabled if pressing both the PTT and upper side button at power-on
     {"F Lock",      MENU_F_LOCK        },
@@ -716,6 +719,15 @@ const char gSubMenu_BATTYP[][12] =
     "1400mAh K1",
     "2500mAh K1"
 };
+
+#ifdef ENABLE_SPECTRUM
+const char gSubMenu_SPECTRUM_MODE[][8] =
+{
+    "Simple",
+    "Expert"
+};
+uint8_t gSetting_SpectrumDisplayMode;
+#endif
 
 const char gSubMenu_SET_NAV[][20] =
 {
@@ -2590,6 +2602,13 @@ void UI_DisplayMenu(void)
         case MENU_LANGUAGE:
             strcpy(String, gSubMenu_LANGUAGE[gSubMenuSelection]);
             break;
+
+#ifdef ENABLE_SPECTRUM
+        case MENU_SPECTRUM_MODE:
+            strcpy(String, SUBV(gSubMenu_SPECTRUM_MODE[gSubMenuSelection],
+                                gSubMenu_SPECTRUM_MODE_CN[gSubMenuSelection]));
+            break;
+#endif
 
 #ifdef ENABLE_DTMF_CALLING
         case MENU_D_LIST:
