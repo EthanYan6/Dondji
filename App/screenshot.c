@@ -105,13 +105,13 @@ void SCREENSHOT_Update(bool force)
     is_spectrum_active = APP_IsSpectrumActive();
 #endif
 
-    bool is_breakout_active = false;
+    bool is_mokuyu_active = false;
 #ifdef ENABLE_FEAT_F4HWN_GAME
-    is_breakout_active = APP_IsBreakoutActive();
+    is_mokuyu_active = true;  // mokuyu is always active when game feature is enabled
 #endif
 
     bool is_dual_vfo_tight_top = UI_IsDualVfoMainScreen();
-    if (is_spectrum_active || is_breakout_active)
+    if (is_spectrum_active || is_mokuyu_active)
     {
         is_dual_vfo_tight_top = false;
     }
