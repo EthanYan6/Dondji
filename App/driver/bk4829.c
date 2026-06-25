@@ -441,6 +441,11 @@ void BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet)
     BK4819_WriteRegister(BK4819_REG_33, gBK4819_GpioOutState);
 }
 
+bool BK4819_IsGpioOutSet(BK4819_GPIO_PIN_t Pin)
+{
+    return (gBK4819_GpioOutState & (0x40u >> Pin)) != 0;
+}
+
 void BK4819_SetCDCSSCodeWord(uint32_t CodeWord)
 {
     // REG_51
@@ -696,11 +701,11 @@ void BK4819_SetFilterBandwidth(const BK4819_FilterBandwidth_t Bandwidth, const b
             break;
 
         case BK4819_FILTER_BW_NARROWER: // 6.25kHz
-            // 0x205C = (0b010 << 12) | (0b000 << 9) | (0b001 << 6) |
-            //          (0b01 << 4)  | (1 << 3)     | (1 << 2)
+            // 0x2058 = (0b010 << 12) | (0b000 << 9) | (0b001 << 6) |
+            //          (0b01 << 4)  | (1 << 3)
             //        = RF 3.0 kHz, weak-RF 2.0 kHz, AF Tx LPF2 2.5 kHz,
-            //          6.25k mode, FM gain +6 dB.
-            val = 0x205C;
+            //          6.25k mode, FM gain 0 dB.
+            val = 0x2058;
             break;
 
         case BK4819_FILTER_BW_AM:   // Stock AM preset
@@ -1031,7 +1036,7 @@ void BK4819_EnableDTMF(void)
         (15u       << BK4819_REG_24_SHIFT_MAX_SYMBOLS));     // 0 ~ 15
 }
 
-void BK4819_PlayTone(uint16_t Frequency, bool bTuningGainSwitch)
+void BK4819_PrepareToPlayTone(bool bTuningGainSwitch)
 {
     uint16_t ToneConfig = BK4819_REG_70_ENABLE_TONE1;
 
@@ -1046,8 +1051,21 @@ void BK4819_PlayTone(uint16_t Frequency, bool bTuningGainSwitch)
 
     BK4819_WriteRegister(BK4819_REG_30, 0);
     BK4819_WriteRegister(BK4819_REG_30, BK4819_REG_30_ENABLE_AF_DAC | BK4819_REG_30_ENABLE_DISC_MODE | BK4819_REG_30_ENABLE_TX_DSP);
+}
+
+void BK4819_PlayTone(uint16_t Frequency, bool bTuningGainSwitch)
+{
+    BK4819_PrepareToPlayTone(bTuningGainSwitch);
 
     BK4819_WriteRegister(BK4819_REG_71, scale_freq(Frequency));
+}
+
+void BK4819_PlayToneRaw(const unsigned int tone_Hz, const unsigned int delay) {
+    BK4819_WriteRegister(BK4819_REG_71, scale_freq(tone_Hz));
+
+    BK4819_ExitTxMute();
+    SYSTEM_DelayMs(delay);
+    BK4819_EnterTxMute();
 }
 
 // level 0 ~ 127
@@ -1069,11 +1087,7 @@ void BK4819_PlaySingleTone(const unsigned int tone_Hz, const unsigned int delay,
     BK4819_EnableTXLink();
     SYSTEM_DelayMs(50);
 
-    BK4819_WriteRegister(BK4819_REG_71, scale_freq(tone_Hz));
-
-    BK4819_ExitTxMute();
-    SYSTEM_DelayMs(delay);
-    BK4819_EnterTxMute();
+    BK4819_PlayToneRaw(tone_Hz, delay);
 
     if (play_speaker)
     {
@@ -1745,7 +1759,7 @@ void BK4819_PrepareFSKReceive(void)
     BK4819_WriteRegister(BK4819_REG_59, 0x3068);
 }
 
-static void BK4819_PlayRogerNormal(void)
+static void BK4819_PlayRogerNormal(BK4819_FilterBandwidth_t Bandwidth)
 {
     #if 0
         const uint32_t tone1_Hz = 500;
@@ -1760,26 +1774,31 @@ static void BK4819_PlayRogerNormal(void)
     BK4819_EnterTxMute();
     BK4819_SetAF(BK4819_AF_MUTE);
 
-    BK4819_WriteRegister(BK4819_REG_70, // BK4819_REG_70_ENABLE_TONE1 | (66u << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN));
-                                        0xC300
-    );
+    const uint8_t rogerToneGain = (Bandwidth == BK4819_FILTER_BW_WIDE) ? 32u : 67u;
+
+    if (Bandwidth == BK4819_FILTER_BW_WIDE)
+        BK4819_SetFilterBandwidth(BK4819_FILTER_BW_NARROW, true);
+
+    BK4819_WriteRegister(BK4819_REG_71, scale_freq(tone1_Hz));
 
     BK4819_EnableTXLink();
     SYSTEM_DelayMs(50);
 
-    BK4819_WriteRegister(BK4819_REG_71, scale_freq(tone1_Hz));
+    BK4819_WriteRegister(BK4819_REG_70,
+        BK4819_REG_70_ENABLE_TONE1 |
+        (rogerToneGain << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN));
 
     BK4819_ExitTxMute();
     SYSTEM_DelayMs(80);
     BK4819_EnterTxMute();
 
-    BK4819_WriteRegister(BK4819_REG_71, scale_freq(tone2_Hz));
-
-    BK4819_ExitTxMute();
-    SYSTEM_DelayMs(80);
-    BK4819_EnterTxMute();
+    BK4819_PlayToneRaw(tone2_Hz, 80);
 
     BK4819_WriteRegister(BK4819_REG_70, 0x0000);
+
+    if (Bandwidth == BK4819_FILTER_BW_WIDE)
+        BK4819_SetFilterBandwidth(Bandwidth, true);
+
     BK4819_WriteRegister(BK4819_REG_30, 0xC1FE);   // 1 1 0000 0 1 1111 1 1 1 0
 }
 
@@ -1832,10 +1851,10 @@ void BK4819_PlayRogerMDC(void)
     BK4819_WriteRegister(BK4819_REG_58, 0x0000);
 }
 
-void BK4819_PlayRoger(void)
+void BK4819_PlayRoger(BK4819_FilterBandwidth_t Bandwidth)
 {
     if (gEeprom.ROGER == ROGER_MODE_ROGER) {
-        BK4819_PlayRogerNormal();
+        BK4819_PlayRogerNormal(Bandwidth);
     } else if (gEeprom.ROGER == ROGER_MODE_MDC) {
         BK4819_PlayRogerMDC();
     }

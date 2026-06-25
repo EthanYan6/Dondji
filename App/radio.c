@@ -510,17 +510,20 @@ void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo)
     }
     else
     {   // squelch >= 1
-        Base += gEeprom.SQUELCH_LEVEL;                                        // my eeprom squelch-1
-                                                                              // VHF   UHF
-        PY25Q16_ReadBuffer(Base + 0x00, &pInfo->SquelchOpenRSSIThresh,    1);  //  50    10
-        PY25Q16_ReadBuffer(Base + 0x10, &pInfo->SquelchCloseRSSIThresh,   1);  //  40     5
+        Base += gEeprom.SQUELCH_LEVEL;           // my eeprom squelch-1
+                                                 // VHF   UHF
+        uint8_t *sq_ptrs[6] = {
+            &pInfo->SquelchOpenRSSIThresh,       //  50    10
+            &pInfo->SquelchCloseRSSIThresh,      //  40     5
+            &pInfo->SquelchOpenNoiseThresh,      //  65    90
+            &pInfo->SquelchCloseNoiseThresh,     //  70   100
+            &pInfo->SquelchCloseGlitchThresh,    //  90    90
+            &pInfo->SquelchOpenGlitchThresh      // 100   100
+        };
 
-        PY25Q16_ReadBuffer(Base + 0x20, &pInfo->SquelchOpenNoiseThresh,   1);  //  65    90
-        PY25Q16_ReadBuffer(Base + 0x30, &pInfo->SquelchCloseNoiseThresh,  1);  //  70   100
-
-        PY25Q16_ReadBuffer(Base + 0x40, &pInfo->SquelchCloseGlitchThresh, 1);  //  90    90
-        PY25Q16_ReadBuffer(Base + 0x50, &pInfo->SquelchOpenGlitchThresh,  1);  // 100   100
-
+        for(uint8_t i = 0; i < 6; i++) {
+            PY25Q16_ReadBuffer(Base + (i * 0x10), sq_ptrs[i], 1);
+        }
 
         uint16_t noise_open   = pInfo->SquelchOpenNoiseThresh;
         uint16_t noise_close  = pInfo->SquelchCloseNoiseThresh;
@@ -544,14 +547,14 @@ void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo)
         if (glitch_close == glitch_open && glitch_close <= 253)
             glitch_close += 2;
 
-        pInfo->SquelchOpenRSSIThresh    = (rssi_open    > 255) ? 255 : rssi_open;
-        pInfo->SquelchCloseRSSIThresh   = (rssi_close   > 255) ? 255 : rssi_close;
-        pInfo->SquelchOpenGlitchThresh  = (glitch_open  > 255) ? 255 : glitch_open;
-        pInfo->SquelchCloseGlitchThresh = (glitch_close > 255) ? 255 : glitch_close;
+        pInfo->SquelchOpenRSSIThresh    = MIN(rssi_open,    255);
+        pInfo->SquelchCloseRSSIThresh   = MIN(rssi_close,   255);
+        pInfo->SquelchOpenGlitchThresh  = MIN(glitch_open,  255);
+        pInfo->SquelchCloseGlitchThresh = MIN(glitch_close, 255);
 #endif
 
-        pInfo->SquelchOpenNoiseThresh   = (noise_open   > 127) ? 127 : noise_open;
-        pInfo->SquelchCloseNoiseThresh  = (noise_close  > 127) ? 127 : noise_close;
+        pInfo->SquelchOpenNoiseThresh   = MIN(noise_open,   127);
+        pInfo->SquelchCloseNoiseThresh  = MIN(noise_close,  127);
     }
 
     // *******************************
@@ -698,18 +701,11 @@ void RADIO_ApplyOffset(VFO_Info_t *pInfo)
 {
     uint32_t Frequency = pInfo->freq_config_RX.Frequency;
 
-    switch (pInfo->TX_OFFSET_FREQUENCY_DIRECTION)
-    {
-        case TX_OFFSET_FREQUENCY_DIRECTION_OFF:
-            break;
-        case TX_OFFSET_FREQUENCY_DIRECTION_ADD:
-            Frequency += pInfo->TX_OFFSET_FREQUENCY;
-            break;
-        case TX_OFFSET_FREQUENCY_DIRECTION_SUB:
-            Frequency -= pInfo->TX_OFFSET_FREQUENCY;
-            break;
-    }
-
+    if      (pInfo->TX_OFFSET_FREQUENCY_DIRECTION == TX_OFFSET_FREQUENCY_DIRECTION_ADD)
+        Frequency += pInfo->TX_OFFSET_FREQUENCY;
+    else if (pInfo->TX_OFFSET_FREQUENCY_DIRECTION == TX_OFFSET_FREQUENCY_DIRECTION_SUB)
+        Frequency -= pInfo->TX_OFFSET_FREQUENCY;
+    
     pInfo->freq_config_TX.Frequency = Frequency;
 }
 
@@ -809,6 +805,9 @@ void RADIO_SetupRegisters(bool switchToForeground)
     #endif
     BK4819_SetFrequency(Frequency);
 
+    // Keep the demodulator in sync when retuning without entering RX audio.
+    RADIO_SetModulation(gRxVfo->Modulation);
+
     BK4819_SetupSquelch(
         gRxVfo->SquelchOpenRSSIThresh,    gRxVfo->SquelchCloseRSSIThresh,
         gRxVfo->SquelchOpenNoiseThresh,   gRxVfo->SquelchCloseNoiseThresh,
@@ -841,7 +840,7 @@ void RADIO_SetupRegisters(bool switchToForeground)
                     BK4819_SetCTCSSFrequency(SQL_TONE);
                     BK4819_SetTailDetection(SQL_TONE); // Default 550 = QS's 55Hz tone method
 
-                    InterruptMask = BK4819_REG_3F_CxCSS_TAIL | BK4819_REG_3F_SQUELCH_FOUND | BK4819_REG_3F_SQUELCH_LOST;
+                    InterruptMask |= BK4819_REG_3F_CxCSS_TAIL;
                     break;
 
                 case CODE_TYPE_CONTINUOUS_TONE:
@@ -853,24 +852,17 @@ void RADIO_SetupRegisters(bool switchToForeground)
                     //  BK4819_SetTailDetection(CTCSS_Options[Code]);
                     //#endif
 
-                    InterruptMask = 0
-                        | BK4819_REG_3F_CxCSS_TAIL
-                        | BK4819_REG_3F_CTCSS_FOUND
-                        | BK4819_REG_3F_CTCSS_LOST
-                        | BK4819_REG_3F_SQUELCH_FOUND
-                        | BK4819_REG_3F_SQUELCH_LOST;
-
+                    InterruptMask |= BK4819_REG_3F_CxCSS_TAIL
+                                  |  BK4819_REG_3F_CTCSS_FOUND
+                                  |  BK4819_REG_3F_CTCSS_LOST;
                     break;
 
                 case CODE_TYPE_DIGITAL:
                 case CODE_TYPE_REVERSE_DIGITAL:
                     BK4819_SetCDCSSCodeWord(DCS_GetGolayCodeWord(CodeType, Code));
-                    InterruptMask = 0
-                        | BK4819_REG_3F_CxCSS_TAIL
-                        | BK4819_REG_3F_CDCSS_FOUND
-                        | BK4819_REG_3F_CDCSS_LOST
-                        | BK4819_REG_3F_SQUELCH_FOUND
-                        | BK4819_REG_3F_SQUELCH_LOST;
+                    InterruptMask |= BK4819_REG_3F_CxCSS_TAIL
+                                  |  BK4819_REG_3F_CDCSS_FOUND
+                                  |  BK4819_REG_3F_CDCSS_LOST;
                     break;
             }
 
@@ -888,11 +880,8 @@ void RADIO_SetupRegisters(bool switchToForeground)
         else
         {
             BK4819_SetCTCSSFrequency(2625);
-            InterruptMask = 0
-                | BK4819_REG_3F_CTCSS_FOUND
-                | BK4819_REG_3F_CTCSS_LOST
-                | BK4819_REG_3F_SQUELCH_FOUND
-                | BK4819_REG_3F_SQUELCH_LOST;
+            InterruptMask |= BK4819_REG_3F_CTCSS_FOUND
+                          |  BK4819_REG_3F_CTCSS_LOST;
         }
     #endif
 
@@ -1099,11 +1088,12 @@ void RADIO_SetModulation(ModulationMode_t modulation)
     // So for now we just keep it as is to maintain compatibility.
     //
 
+    uint16_t uVar1 = BK4819_ReadRegister(0x31);
+
     switch (modulation)
     {
         case MODULATION_AM:
         {
-            uint16_t uVar1 = BK4819_ReadRegister(0x31);
             BK4819_WriteRegister(0x31, uVar1 | 1); // AM Demodulation Enable
             BK4819_WriteRegister(0x42, 0x6f5c);
             BK4819_WriteRegister(0x2a, 0x7434);
@@ -1115,7 +1105,7 @@ void RADIO_SetModulation(ModulationMode_t modulation)
                 BK4819_WriteRegister(0x55, 0x31a9);
             #endif
 
-            BK4819_SetFilterBandwidth(RADIO_GetAMFilterBandwidth(gCurrentVfo), true);
+            BK4819_SetFilterBandwidth(RADIO_GetAMFilterBandwidth(gRxVfo), true);
             break;
         }
 
@@ -1123,7 +1113,6 @@ void RADIO_SetModulation(ModulationMode_t modulation)
         case MODULATION_FM:
         default:
         {
-            uint16_t uVar1 = BK4819_ReadRegister(0x31);
             BK4819_WriteRegister(0x31, uVar1 & 0xfffe); // AM Demodulation Disable
             BK4819_WriteRegister(0x42, 0x6b5a);
             BK4819_WriteRegister(0x2a, 0x7400);
@@ -1213,16 +1202,12 @@ void RADIO_PrepareTX(void)
 
     RADIO_SelectCurrentVfo();
 
+    if(TX_freq_check(gCurrentVfo->pTX->Frequency) != 0
 #ifdef ENABLE_FEAT_F4HWN
-        if(TX_freq_check(gCurrentVfo->pTX->Frequency) != 0 && gCurrentVfo->TX_LOCK == true
-    #if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
-            && gAlarmState != ALARM_STATE_SITE_ALARM
-    #endif
-#else
-        if(TX_freq_check(gCurrentVfo->pTX->Frequency) != 0
-    #if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
-            && gAlarmState != ALARM_STATE_SITE_ALARM
-    #endif
+        && gCurrentVfo->TX_LOCK == true
+#endif
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+        && gAlarmState != ALARM_STATE_SITE_ALARM
 #endif
     ){
         // TX frequency not allowed
@@ -1343,7 +1328,16 @@ void RADIO_SendCssTail(void)
 
 void RADIO_SendEndOfTransmission(void)
 {
-    BK4819_PlayRoger();
+    BK4819_FilterBandwidth_t Bandwidth = gCurrentVfo->CHANNEL_BANDWIDTH;
+
+    #ifdef ENABLE_FEAT_F4HWN_NARROWER
+        if(Bandwidth == BK4819_FILTER_BW_NARROW && gSetting_set_nfm == 1)
+        {
+            Bandwidth = BK4819_FILTER_BW_NARROWER;
+        }
+    #endif
+
+    BK4819_PlayRoger(Bandwidth);
     DTMF_SendEndOfTransmission();
 
     // send the CTCSS/DCS tail tone - allows the receivers to mute the usual FM squelch tail/crash

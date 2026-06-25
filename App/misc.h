@@ -176,7 +176,21 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     extern bool              gWakeUp;
 #endif
 
+#ifdef ENABLE_FEAT_F4HWN_SCAN_FASTER
+    extern bool              gSetting_set_scn;
+#endif
+
 #ifdef ENABLE_FEAT_F4HWN
+    #ifdef ENABLE_FEAT_F4HWN_LOGO_SAV
+        enum SET_SAV_t {
+            SET_SAV_OFF,
+            SET_SAV_LOGO,
+            SET_SAV_LOGO_PLUS,
+            SET_SAV_MATRIX,
+            SET_SAV_LEN
+        };
+    #endif
+
     extern uint8_t            gSetting_set_pwr;
     extern bool               gSetting_set_ptt;
     extern uint8_t            gSetting_set_tot;
@@ -192,6 +206,9 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     #endif
     #ifdef ENABLE_FEAT_F4HWN_NARROWER
         extern bool               gSetting_set_nfm;
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN_LOGO_SAV
+        extern uint8_t            gSetting_set_sav;
     #endif
     extern bool               gSetting_set_tmr;
     extern bool               gSetting_set_ptt_session;

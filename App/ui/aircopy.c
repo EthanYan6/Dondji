@@ -37,9 +37,8 @@ static int get_bit(uint8_t* array, int bit_index) {
 
 void UI_DisplayAircopy(void)
 {
-    char String[16] = { 0 };
-    char *pPrintStr = { 0 };
-    uint16_t percent;
+    char String[16];
+    char *pPrintStr;
 
     UI_DisplayClear();
 
@@ -60,15 +59,13 @@ void UI_DisplayAircopy(void)
         // show the remaining 2 small frequency digits
         UI_PrintStringSmallNormal(String + 7, 97, 0, 3);
         String[7] = 0;
-        // show the main large frequency digits
-        UI_DisplayFrequency(String, 16, 2, false);
     } else {
         const char *ascii = INPUTBOX_GetAscii();
         sprintf(String, "%.3s.%.3s", ascii, ascii + 3);
-        UI_DisplayFrequency(String, 16, 2, false);
     }
 
-    memset(String, 0, sizeof(String));
+    // show the main large frequency digits
+    UI_DisplayFrequency(String, 16, 2, false);
 
     // Get the current map and calculate percentage based on its total blocks
     const AIRCOPY_TransferMap_t *currentMap = AIRCOPY_GetCurrentMap();
@@ -78,47 +75,44 @@ void UI_DisplayAircopy(void)
     if (doneBlocks > currentMap->total_blocks)
         doneBlocks = currentMap->total_blocks;
 
-    percent = (doneBlocks * 10000) / currentMap->total_blocks;
-
-    if (gAirCopyIsSendMode == 0) {
-        sprintf(String, "RCV:%02u.%02u%% E:%d", percent / 100, percent % 100, gErrorsDuringAirCopy);
-    } else if (gAirCopyIsSendMode == 1) {
-        sprintf(String, "SND:%02u.%02u%%", percent / 100, percent % 100);
-    }
-
-    // Draw gauge
-    if(gAircopyStep != 0)
-    {
-        UI_PrintString(String, 2, 127, 5, 8);
-
-        gFrameBuffer[4][1] = 0x3c;
-        gFrameBuffer[4][2] = 0x42;
-
-        for(uint8_t i = 1; i <= AIRCOPY_BAR_WIDTH + 2; i++)
-        {
-            gFrameBuffer[4][2 + i] = 0x81;
-        }
-
-        gFrameBuffer[4][125] = 0x42;
-        gFrameBuffer[4][126] = 0x3c;
-    }
-    
     // Draw memory selection
-    if(gAircopyState == AIRCOPY_READY)
+    if (gAircopyState == AIRCOPY_READY) 
     {
         doneBlocks = 0;
 
-        memset(gFrameBuffer[5], 0, 128);
-        memset(gFrameBuffer[6], 0, 128);
-
         if(gAircopyCurrentMapIndex < AIRCOPY_NUM_BANKS) {   
-            sprintf(String, "MEM %03u - %03u%", (gAircopyCurrentMapIndex * 128) + 1, (gAircopyCurrentMapIndex + 1) * 128);
-        }
-        else
-        {
-            sprintf(String, "Settings");            
+            sprintf(String, "MEM %03u - %03u", (gAircopyCurrentMapIndex * 128) + 1, (gAircopyCurrentMapIndex + 1) * 128);
+        } else {
+            strcpy(String, "Settings");            
         }
         UI_PrintString(String, 2, 127, 5, 8);
+    } 
+    else 
+    {
+        uint16_t percent = (doneBlocks * 10000) / currentMap->total_blocks;
+
+        if (gAirCopyIsSendMode == 0) {
+            sprintf(String, "RCV:%02u.%02u%% E:%d", percent / 100, percent % 100, gErrorsDuringAirCopy);
+        } else {
+            sprintf(String, "SND:%02u.%02u%%", percent / 100, percent % 100);
+        }
+
+        // Draw gauge
+        if(gAircopyStep != 0)
+        {
+            UI_PrintString(String, 2, 127, 5, 8);
+
+            gFrameBuffer[4][1] = 0x3c;
+            gFrameBuffer[4][2] = 0x42;
+
+            for(uint8_t i = 1; i <= AIRCOPY_BAR_WIDTH + 2; i++)
+            {
+                gFrameBuffer[4][2 + i] = 0x81;
+            }
+
+            gFrameBuffer[4][125] = 0x42;
+            gFrameBuffer[4][126] = 0x3c;
+        }
     }
 
     if (doneBlocks > 0)
@@ -131,19 +125,12 @@ void UI_DisplayAircopy(void)
             lErrorsDuringAirCopy = gErrorsDuringAirCopy;
         }
 
-        const AIRCOPY_TransferMap_t *currentMap = AIRCOPY_GetCurrentMap();
-
-        uint16_t total = currentMap->total_blocks;
-        uint16_t done  = gAirCopyBlockNumber + gErrorsDuringAirCopy;
-        
-        if (done > total) done = total;
+        uint16_t b = 0;
+        uint16_t fraction_accumulator = 0;
 
         for (uint8_t col = 0; col < AIRCOPY_BAR_WIDTH; col++)
         {
-            /* Map column [0..BAR_WIDTH-1] to block [0..total-1] */
-            uint16_t b = (uint16_t)((col * (uint32_t)total) / AIRCOPY_BAR_WIDTH);
-
-            bool processed = (b < done);
+            bool processed = (b < doneBlocks);
             bool error     = processed && get_bit(crc, b);
 
             if (!processed)
@@ -152,8 +139,14 @@ void UI_DisplayAircopy(void)
                 gFrameBuffer[4][col + 4] = 0x81;   // error gap (intentional hole)
             else
                 gFrameBuffer[4][col + 4] = 0xBD;   // ok filled
-        }
 
+            // DDA/Bresenham algorythm
+            fraction_accumulator += currentMap->total_blocks;
+            while (fraction_accumulator >= AIRCOPY_BAR_WIDTH) {
+                fraction_accumulator -= AIRCOPY_BAR_WIDTH;
+                b++;
+            }
+        }
     }
 
     ST7565_BlitFullScreen();

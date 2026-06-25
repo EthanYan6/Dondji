@@ -31,6 +31,6 @@ uint32_t APP_SetFrequencyByStep(VFO_Info_t *pInfo, int8_t direction);
 void     APP_Update(void);
 void     APP_TimeSlice10ms(void);
 void     APP_TimeSlice500ms(void);
+bool     APP_IsScreenSaverDisplayed(void);
 
 #endif
-

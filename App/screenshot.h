@@ -19,5 +19,6 @@
 
 void SCREENSHOT_Update(bool force);
 void SCREENSHOT_ParseInput(void);
+bool SCREENSHOT_HasPendingStateChange(void);
 
 #endif

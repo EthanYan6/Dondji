@@ -77,6 +77,7 @@ void     BK4819_SetAGC(bool enable);
 void     BK4819_InitAGC(bool amModulation);
 
 void     BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet);
+bool     BK4819_IsGpioOutSet(BK4819_GPIO_PIN_t Pin);
 
 void     BK4819_SetCDCSSCodeWord(uint32_t CodeWord);
 void     BK4819_SetCTCSSFrequency(uint32_t BaudRate);
@@ -105,7 +106,9 @@ void     BK4819_SetCompander(const unsigned int mode);
 void     BK4819_DisableVox(void);
 void     BK4819_DisableDTMF(void);
 void     BK4819_EnableDTMF(void);
+void     BK4819_PrepareToPlayTone(bool bTuningGainSwitch);
 void     BK4819_PlayTone(uint16_t Frequency, bool bTuningGainSwitch);
+void     BK4819_PlayToneRaw(const unsigned int tone_Hz, const unsigned int delay);
 void     BK4819_PlaySingleTone(const unsigned int tone_Hz, const unsigned int delay, const unsigned int level, const bool play_speaker);
 void     BK4819_EnterTxMute(void);
 void     BK4819_ExitTxMute(void);
@@ -167,7 +170,7 @@ uint8_t  BK4819_GetCTCType(void);
 void     BK4819_SendFSKData(uint16_t *pData);
 void     BK4819_PrepareFSKReceive(void);
 
-void     BK4819_PlayRoger(void);
+void     BK4819_PlayRoger(BK4819_FilterBandwidth_t Bandwidth);
 
 void     BK4819_Enable_AfDac_DiscMode_TxDsp(void);
 

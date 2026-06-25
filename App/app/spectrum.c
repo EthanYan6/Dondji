@@ -209,32 +209,56 @@ uint16_t statuslineUpdateTimer = 0;
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
 static void LoadSettings()
 {
-    uint8_t Data[8] = {0};
-    PY25Q16_ReadBuffer(0x00A158, Data, sizeof(Data));
+    uint8_t Data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    PY25Q16_ReadBuffer(0x00A148, Data, sizeof(Data));
 
-    settings.scanStepIndex = ((Data[3] & 0xF0) >> 4);
+    // Data[0]: scanStepIndex (7:4), stepsCount (3:2), listenBw (1:0)
+    settings.scanStepIndex = (Data[0] >> 4) & 0x0F;
     if (settings.scanStepIndex > 14)
         settings.scanStepIndex = S_STEP_25_0kHz;
 
-    settings.stepsCount = ((Data[3] & 0x0F) & 0b1100) >> 2;
+    settings.stepsCount = (Data[0] >> 2) & 0x03;
     if (settings.stepsCount > 3)
         settings.stepsCount = STEPS_64;
 
-    settings.listenBw = ((Data[3] & 0x0F) & 0b0011);
+    settings.listenBw = Data[0] & 0x03;
     if (settings.listenBw > 2)
         settings.listenBw = BK4819_FILTER_BW_WIDE;
 
+    // Data[1]: manualSetFlag (0), autoSensitivity (2:1)
+    manualSetFlag = Data[1] & 0x01;
+    autoSensitivity = (Data[1] >> 1) & 0x03;
+    if (autoSensitivity >= AUTO_SENS_N_ELEM)
+        autoSensitivity = AUTO_SENS_NORMAL;
+
+    // Data[2]: dbMax encoded as (dbMax + 130) / 5
+    if (Data[2] <= 28)
+        settings.dbMax = (int)Data[2] * 5 - 130;
+
+    // Data[3]: rssiTriggerLevel as uint8_t (0xFF = auto)
+    settings.rssiTriggerLevel = (Data[3] == 0xFF) ? RSSI_MAX_VALUE : Data[3];
+
+    // Data[4] ~ Data[7] are free (for the moment...)
 }
 
 static void SaveSettings()
 {
     uint8_t Data[8] = {0};
-    PY25Q16_ReadBuffer(0x00A158, Data, sizeof(Data));
+    PY25Q16_ReadBuffer(0x00A148, Data, sizeof(Data));
 
-    Data[3] = (settings.scanStepIndex << 4) | (settings.stepsCount << 2) | settings.listenBw;
+    // Data[0]: scanStepIndex (7:4), stepsCount (3:2), listenBw (1:0)
+    Data[0] = (settings.scanStepIndex << 4) | (settings.stepsCount << 2) | settings.listenBw;
 
+    // Data[1]: manualSetFlag (0), autoSensitivity (2:1)
+    Data[1] = (manualSetFlag & 0x01) | ((autoSensitivity & 0x03) << 1);
 
-    PY25Q16_WriteBuffer(0x00A158, Data, sizeof(Data), false);
+    // Data[2]: dbMax encoded as (dbMax + 130) / 5
+    Data[2] = (uint8_t)((settings.dbMax + 130) / 5);
+
+    // Data[3]: rssiTriggerLevel as uint8_t (0xFF = auto)
+    Data[3] = (settings.rssiTriggerLevel == RSSI_MAX_VALUE) ? 0xFF : (uint8_t)settings.rssiTriggerLevel;
+
+    PY25Q16_WriteBuffer(0x00A148, Data, sizeof(Data), false);
 }
 #endif
 
@@ -409,8 +433,15 @@ static void ToggleAFDAC(bool on)
     BK4819_WriteRegister(BK4819_REG_30, Reg);
 }
 
+static uint32_t NormalizeScanFrequency(uint32_t f)
+{
+    const uint16_t step = scanStepValues[settings.scanStepIndex];
+    return (step == 833) ? FREQUENCY_RoundToStep(f, step) : f;
+}
+
 static void SetF(uint32_t f)
 {
+    f = NormalizeScanFrequency(f);
     fMeasure = f;
 
     BK4819_SetFrequency(fMeasure);
@@ -427,6 +458,8 @@ static void SetF(uint32_t f)
 // cutting the SPI bus activity that causes SPI-induced audio interference.
 static void SetFScan(uint32_t f)
 {
+    f = NormalizeScanFrequency(f);
+
     // Refresh RF path only when crossing the VHF/UHF boundary (280 MHz)
     if ((f < 28000000) != (fMeasure < 28000000))
         BK4819_PickRXFilterPathBasedOnFrequency(f);
@@ -437,8 +470,6 @@ static void SetFScan(uint32_t f)
 }
 
 // Spectrum related
-
-bool IsPeakOverLevel() { return peak.rssi >= settings.rssiTriggerLevel; }
 
 static bool IsPeakOverOpenLevel()
 {
@@ -618,7 +649,11 @@ static void ToggleRX(bool on)
     if (on)
     {
         listenLowCount = 0;
-        listenPrevRssi = RSSI_MAX_VALUE;
+        // Seed with the RSSI that opened the squelch so the very first measure
+        // can already detect an abrupt drop (quick-PTT case where the operator
+        // released before listen was actually engaged).
+        // listenPrevRssi = RSSI_MAX_VALUE; // previous behavior
+        listenPrevRssi = peak.rssi;
     #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
         listenT = 25;
         BK4819_WriteRegister(0x43, listenBWRegValues[settings.listenBw]);
@@ -730,7 +765,7 @@ static void UpdateScanInfo()
     if (scanInfo.rssi > scanInfo.rssiMax)
     {
         scanInfo.rssiMax = scanInfo.rssi;
-        scanInfo.fPeak = scanInfo.f;
+        scanInfo.fPeak = NormalizeScanFrequency(scanInfo.f);
         scanInfo.iPeak = scanInfo.i;
     }
 
@@ -966,25 +1001,15 @@ static void UpdateAutoSensitivity(bool inc)
 
 static void UpdateRssiTriggerLevel(bool inc)
 {
-    if (inc && isListening && IsPeakOverLevel())
-    {
-        // One-press escape: jump threshold above the active carrier without
-        // clamping — the interferer may exceed dbMax so ClampRssiTriggerLevel
-        // would silently prevent the escape.
-        settings.rssiTriggerLevel = peak.rssi + 8;
-    }
+    if (inc)
+        settings.rssiTriggerLevel += 2;
     else
-    {
-        if (inc)
-            settings.rssiTriggerLevel += 2;
-        else
-            settings.rssiTriggerLevel -= 2;
+        settings.rssiTriggerLevel -= 2;
 
-        if (settings.rssiTriggerLevel > dbm2rssi(settings.dbMax))
-            UpdateDbMax(true);
-        else
-            ClampRssiTriggerLevel();
-    }
+    if (settings.rssiTriggerLevel > dbm2rssi(settings.dbMax))
+        UpdateDbMax(true);
+    else
+        ClampRssiTriggerLevel();
 
     redrawScreen = true;
     redrawStatus = true;
@@ -1509,7 +1534,11 @@ static void BuildCurrentSpectrumTopY(uint8_t *topY)
 #endif
 
     BuildSpectrumTopY(topY, bars);
-    SmoothTopY(topY);
+    // Skip cosmetic smoothing in manual mode so the rendered curve matches
+    // the raw RSSI used by the squelch detector — narrow peaks must visibly
+    // cross the trigger line when the radio opens the squelch.
+    if (!manualSetFlag)
+        SmoothTopY(topY);
 }
 
 static void DrawStatus()
@@ -1573,13 +1602,19 @@ static void ShowChannelName(uint32_t f)
 {
     static uint32_t channelF = 0;
     static char channelName[12]; 
+    f = NormalizeScanFrequency(f);
+
+    // Channel name starts at x=43 (fixed), leaving room for the dBm
+    // string on the left (max ~40 px) and battery indicator at x=116.
+    // Clear first so a shorter name doesn't leave stale pixels.
+    memset(&gStatusLine[43], 0, 116 - 43);
 
     if (isListening)
     {
         if (f != channelF) {
             channelF = f;
             unsigned int i;
-            memset(channelName, 0, sizeof(channelName));
+            channelName[0] = 0;
             for (i = 0; IS_MR_CHANNEL(i); i++)
             {
                 if (RADIO_CheckValidChannel(i, false, 0))
@@ -1593,18 +1628,8 @@ static void ShowChannelName(uint32_t f)
             }
         }
         if (channelName[0] != 0) {
-            // Channel name starts at x=43 (fixed), leaving room for the dBm
-            // string on the left (max ~40 px) and battery indicator at x=116.
-            // Clear first so a shorter name doesn't leave stale pixels.
-            memset(&gStatusLine[43], 0, 116 - 43);
             UI_PrintStringSmallBufferNormal(channelName, gStatusLine + 43);
-        } else {
-            memset(&gStatusLine[43], 0, 116 - 43);
         }
-    }
-    else
-    {
-        memset(&gStatusLine[43], 0, 116 - 43);
     }
 
     ST7565_BlitStatusLine();
@@ -1617,6 +1642,7 @@ static void FormatFrequency(uint32_t freq, char *buffer) {
 
 static void DrawF(uint32_t f)
 {
+    f = NormalizeScanFrequency(f);
     FormatFrequency(f, String);
     // Align frequency with channel name in status bar (both at x=43).
     // Left-aligned (End == Start = 43) so it does not collide with BW at x=108.
@@ -1660,8 +1686,20 @@ static void DrawNums()
         FormatFrequency(GetFStart(), String);
         GUI_DisplaySmallest(String, 0, 49, false, true);
 
-        sprintf(String, "\x7F%u.%02uk", settings.frequencyChangeStep / 100,
-                settings.frequencyChangeStep % 100);
+#ifdef ENABLE_SCAN_RANGES
+        if (gScanRangeStart)
+        {
+            // Scan-range mode: UP/DOWN are blocked, frequencyChangeStep is unused.
+            // Show the visible bandwidth instead, which is meaningful here.
+            uint32_t bw = gScanRangeStop - gScanRangeStart;
+            sprintf(String, "%u.%02uk", bw / 100, bw % 100);
+        }
+        else
+#endif
+        {
+            sprintf(String, "\x7F%u.%02uk", settings.frequencyChangeStep / 100,
+                    settings.frequencyChangeStep % 100);
+        }
         GUI_DisplaySmallest(String, 48, 49, false, true);
 
         FormatFrequency(GetFEnd(), String);
@@ -1688,16 +1726,7 @@ static bool SpectrumColumnAtOrAboveY(const uint8_t *topY, uint8_t x, uint8_t y)
 
 static uint8_t GetScanStepTextWidth()
 {
-    uint16_t whole = GetScanStep() / 100;
-    uint8_t digits = 1;
-
-    while (whole >= 10)
-    {
-        whole /= 10;
-        digits++;
-    }
-
-    return (digits + 4) * 4; // "%u.%02uk", 4 px advance per char
+    return (sprintf(NULL, "%u", GetScanStep() / 100) + 4) * 4; // "%u.%02uk", 4 px advance per char
 }
 
 static void DrawRssiTriggerLevel(const uint8_t *topY)
@@ -1948,7 +1977,7 @@ static void RenderFreqInput() { UI_PrintString(freqInputString, 2, 127, 0, 8); }
 
 static void RenderStatus()
 {
-    memset(gStatusLine, 0, sizeof(gStatusLine));
+    UI_StatusClear();
     DrawStatus();
     ST7565_BlitStatusLine();
 }
@@ -2570,8 +2599,8 @@ void APP_RunSpectrum()
     // Reset dynamic spectrum state on every entry.
     // Persisted settings are step/count/listenBW only; trigger and dB window
     // are runtime values and should not carry over between sessions.
-    manualSetFlag = false;
-    settings.rssiTriggerLevel = RSSI_MAX_VALUE;
+    // manualSetFlag = false;
+    // settings.rssiTriggerLevel = RSSI_MAX_VALUE;
 
     RearmRuntimeState();
 

@@ -116,6 +116,10 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     bool          gWakeUp = false;
 #endif
 
+#ifdef ENABLE_FEAT_F4HWN_SCAN_FASTER
+    bool          gSetting_set_scn = 1;
+#endif
+
 #ifdef ENABLE_FEAT_F4HWN
     uint8_t       gSetting_set_pwr = 1;
     bool          gSetting_set_ptt = 0;
@@ -132,6 +136,9 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     #endif
     #ifdef ENABLE_FEAT_F4HWN_NARROWER
         bool          gSetting_set_nfm = 0;
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN_LOGO_SAV
+        uint8_t       gSetting_set_sav = SET_SAV_OFF;
     #endif
     bool          gSetting_set_tmr = 0;
     bool          gSetting_set_ptt_session;

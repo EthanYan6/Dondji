@@ -31,7 +31,7 @@
 
 void UI_DisplayFM(void)
 {
-    char String[16] = {0};
+    char String[16];
     char *pPrintStr = String;
     UI_DisplayClear();
 
@@ -80,7 +80,6 @@ void UI_DisplayFM(void)
 
     UI_PrintString(pPrintStr, 0, 127, 3, 10); // memory, vfo, scan
 
-    memset(String, 0, sizeof(String));
     if (gAskToSave || (gEeprom.FM_IsMrMode && gInputBoxIndex > 0)) {
         UI_GenerateChannelString(String, gFM_ChannelPosition);
     } else if (gAskToDelete) {

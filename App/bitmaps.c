@@ -57,6 +57,21 @@ const uint8_t gFontLight[9] =
     0b00001100,
 };
 
+// Same bulb outline as gFontLight with the inner filament removed,
+// used when the manual backlight is currently off
+const uint8_t gFontLightOff[9] =
+{
+    0b00001100,
+    0b00010010,
+    0b00100001,
+    0b01100001,
+    0b01100001,
+    0b01100001,
+    0b00100001,
+    0b00010010,
+    0b00001100,
+};
+
 const uint8_t gFontMute[12] =
 {
     0b00011100,

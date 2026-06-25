@@ -212,6 +212,10 @@ DTMF_CallMode_t DTMF_CheckGroupCall(const char *pMsg, const unsigned int size)
 }
 #endif
 
+void DTMF_clear_input_box_memory() {
+    memset(gDTMF_RX_live, 0, sizeof(gDTMF_RX_live));
+}
+
 void DTMF_clear_input_box(void)
 {
     memset(gDTMF_InputBox, 0, sizeof(gDTMF_InputBox));
@@ -470,7 +474,7 @@ void DTMF_Reply(void)
     if (pString == NULL)
         return;
 
-    Delay = (gEeprom.DTMF_PRELOAD_TIME < 200) ? 200 : gEeprom.DTMF_PRELOAD_TIME;
+    Delay = MAX(gEeprom.DTMF_PRELOAD_TIME, 200);
 
     if (gEeprom.DTMF_SIDE_TONE)
     {   // the user will also hear the transmitted tones

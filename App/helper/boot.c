@@ -73,12 +73,14 @@ BOOT_Mode_t BOOT_GetMode(void)
 
 void BOOT_ProcessMode(BOOT_Mode_t Mode)
 {
+    GUI_DisplayType_t display = DISPLAY_MAIN;
+
     if (Mode == BOOT_MODE_F_LOCK)
     {
         #ifdef ENABLE_FEAT_F4HWN_RESUME_STATE
             gEeprom.CURRENT_STATE = 0; // Don't resume is active...
         #endif 
-        GUI_SelectNextDisplay(DISPLAY_MENU);
+        display = DISPLAY_MENU;
     }
     #ifdef ENABLE_AIRCOPY
         else
@@ -119,11 +121,9 @@ void BOOT_ProcessMode(BOOT_Mode_t Mode)
                 gEeprom.CURRENT_STATE = 0; // Don't resume is active...
             #endif 
 
-            GUI_SelectNextDisplay(DISPLAY_AIRCOPY);
+            display = DISPLAY_AIRCOPY;
         }
     #endif
-    else
-    {
-        GUI_SelectNextDisplay(DISPLAY_MAIN);
-    }
+
+    GUI_SelectNextDisplay(display);
 }
