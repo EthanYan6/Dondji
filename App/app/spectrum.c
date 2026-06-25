@@ -103,6 +103,7 @@ uint16_t rssiHistory[128];
 #define WF_FLOOR_MIN_LEVEL       2U
 static uint8_t waterfallHistory[128][WATERFALL_HISTORY_DEPTH / 2];
 static uint8_t waterfallIndex = 0;
+static uint16_t cachedStepsCount = 128;  /* Cache for DrawWaterfall */
 static uint16_t scanReg30 = 0;
 static uint8_t renderTimer = 0;
 static uint8_t renderPage = 0;
@@ -1054,6 +1055,8 @@ static void UpdateWaterfall(void)
     waterfallIndex = (waterfallIndex + 1) % WATERFALL_HISTORY_DEPTH;
 
     uint16_t stepsCount = GetStepsCount();
+    /* Cache stepsCount for DrawWaterfall to use */
+    cachedStepsCount = stepsCount;
     uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
 
     uint16_t minRssi = 0xFFFF, maxRssi = 0;
@@ -1099,7 +1102,8 @@ static void DrawWaterfall(void)
     };
 
     const uint8_t WATERFALL_START_Y = 40;
-    uint16_t stepsCount = GetStepsCount();
+    /* Use cached stepsCount from last UpdateWaterfall to avoid repeated GetStepsCount() calls */
+    uint16_t stepsCount = cachedStepsCount;
     uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
 
     for (uint8_t y_offset = 0; y_offset < WATERFALL_HISTORY_DEPTH; y_offset++)
@@ -1192,7 +1196,14 @@ uint8_t Rssi2Y(uint16_t rssi)
 
 static void DrawLine(int x0, int y0, int x1, int y1, bool fill);
 static uint8_t GetSpectrumBaseY(void);
-static uint8_t SpecIdxToX(uint16_t idx);
+
+/* Inline version that takes bars as parameter to avoid repeated GetStepsCount() calls */
+static inline uint8_t SpecIdxToXWithBars(uint16_t idx, uint16_t bars)
+{
+    if (bars <= 1)
+        return 64;
+    return (uint8_t)(((uint32_t)idx * 127) / (bars - 1));
+}
 
 static void DrawSpectrumEnhanced(void)
 {
@@ -1202,16 +1213,17 @@ static void DrawSpectrumEnhanced(void)
     /* When bars > 128, we need to map to history slots correctly */
     const uint16_t displayBars = (bars > 128) ? 128 : bars;
 
-    uint8_t prevX = SpecIdxToX(0);
-    uint8_t prevY = Rssi2Y(rssiHistory[GetHistorySlot(0)]);
+    uint8_t prevX = SpecIdxToXWithBars(0, bars);  /* Use cached bars value */
+    uint8_t slot0 = GetHistorySlot(0);
+    uint8_t prevY = Rssi2Y(rssiHistory[slot0]);
     /* If slot 0 has no data (rssi=0), use minimum Y (bottom of spectrum) */
-    if (rssiHistory[GetHistorySlot(0)] == 0)
+    if (rssiHistory[slot0] == 0)
         prevY = SHADE_MAX_Y;
 
     for (uint16_t i = 1; i < displayBars; i++) {
         /* Map display index to actual scan index for X coordinate */
         uint16_t actualIdx = (bars > 128) ? (i * bars / 128) : i;
-        uint8_t currX = SpecIdxToX(actualIdx);
+        uint8_t currX = SpecIdxToXWithBars(actualIdx, bars);  /* Use cached bars value */
         /* Use history slot for Y coordinate */
         uint8_t slot = GetHistorySlot(actualIdx);
         uint16_t rssiVal = rssiHistory[slot];
@@ -1670,14 +1682,6 @@ static uint8_t GetSpectrumBaseY(void)
         return DrawingEndY + GetSimpleYOffset();  /* Simple: spectrum bottom only */
     }
     return DrawingEndY + GetSimpleYOffset() + 6u;  /* Professional: extended */
-}
-
-static uint8_t SpecIdxToX(uint16_t idx)
-{
-    uint16_t bars = GetStepsCount();
-    if (bars <= 1)
-        return 64;
-    return (uint8_t)(((uint32_t)idx * 127) / (bars - 1));
 }
 
 static void DrawGridBackground(void)
@@ -2325,7 +2329,7 @@ static void UpdateListening()
     if (currentState == SPECTRUM)
     {
         static uint8_t listenWfCounter = 0;
-        if (++listenWfCounter >= 6)
+        if (++listenWfCounter >= 2)  /* Update waterfall more frequently for smoother scrolling */
         {
             listenWfCounter = 0;
             UpdateWaterfall();
