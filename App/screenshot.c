@@ -19,7 +19,7 @@
 #include "app/spectrum.h"
 #endif
 #ifdef ENABLE_FEAT_F4HWN_GAME
-#include "app/breakout.h"
+#include "app/mokuyu.h"
 #endif
 #include "driver/st7565.h"
 #include "screenshot.h"
@@ -99,7 +99,6 @@ void SCREENSHOT_Update(bool force)
     }
 
     // ==== BUILD FRAME ONCE ====
-    // Dual VFO tight-top: full screen in gFrameBuffer[0..7]. Else: gStatusLine + gFrameBuffer[0..6].
     bool is_spectrum_active = false;
 #ifdef ENABLE_SPECTRUM
     is_spectrum_active = APP_IsSpectrumActive();
@@ -107,7 +106,7 @@ void SCREENSHOT_Update(bool force)
 
     bool is_mokuyu_active = false;
 #ifdef ENABLE_FEAT_F4HWN_GAME
-    is_mokuyu_active = true;  // mokuyu is always active when game feature is enabled
+    is_mokuyu_active = APP_IsMokuyuActive();
 #endif
 
     bool is_dual_vfo_tight_top = UI_IsDualVfoMainScreen();
@@ -117,7 +116,12 @@ void SCREENSHOT_Update(bool force)
     }
 
     if (is_dual_vfo_tight_top) {
-        for (uint8_t l = 0; l < 8; l++)
+        // Dual VFO: gFrameBuffer[0] is the channel header. Send it as the
+        // status line (so the viewer shows it once at the top), then send
+        // pages 1-7 as content to avoid duplicating the header.
+        memcpy(gStatusLine, gFrameBuffer[0], 128);
+        SCREENSHOT_Line(gStatusLine, frameBuffer, &index);
+        for (uint8_t l = 1; l < 8; l++)
             SCREENSHOT_Line(gFrameBuffer[l], frameBuffer, &index);
     } else {
         SCREENSHOT_Line(gStatusLine, frameBuffer, &index);

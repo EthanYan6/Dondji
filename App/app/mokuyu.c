@@ -1,6 +1,10 @@
 #include "app/mokuyu.h"
 #include "app/mokuyu_bitmap.h"
 
+#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+#include "screenshot.h"
+#endif
+
 static bool isInitialized;
 static uint32_t count;
 static int8_t plusOneY;
@@ -108,6 +112,11 @@ static bool HandleInput(void)
     return true;
 }
 
+bool APP_IsMokuyuActive(void)
+{
+    return isInitialized;
+}
+
 void APP_RunMokuyu(void)
 {
     BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
@@ -134,6 +143,9 @@ void APP_RunMokuyu(void)
     SYSTEM_DelayMs(100);
 
     while (isInitialized) {
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_ParseInput();
+        #endif
         HandleInput();
 
         if (plusOneAlpha > 0) {
@@ -163,6 +175,10 @@ void APP_RunMokuyu(void)
 
         ST7565_BlitStatusLine();
         ST7565_BlitFullScreen();
+
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_Update(false);
+        #endif
 
         SYSTEM_DelayMs(40);
     }

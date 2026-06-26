@@ -24,3 +24,4 @@
 #include <stdlib.h>
 
 void APP_RunMokuyu(void);
+bool APP_IsMokuyuActive(void);

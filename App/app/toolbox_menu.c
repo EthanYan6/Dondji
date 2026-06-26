@@ -9,6 +9,10 @@
 #include "../ui/helper.h"
 #include <string.h>
 
+#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+#include "screenshot.h"
+#endif
+
 static bool isInitialized;
 static uint8_t selectedIndex;
 static KeyboardState kbd;
@@ -114,10 +118,16 @@ void APP_RunToolboxMenu(void)
     ST7565_BlitFullScreen();
 
     while (isInitialized) {
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_ParseInput();
+        #endif
         HandleInput();
         DrawMenu();
         ST7565_BlitStatusLine();
         ST7565_BlitFullScreen();
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_Update(false);
+        #endif
         SYSTEM_DelayMs(40);
     }
 }

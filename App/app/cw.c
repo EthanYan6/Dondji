@@ -9,6 +9,10 @@
 #include "../ui/helper.h"
 #include <string.h>
 
+#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+#include "screenshot.h"
+#endif
+
 static bool isInitialized;
 static KeyboardState kbd;
 
@@ -223,6 +227,9 @@ void APP_RunCW(void)
     SYSTEM_DelayMs(100);
 
     while (isInitialized) {
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_ParseInput();
+        #endif
         HandleInput();
 
         // Auto-confirm after timeout
@@ -236,6 +243,9 @@ void APP_RunCW(void)
         DrawCW();
         ST7565_BlitStatusLine();
         ST7565_BlitFullScreen();
+        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
+            SCREENSHOT_Update(false);
+        #endif
         SYSTEM_DelayMs(40);
     }
 }
