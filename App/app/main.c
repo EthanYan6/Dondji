@@ -34,7 +34,7 @@ extern uint8_t gSetting_SpectrumDisplayMode;
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_GAME
-#include "app/mokuyu.h"
+#include "app/toolbox_menu.h"
 #endif
 
 #include "audio.h"
@@ -708,7 +708,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     #ifdef ENABLE_FEAT_F4HWN_GAME
     else if(Key == 7)
     {
-        APP_RunMokuyu();
+        APP_RunToolboxMenu();
         return;
     }
     #endif

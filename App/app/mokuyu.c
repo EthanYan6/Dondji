@@ -127,6 +127,12 @@ void APP_RunMokuyu(void)
     DrawCounter();
     DrawBottomLabels();
 
+    // Wait for the MENU key that entered this page to be released
+    while (KEYBOARD_GetKey() != KEY_INVALID) {
+        SYSTEM_DelayMs(10);
+    }
+    SYSTEM_DelayMs(100);
+
     while (isInitialized) {
         HandleInput();
 
