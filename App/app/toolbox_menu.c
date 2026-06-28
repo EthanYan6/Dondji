@@ -7,6 +7,7 @@
 #include "../audio.h"
 #include "../font.h"
 #include "../ui/helper.h"
+#include "../settings.h"
 #include <string.h>
 
 #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
@@ -25,8 +26,11 @@ static void DrawMenu(void)
     }
     memset(gStatusLine, 0, sizeof(gStatusLine));
 
-    // Title "工具箱" at row 0, centered
-    UI_PrintStringSmallAtPixel("工具箱", 51, 86, 0, 11, 0);
+    // Title at row 0, centered
+    const char *title = (gUiLanguage == UI_LANGUAGE_CN) ? "工具箱" : "Toolbox";
+    uint8_t title_x_start = (gUiLanguage == UI_LANGUAGE_CN) ? 51 : 0;
+    uint8_t title_x_end = (gUiLanguage == UI_LANGUAGE_CN) ? 86 : 127;
+    UI_PrintStringSmallAtPixel(title, title_x_start, title_x_end, 0, 11, 0);
 
     // Separator line at y=13
     for (int x = 0; x < LCD_WIDTH; x++) {
@@ -34,7 +38,10 @@ static void DrawMenu(void)
     }
 
     // Menu items - shifted down 3 pixels from row positions
-    const char *items[] = {"电子木鱼", "cw"};
+    const char *items[] = {
+        (gUiLanguage == UI_LANGUAGE_CN) ? "电子木鱼" : "Mokuyu",
+        "cw"
+    };
     const uint8_t row_start[] = {3, 5};
 
     for (int i = 0; i < 2; i++) {
