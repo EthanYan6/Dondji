@@ -59,6 +59,13 @@
   box-shadow: none;
 }
 
+.lang-switch--help {
+  position: static;
+  box-shadow: none;
+  width: auto;
+  margin-bottom: 0;
+}
+
 .help-layout {
   display: flex;
   flex: 1;

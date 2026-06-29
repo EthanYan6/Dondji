@@ -543,7 +543,10 @@ function log(msg, type='') {
 $('logToggle').addEventListener('click', () => {
   const logDiv = $('log');
   logDiv.classList.toggle('visible');
-  $('logToggle').textContent = logDiv.classList.contains('visible') ? '隐藏日志' : '显示日志';
+  const isVisible = logDiv.classList.contains('visible');
+  const key = isVisible ? 'hideLog' : 'showLog';
+  $('logToggle').textContent = window.t ? window.t(key) : (isVisible ? '隐藏日志' : '显示日志');
+  $('logToggle').setAttribute('data-i18n', key);
 });
 
 function updateProgress(pct) {
@@ -618,7 +621,7 @@ function hex(arr) { return Array.from(arr).map(b => b.toString(16).padStart(2,'0
 
 // ========== SERIAL ==========
 async function connect() {
-  log('请求串口...', 'info');
+  log(window.t ? window.t('logRequestSerial') : '请求串口...', 'info');
   port = await navigator.serial.requestPort();
   await port.open({ baudRate: BAUDRATE });
   reader = port.readable.getReader();
@@ -626,7 +629,7 @@ async function connect() {
   isReading = true;
   readLoop();
   await sleep(500);
-  log('已连接', 'success');
+  log(window.t ? window.t('logConnected') : '已连接', 'success');
 }
 
 async function disconnect() {
@@ -634,7 +637,7 @@ async function disconnect() {
   if (reader) { try { await reader.cancel(); } catch{} reader.releaseLock(); reader = null; }
   if (writer) { try { await writer.close(); } catch{} writer = null; }
   if (port) { try { await port.close(); } catch{} port = null; }
-  log('已断开', 'info');
+  log(window.t ? window.t('logDisconnected') : '已断开', 'info');
 }
 
 async function readLoop() {
@@ -644,7 +647,7 @@ async function readLoop() {
       if (done) break;
       if (value?.length) readBuffer.push(...value);
     }
-  } catch(e) { if (isReading) log('读取错误: ' + e.message, 'error'); }
+  } catch(e) { if (isReading) log(window.t ? window.t('logError', {msg: e.message}) : ('读取错误: ' + e.message), 'error'); }
 }
 
 async function waitForMsg(msgType, timeout=300) {
@@ -660,7 +663,7 @@ async function waitForMsg(msgType, timeout=300) {
 
 async function waitForDeviceInfo() {
   let acc = 0, lastTs = 0;
-  log('等待设备...', 'info');
+  log(window.t ? window.t('logWaitingDevice') : '等待设备...', 'info');
   for (let t = 0; t < 500; t++) {
     await sleep(10);
     const msg = fetchMessage(readBuffer);
@@ -674,8 +677,8 @@ async function waitForDeviceInfo() {
         for (let i = 16; i < 32; i++) { if (msg.data[i] === 0) { blEnd = i; break; } }
         if (blEnd === -1) blEnd = 32;
         const blVer = new TextDecoder().decode(msg.data.slice(16, blEnd));
-        log('UID: ' + hex(uid), 'info');
-        log('Bootloader: ' + blVer, 'info');
+        log(window.t ? window.t('logUid') + hex(uid) : 'UID: ' + hex(uid), 'info');
+        log(window.t ? window.t('logBootloader') + blVer : 'Bootloader: ' + blVer, 'info');
         return { uid, blVersion: blVer };
       }} else { acc = 0; }
     }
@@ -716,7 +719,7 @@ function applyCalibBaseFromDeviceInfo(deviceInfoPayload) {
     }
   }
   if (asciiLine.length > 0) {
-    log('设备信息: ' + asciiLine, 'success');
+    log(window.t ? window.t('logDeviceInfo') + asciiLine : '设备信息: ' + asciiLine, 'success');
     const versionMatch = asciiLine.match(/v(\d+\.\d+\.\d+)/);
     if (versionMatch) {
       const verStr = versionMatch[1];
@@ -724,10 +727,10 @@ function applyCalibBaseFromDeviceInfo(deviceInfoPayload) {
       const major = parseInt(parts[0], 10);
       if (major >= 5) {
         calibEepromBase = 0xB000;
-        log('固件 v' + verStr + '：校准区基址 0xB000', 'info');
+        log(window.t ? window.t('logFirmwareCalibBase', {ver: verStr, addr: 'B000'}) : '固件 v' + verStr + '：校准区基址 0xB000', 'info');
       } else {
         calibEepromBase = 0x1E00;
-        log('固件 v' + verStr + '：校准区基址 0x1E00', 'info');
+        log(window.t ? window.t('logFirmwareCalibBase', {ver: verStr, addr: '1E00'}) : '固件 v' + verStr + '：校准区基址 0x1E00', 'info');
       }
     }
     return;
@@ -738,14 +741,14 @@ function applyCalibBaseFromDeviceInfo(deviceInfoPayload) {
   for (; hi < hexLimit; hi++) {
     hexLine += deviceInfoPayload[hi].toString(16).padStart(2, '0').toUpperCase() + ' ';
   }
-  log('设备信息(hex): ' + hexLine, 'info');
+  log(window.t ? window.t('logDeviceInfoHex') + hexLine : '设备信息(hex): ' + hexLine, 'info');
 }
 
 /** 导出/恢复校准用：发 DEV_INFO_REQ，等设备应答（运行中的固件协议），不使用 Bootloader 的 NOTIFY 检测 */
 async function requestDeviceInfoForCalib(purpose) {
   calibEepromBase = 0x1E00;
   const purposeText = purpose || '校准';
-  log('正在请求设备信息（' + purposeText + '）...', 'info');
+  log(window.t ? window.t('logRequestingDeviceInfo', {purpose: purposeText}) : '正在请求设备信息（' + purposeText + '）...', 'info');
   const sessionTimestamp = Date.now() & 0xffffffff;
   const req = createMessage(MSG_DEV_INFO_REQ, 4);
   const reqView = new DataView(req.buffer);
@@ -758,10 +761,10 @@ async function requestDeviceInfoForCalib(purpose) {
     if (!resp) {
       continue;
     }
-    log('收到消息: 0x' + resp.msgType.toString(16).padStart(4, '0'), 'info');
+    log(window.t ? window.t('logReceivedMessage', {type: resp.msgType.toString(16).padStart(4, '0')}) : '收到消息: 0x' + resp.msgType.toString(16).padStart(4, '0'), 'info');
     if (resp.msgType === MSG_DEV_INFO_RESP) {
       applyCalibBaseFromDeviceInfo(resp.data);
-      log('设备已就绪（' + purposeText + '会话）', 'success');
+      log(window.t ? window.t('logDeviceReady', {purpose: purposeText}) : '设备已就绪（' + purposeText + '会话）', 'success');
       const out = { timestamp: sessionTimestamp };
       return out;
     }
@@ -779,7 +782,7 @@ $('firmwareFile').addEventListener('change', e => {
     $('fileName').textContent = file.name + ' (' + firmwareData.length + ' bytes)';
     $('fileName').classList.add('has-file');
     $('fileLabel').classList.add('has-file');
-    log('固件已加载：' + file.name + ' (' + firmwareData.length + ' bytes)', 'success');
+    log(window.t ? window.t('logFirmwareLoaded', {name: file.name, size: firmwareData.length}) : '固件已加载：' + file.name + ' (' + firmwareData.length + ' bytes)', 'success');
     $('flashBtn').disabled = false;
     e.target.value = '';
   };
@@ -798,7 +801,7 @@ $('flashBtn').addEventListener('click', async () => {
     await sleep(1000);
     const dev = await waitForDeviceInfo();
     await handshake(dev.blVersion);
-    log('开始刷入固件...', 'info');
+    log(window.t ? window.t('logStartFlash') : '开始刷入固件...', 'info');
     const pageCount = Math.ceil(firmwareData.length / 256);
     const ts = Date.now() & 0xffffffff;
     let page = 0, retry = 0;
@@ -825,16 +828,16 @@ $('flashBtn').addEventListener('click', async () => {
           if (rp !== page) continue;
           if (err !== 0) { retry++; if (retry > 3) throw new Error('页面 ' + page + ' 错误: ' + err); break; }
           ok = true; retry = 0;
-          if ((page+1) % 20 === 0 || page === pageCount-1) log('页面 ' + (page+1) + '/' + pageCount, 'success');
+          if ((page+1) % 20 === 0 || page === pageCount-1) log(window.t ? window.t('logFlashProgress', {page: page+1, total: pageCount}) : '页面 ' + (page+1) + '/' + pageCount, 'success');
         }
       }
       if (ok) page++;
       else { retry++; if (retry > 3) throw new Error('页面 ' + page + ' 超时'); }
     }
     updateProgress(100);
-    log('固件刷入完成！', 'success');
+    log(window.t ? window.t('logFlashComplete') : '固件刷入完成！', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isFlashing = false;
     $('flashBtn').disabled = !firmwareData;
@@ -918,9 +921,9 @@ function firmwareFetchArrayBuffer() {
 $('fetchLatestBtn').addEventListener('click', async () => {
   const btn = $('fetchLatestBtn');
   btn.disabled = true;
-  btn.textContent = '正在加载...';
+  btn.textContent = window.t ? window.t('loadingFile') : '正在加载...';
   try {
-    log('正在加载同源 firmware/Dondji.fusion.bin …', 'info');
+    log(window.t ? window.t('logLoadingFile') + ' firmware/Dondji.fusion.bin' : '正在加载...' + ' firmware/Dondji.fusion.bin', 'info');
     const arrayBuffer = await firmwareFetchArrayBuffer();
     const loadedBytes = new Uint8Array(arrayBuffer);
     firmwareData = loadedBytes;
@@ -934,12 +937,12 @@ $('fetchLatestBtn').addEventListener('click', async () => {
     $('fileName').textContent = '✓ Dondji.fusion.bin (' + byteLength + ' bytes)';
     $('fileName').classList.add('has-file');
     $('fileLabel').classList.add('has-file');
-    log('固件已加载: Dondji.fusion.bin (' + byteLength + ' bytes)', 'success');
+    log(window.t ? window.t('logFirmwareLoadedDefault', {name: 'Dondji.fusion.bin', size: byteLength}) : '固件已加载: Dondji.fusion.bin (' + byteLength + ' bytes)', 'success');
     $('flashBtn').disabled = false;
     $('flashBtn').textContent = '刷入固件';
   } catch (loadErr) {
     const messageText = loadErr && loadErr.message ? loadErr.message : String(loadErr);
-    log('加载失败: ' + messageText, 'error');
+    log(window.t ? window.t('logLoadFailed', {msg: messageText}) : '加载失败: ' + messageText, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '远程获取';
@@ -957,7 +960,7 @@ $('fontFile').addEventListener('change', e => {
     $('fontFileName').textContent = file.name + ' (' + fontData.length + ' bytes)';
     $('fontFileName').classList.add('has-file');
     $('fontFileLabel').classList.add('has-file');
-    log('字库已加载：' + file.name + ' (' + fontData.length + ' bytes)', 'success');
+    log(window.t ? window.t('logFontLoaded', {name: file.name, size: fontData.length}) : '字库已加载：' + file.name + ' (' + fontData.length + ' bytes)', 'success');
     $('fontFlashBtn').disabled = false;
     e.target.value = '';
   };
@@ -967,7 +970,7 @@ $('fontFile').addEventListener('change', e => {
 $('fetchFontBtn').addEventListener('click', async () => {
   const btn = $('fetchFontBtn');
   btn.disabled = true;
-  btn.textContent = '正在加载...';
+  btn.textContent = window.t ? window.t('loadingFile') : '正在加载...';
   try {
     const buf = await cnFontFetchArrayBuffer();
     fontData = new Uint8Array(buf);
@@ -977,10 +980,10 @@ $('fetchFontBtn').addEventListener('click', async () => {
     $('fontFileName').textContent = 'cn_font.bin (' + fontData.length + ' bytes)';
     $('fontFileName').classList.add('has-file');
     $('fontFileLabel').classList.add('has-file');
-    log('字库已加载: cn_font.bin (' + fontData.length + ' bytes)', 'success');
+    log(window.t ? window.t('logFontLoadedDefault', {name: 'cn_font.bin', size: fontData.length}) : '字库已加载: cn_font.bin (' + fontData.length + ' bytes)', 'success');
     $('fontFlashBtn').disabled = false;
   } catch(e) {
-    log('加载失败: ' + e.message, 'error');
+    log(window.t ? window.t('logLoadFailed', {msg: e.message}) : '加载失败: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = '远程获取';
@@ -999,7 +1002,7 @@ $('fontFlashBtn').addEventListener('click', async () => {
     await sleep(1000);
 
     // Detect device mode: send MSG_DEV_INFO_REQ and check response
-    log('检测设备模式...', 'info');
+    log(window.t ? window.t('logDetectDevice') : '检测设备模式...', 'info');
     const ts = Date.now() & 0xffffffff;
     const reqMsg = createMessage(MSG_DEV_INFO_REQ, 4);
     new DataView(reqMsg.buffer).setUint32(4, ts, true);
@@ -1023,7 +1026,7 @@ $('fontFlashBtn').addEventListener('click', async () => {
       throw new Error('设备处于 BOOT 模式，请先刷入固件并启动后再刷字库');
     }
 
-    log('设备已运行自定义固件，开始刷入字库...', 'success');
+    log(window.t ? window.t('logDeviceCustomFirmware') : '设备已运行自定义固件，开始刷入字库...', 'success');
 
     // Write font data in chunks via SPI Flash Write (0x0521)
     const totalChunks = Math.ceil(fontData.length / SPI_CHUNK_SIZE);
@@ -1036,7 +1039,7 @@ $('fontFlashBtn').addEventListener('click', async () => {
 
       for (let retry = 0; retry < 3 && !ok; retry++) {
         if (retry > 0) {
-          log('重试 @ 0x' + addr.toString(16) + ' (' + retry + ')', 'info');
+          log(window.t ? window.t('logRetry', {addr: addr.toString(16), retry: retry}) : '重试 @ 0x' + addr.toString(16) + ' (' + retry + ')', 'info');
           await sleep(200);
         }
 
@@ -1058,7 +1061,7 @@ $('fontFlashBtn').addEventListener('click', async () => {
       written += chunkLen;
       updateProgress((written / fontData.length) * 100);
       if ((i / SPI_CHUNK_SIZE) % 10 === 0)
-        log('已写入 ' + written + '/' + fontData.length + ' bytes', 'info');
+        log(window.t ? window.t('logWrittenBytes', {written: written, total: fontData.length}) : '已写入 ' + written + '/' + fontData.length + ' bytes', 'info');
 
       // Delay to avoid overwhelming the firmware during SPI Flash erase
       await sleep(50);
@@ -1087,8 +1090,8 @@ $('fontFlashBtn').addEventListener('click', async () => {
     verMsg[16] = CN_FONT_VERSION;
     await sendMessage(verMsg);
     const verResp = await waitForMsg(MSG_SPI_FLASH_WRITE_RESP, 100);
-    if (!verResp) log('版本标记写入超时（可能固件不支持 SPI Flash 写入）', 'error');
-    else log('版本标记已写入', 'success');
+    if (!verResp) log(window.t ? window.t('logVersionWriteTimeout') : '版本标记写入超时（可能固件不支持 SPI Flash 写入）', 'error');
+    else log(window.t ? window.t('logVersionWritten') : '版本标记已写入', 'success');
 
     // Verify: read back first 4 bytes
     const readMsg = createMessage(MSG_SPI_FLASH_READ, 12);
@@ -1104,17 +1107,17 @@ $('fontFlashBtn').addEventListener('click', async () => {
       const w0 = probe.getUint16(8, true);
       const w1 = probe.getUint16(10, true);
       if (w0 === 0x1100 && w1 === 0x2100)
-        log('验证通过：字库数据正确', 'success');
+        log(window.t ? window.t('logVerifyPass') : '验证通过：字库数据正确', 'success');
       else
-        log('验证警告：首字节 0x' + w0.toString(16) + ' 0x' + w1.toString(16) + '（期望 0x1100 0x2100）', 'error');
+        log(window.t ? window.t('logVerifyWarning', {w0: w0.toString(16), w1: w1.toString(16)}) : '验证警告：首字节 0x' + w0.toString(16) + ' 0x' + w1.toString(16) + '（期望 0x1100 0x2100）', 'error');
     } else {
-      log('验证跳过：读取超时', 'info');
+      log(window.t ? window.t('logVerifySkip') : '验证跳过：读取超时', 'info');
     }
 
     updateProgress(100);
-    log('字库刷入完成！共 ' + written + ' bytes', 'success');
+    log(window.t ? window.t('logFontFlashComplete', {size: written}) : '字库刷入完成！共 ' + written + ' bytes', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isFontFlashing = false;
     $('fontFlashBtn').disabled = !fontData;
@@ -1136,7 +1139,7 @@ $('dumpBtn').addEventListener('click', async () => {
     readBuffer = [];
     await sleep(1000);
     const calibSession = await requestDeviceInfoForCalib();
-    log('导出校准数据...', 'info');
+    log(window.t ? window.t('logExportCalibration') : '导出校准数据...', 'info');
     const data = new Uint8Array(CALIB_SIZE);
     const ts = calibSession.timestamp;
     let offset = calibEepromBase;
@@ -1168,9 +1171,9 @@ $('dumpBtn').addEventListener('click', async () => {
     const blob = new Blob([data], { type: 'application/octet-stream' });
     $('dumpLink').href = URL.createObjectURL(blob);
     $('dumpDownload').style.display = 'block';
-    log('校准数据导出完成', 'success');
+    log(window.t ? window.t('logCalibrationExportComplete') : '校准数据导出完成', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isDumping = false;
     $('dumpBtn').disabled = false;
@@ -1186,12 +1189,12 @@ $('calibFile').addEventListener('change', e => {
   const fr = new FileReader();
   fr.onload = ev => {
     const buf = new Uint8Array(ev.target.result);
-    if (buf.length !== CALIB_SIZE) { log('文件大小错误: ' + buf.length + ' (需要 ' + CALIB_SIZE + ')', 'error'); return; }
+    if (buf.length !== CALIB_SIZE) { log(window.t ? window.t('logFileSizeError', {size: buf.length, expected: CALIB_SIZE}) : '文件大小错误: ' + buf.length + ' (需要 ' + CALIB_SIZE + ')', 'error'); return; }
     calibData = buf;
     $('calibFileName').textContent = file.name;
     $('calibFileName').classList.add('has-file');
     $('calibFileLabel').classList.add('has-file');
-    log('校准文件已加载: ' + file.name, 'success');
+    log(window.t ? window.t('logCalibrationFileLoaded', {name: file.name}) : '校准文件已加载: ' + file.name, 'success');
     $('restoreBtn').disabled = false;
   };
   fr.readAsArrayBuffer(file);
@@ -1208,7 +1211,7 @@ $('restoreBtn').addEventListener('click', async () => {
     readBuffer = [];
     await sleep(1000);
     const calibSession = await requestDeviceInfoForCalib();
-    log('恢复校准数据...', 'info');
+    log(window.t ? window.t('logRestoreCalibration') : '恢复校准数据...', 'info');
     const ts = calibSession.timestamp;
     let offset = calibEepromBase;
     for (let i = 0; i < CALIB_SIZE; i += CALIB_CHUNK) {
@@ -1233,12 +1236,12 @@ $('restoreBtn').addEventListener('click', async () => {
       if (!ok) throw new Error('写入失败 @ 0x' + offset.toString(16));
     }
     updateProgress(100);
-    log('校准数据恢复完成！正在重启...', 'success');
+    log(window.t ? window.t('logCalibrationRestoreComplete') : '校准数据恢复完成！正在重启...', 'success');
     await sendMessage(createMessage(MSG_REBOOT, 0));
     await sleep(500);
-    log('设备已重启', 'success');
+    log(window.t ? window.t('logDeviceRebooted') : '设备已重启', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isRestoring = false;
     $('restoreBtn').disabled = !calibData;
@@ -1403,7 +1406,7 @@ $('restoreBtn').addEventListener('click', async () => {
 
   // 读取单个地址的校准数据
   async function readCalibFromDevice(baseAddr, label) {
-    log('读取校准数据 @ 0x' + baseAddr.toString(16) + '...', 'info');
+    log(window.t ? window.t('logReadCalibrationAddr', {addr: baseAddr.toString(16)}) : '读取校准数据 @ 0x' + baseAddr.toString(16) + '...', 'info');
     var session = await requestDeviceInfoForCalib(label);
     var data = new Uint8Array(CALIB_SIZE);
     var ts = session.timestamp;
@@ -1431,7 +1434,7 @@ $('restoreBtn').addEventListener('click', async () => {
       }
       if (!ok) throw new Error('读取失败 @ 0x' + offset.toString(16));
     }
-    log('校准读取完成 @ 0x' + baseAddr.toString(16), 'success');
+    log(window.t ? window.t('logCalibrationReadAddrComplete', {addr: baseAddr.toString(16)}) : '校准读取完成 @ 0x' + baseAddr.toString(16), 'success');
     return data;
   }
 
@@ -1453,9 +1456,9 @@ $('restoreBtn').addEventListener('click', async () => {
       calibThirdPartyData = await readCalibFromDevice(0xB000, '校准检查-第三方');
       updateProgress(100);
       renderCalibTable();
-      log('设备校准读取完成', 'success');
+      log(window.t ? window.t('logDeviceCalibrationReadComplete') : '设备校准读取完成', 'success');
     } catch(e) {
-      log('错误: ' + e.message, 'error');
+      log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
     } finally {
       this.disabled = false;
       if (port) await disconnect();
@@ -1475,12 +1478,10 @@ $('restoreBtn').addEventListener('click', async () => {
       fr.onload = function(ev) {
         var buf = new Uint8Array(ev.target.result);
         if (buf.length !== CALIB_SIZE) {
-          log('文件大小错误: ' + buf.length + ' (需要 ' + CALIB_SIZE + ')', 'error');
-          return;
-        }
+          log(window.t ? window.t('logFileSizeError', {size: buf.length, expected: CALIB_SIZE}) : '文件大小错误: ' + buf.length + ' (需要 ' + CALIB_SIZE + ')', 'error'); return; }
         calibBackupData = buf;
         renderCalibTable();
-        log('备份校准已加载: ' + file.name, 'success');
+        log(window.t ? window.t('logBackupCalibrationLoaded', {name: file.name}) : '备份校准已加载: ' + file.name, 'success');
       };
       fr.readAsArrayBuffer(file);
     });
@@ -1490,7 +1491,7 @@ $('restoreBtn').addEventListener('click', async () => {
   // 导出备份校准
   $('calibExportBackupBtn').addEventListener('click', function() {
     if (!calibBackupData) {
-      log('没有备份校准数据可导出', 'error');
+      log(window.t ? window.t('logNoBackupCalibrationExport') : '没有备份校准数据可导出', 'error');
       return;
     }
     // 收集表格中最新的输入值
@@ -1504,7 +1505,7 @@ $('restoreBtn').addEventListener('click', async () => {
     a.download = 'calibration_backup.dat';
     a.click();
     URL.revokeObjectURL(a.href);
-    log('备份校准已导出', 'success');
+    log(window.t ? window.t('logBackupCalibrationExported') : '备份校准已导出', 'success');
   });
 
   // 写入校准到指定地址
@@ -1518,7 +1519,7 @@ $('restoreBtn').addEventListener('click', async () => {
       updateBackupField(parseInt(inp.dataset.offset, 10), parseInt(inp.dataset.size, 10), inp.value);
     });
 
-    log('写入校准到 0x' + baseAddr.toString(16) + '...', 'info');
+    log(window.t ? window.t('logWriteCalibrationAddr', {addr: baseAddr.toString(16)}) : '写入校准到 0x' + baseAddr.toString(16) + '...', 'info');
     var session = await requestDeviceInfoForCalib(label);
     var ts = session.timestamp;
     var offset = baseAddr;
@@ -1545,17 +1546,17 @@ $('restoreBtn').addEventListener('click', async () => {
       }
       if (!ok) throw new Error('写入失败 @ 0x' + offset.toString(16));
     }
-    log('校准写入完成！正在重启...', 'success');
+    log(window.t ? window.t('logCalibrationWriteComplete') : '校准写入完成！正在重启...', 'success');
     await sendMessage(createMessage(MSG_REBOOT, 0));
     await sleep(500);
-    log('设备已重启', 'success');
+    log(window.t ? window.t('logDeviceRebooted') : '设备已重启', 'success');
   }
 
   // 写入官方地址
   $('calibWriteOfficialBtn').addEventListener('click', async function() {
     if (isRestoring || isDumping) return;
     if (!calibBackupData && !$('calibCheckBody').querySelector('input[data-offset]')) {
-      log('没有备份校准数据可写入', 'error');
+      log(window.t ? window.t('logNoBackupCalibrationWrite') : '没有备份校准数据可写入', 'error');
       return;
     }
     this.disabled = true;
@@ -1569,7 +1570,7 @@ $('restoreBtn').addEventListener('click', async () => {
       await writeCalibToAddress(0x1E00, '写入官方');
       updateProgress(100);
     } catch(e) {
-      log('错误: ' + e.message, 'error');
+      log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
     } finally {
       this.disabled = false;
       $('calibWriteThirdPartyBtn').disabled = false;
@@ -1582,7 +1583,7 @@ $('restoreBtn').addEventListener('click', async () => {
   $('calibWriteThirdPartyBtn').addEventListener('click', async function() {
     if (isRestoring || isDumping) return;
     if (!calibBackupData && !$('calibCheckBody').querySelector('input[data-offset]')) {
-      log('没有备份校准数据可写入', 'error');
+      log(window.t ? window.t('logNoBackupCalibrationWrite') : '没有备份校准数据可写入', 'error');
       return;
     }
     this.disabled = true;
@@ -1596,7 +1597,7 @@ $('restoreBtn').addEventListener('click', async () => {
       await writeCalibToAddress(0xB000, '写入第三方');
       updateProgress(100);
     } catch(e) {
-      log('错误: ' + e.message, 'error');
+      log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
     } finally {
       this.disabled = false;
       $('calibWriteOfficialBtn').disabled = false;
@@ -1631,7 +1632,7 @@ $('backupCfgBtn').addEventListener('click', async () => {
     await sleep(1000);
     const session = await requestDeviceInfoForCalib('配置');
     const sessionTs = session.timestamp;
-    log('导出配置数据...', 'info');
+    log(window.t ? window.t('logExportConfig') : '导出配置数据...', 'info');
     const data = new Uint8Array(CONFIG_FLASH_SIZE);
     for (let i = 0; i < CONFIG_FLASH_SIZE; i += CONFIG_CHUNK) {
       updateProgress((i / CONFIG_FLASH_SIZE) * 100);
@@ -1643,9 +1644,9 @@ $('backupCfgBtn').addEventListener('click', async () => {
     const blob = new Blob([data], { type: 'application/octet-stream' });
     $('backupCfgLink').href = URL.createObjectURL(blob);
     $('backupCfgDownload').style.display = 'block';
-    log('配置数据导出完成', 'success');
+    log(window.t ? window.t('logConfigExportComplete') : '配置数据导出完成', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isBackupCfg = false;
     $('backupCfgBtn').disabled = false;
@@ -1661,12 +1662,12 @@ $('cfgBackupFile').addEventListener('change', e => {
   const fr = new FileReader();
   fr.onload = ev => {
     const buf = new Uint8Array(ev.target.result);
-    if (buf.length !== CONFIG_FLASH_SIZE) { log('文件大小错误: ' + buf.length + ' (需要 ' + CONFIG_FLASH_SIZE + ')', 'error'); return; }
+    if (buf.length !== CONFIG_FLASH_SIZE) { log(window.t ? window.t('logConfigFileSizeError', {size: buf.length, expected: CONFIG_FLASH_SIZE}) : '文件大小错误: ' + buf.length + ' (需要 ' + CONFIG_FLASH_SIZE + ')', 'error'); return; }
     cfgBackupData = buf;
     $('cfgBackupFileName').textContent = file.name;
     $('cfgBackupFileName').classList.add('has-file');
     $('cfgBackupFileLabel').classList.add('has-file');
-    log('配置文件已加载: ' + file.name, 'success');
+    log(window.t ? window.t('logConfigFileLoaded', {name: file.name}) : '配置文件已加载: ' + file.name, 'success');
     $('restoreCfgBtn').disabled = false;
   };
   fr.readAsArrayBuffer(file);
@@ -1684,7 +1685,7 @@ $('restoreCfgBtn').addEventListener('click', async () => {
     await sleep(1000);
     const session = await requestDeviceInfoForCalib('配置');
     const sessionTs = session.timestamp;
-    log('恢复配置数据...', 'info');
+    log(window.t ? window.t('logRestoreConfig') : '恢复配置数据...', 'info');
     for (let i = 0; i < CONFIG_FLASH_SIZE; i += CONFIG_CHUNK) {
       updateProgress((i / CONFIG_FLASH_SIZE) * 100);
       const chunk = cfgBackupData.slice(i, i + CONFIG_CHUNK);
@@ -1692,12 +1693,12 @@ $('restoreCfgBtn').addEventListener('click', async () => {
       if (!ok) throw new Error('写入失败 @ 0x' + (CONFIG_FLASH_BASE + i).toString(16));
     }
     updateProgress(100);
-    log('配置数据恢复完成！正在重启...', 'success');
+    log(window.t ? window.t('logConfigRestoreComplete') : '配置数据恢复完成！正在重启...', 'success');
     await sendMessage(createMessage(MSG_REBOOT, 0));
     await sleep(500);
-    log('设备已重启', 'success');
+    log(window.t ? window.t('logDeviceRebooted') : '设备已重启', 'success');
   } catch(e) {
-    log('错误: ' + e.message, 'error');
+    log(window.t ? window.t('logError', {msg: e.message}) : '错误: ' + e.message, 'error');
   } finally {
     isRestoreCfg = false;
     $('restoreCfgBtn').disabled = !cfgBackupData;
@@ -1708,7 +1709,7 @@ $('restoreCfgBtn').addEventListener('click', async () => {
 
 // ========== CAPABILITY CHECK ==========
 if (!('serial' in navigator)) {
-  log('浏览器不支持 Web Serial API，请使用 Chrome/Edge/Opera', 'error');
+  log(window.t ? window.t('logWebSerialUnsupported') : '浏览器不支持 Web Serial API，请使用 Chrome/Edge/Opera', 'error');
   $('flashBtn').disabled = true;
   $('fontFlashBtn').disabled = true;
   $('dumpBtn').disabled = true;
@@ -2878,7 +2879,10 @@ function writefreqApplyChannelNameBlur(channelNameInput) {
     }
     const logToggleBtn = $('logToggle');
     if (logToggleBtn) {
-      logToggleBtn.textContent = '隐藏日志';
+      const isVisible = $('log').classList.contains('visible');
+      const key = isVisible ? 'hideLog' : 'showLog';
+      logToggleBtn.textContent = window.t ? window.t(key) : (isVisible ? '隐藏日志' : '显示日志');
+      logToggleBtn.setAttribute('data-i18n', key);
     }
   }
   const finalText = channelNameInput.value;
@@ -2908,7 +2912,10 @@ function writefreqApplyChannelNameBlur(channelNameInput) {
       }
       const logToggleAfterFont = $('logToggle');
       if (logToggleAfterFont) {
-        logToggleAfterFont.textContent = '隐藏日志';
+        const isVisible = $('log').classList.contains('visible');
+        const key = isVisible ? 'hideLog' : 'showLog';
+        logToggleAfterFont.textContent = window.t ? window.t(key) : (isVisible ? '隐藏日志' : '显示日志');
+        logToggleAfterFont.setAttribute('data-i18n', key);
       }
     }
     showAppToast(combinedMsg, 'warning');
@@ -3282,19 +3289,24 @@ function writefreqUpdatePaginationUI() {
   const totalPages = writefreqGetPageCount();
   const cur = writefreqPageIndex + 1;
   const filledCount = writefreqCountFilledRows();
+  
+  // Build pagination info with actual values
+  const totalVal = WRITE_FREQ_MR_MAX;
+  const filledVal = filledCount;
+  const curVal = cur;
+  const pagesVal = totalPages;
+  const sizeVal = WRITE_FREQ_PAGE_SIZE;
+  
   if (infoEl) {
-    const totalLine =
-      '共 ' +
-      WRITE_FREQ_MR_MAX +
-      ' 条 · 已填写 ' +
-      filledCount +
-      ' 条 · 第 ' +
-      cur +
-      ' / ' +
-      totalPages +
-      ' 页 · 每页 ' +
-      WRITE_FREQ_PAGE_SIZE +
-      ' 信道';
+    const totalLine = window.t 
+      ? window.t('freqPageInfoText', {
+          total: totalVal,
+          filled: filledVal,
+          cur: curVal,
+          pages: pagesVal,
+          size: sizeVal
+        })
+      : '共 ' + totalVal + ' 条 · 已填写 ' + filledVal + ' 条 · 第 ' + curVal + ' / ' + pagesVal + ' 页 · 每页 ' + sizeVal + ' 信道';
     infoEl.textContent = totalLine;
   }
   if (prevBtn) {
@@ -3436,6 +3448,21 @@ function writefreqRebuildRows() {
     return;
   }
   tbody.innerHTML = '';
+  const tFunc = window.t || ((key) => {
+    const fallback = {
+      'freqNamePlaceholder': 'ASCII 或汉字等，≤15 字节 UTF-8',
+      'freqRxPlaceholder': '例 438.500000',
+      'freqOffsetPlaceholder': '例 5.000000',
+      'freqSelectPower': '请选择功率',
+      'freqNoParticipate': '不参与',
+      'freqScanlistAll': '全部',
+      'freqSftClose': '关闭',
+      'freqSftPlus': '+',
+      'freqSftMinus': '−'
+    };
+    return fallback[key] || key;
+  });
+  
   let r = 0;
   for (; r < WRITE_FREQ_PAGE_SIZE; r++) {
     const tr = document.createElement('tr');
@@ -3453,7 +3480,7 @@ function writefreqRebuildRows() {
     const inName = document.createElement('input');
     inName.type = 'text';
     inName.className = 'wf-channel-name';
-    inName.placeholder = 'ASCII 或汉字等，≤15 字节 UTF-8';
+    inName.placeholder = tFunc('freqNamePlaceholder');
     inName.addEventListener('blur', function writefreqChannelNameBlurHandler() {
       writefreqApplyChannelNameBlur(inName);
     });
@@ -3463,7 +3490,7 @@ function writefreqRebuildRows() {
     const inRx = document.createElement('input');
     inRx.type = 'text';
     inRx.className = 'wf-rx';
-    inRx.placeholder = '例 438.500000';
+    inRx.placeholder = tFunc('freqRxPlaceholder');
     tdRx.appendChild(inRx);
 
     const tdPwr = document.createElement('td');
@@ -3471,7 +3498,7 @@ function writefreqRebuildRows() {
     selPwr.className = 'wf-power';
     const optP0 = document.createElement('option');
     optP0.value = '';
-    optP0.textContent = '请选择功率';
+    optP0.textContent = tFunc('freqSelectPower');
     selPwr.appendChild(optP0);
     let pi = 1;
     for (; pi <= 7; pi++) {
@@ -3511,15 +3538,15 @@ function writefreqRebuildRows() {
     selSft.className = 'wf-sft';
     const s0 = document.createElement('option');
     s0.value = '0';
-    s0.textContent = '关闭';
+    s0.textContent = tFunc('freqSftClose');
     selSft.appendChild(s0);
     const s1 = document.createElement('option');
     s1.value = '1';
-    s1.textContent = '+';
+    s1.textContent = tFunc('freqSftPlus');
     selSft.appendChild(s1);
     const s2 = document.createElement('option');
     s2.value = '2';
-    s2.textContent = '−';
+    s2.textContent = tFunc('freqSftMinus');
     selSft.appendChild(s2);
     tdSft.appendChild(selSft);
 
@@ -3527,7 +3554,7 @@ function writefreqRebuildRows() {
     const inOff = document.createElement('input');
     inOff.type = 'text';
     inOff.className = 'wf-offset';
-    inOff.placeholder = '例 5.000000';
+    inOff.placeholder = tFunc('freqOffsetPlaceholder');
     tdOff.appendChild(inOff);
 
     const tdMod = document.createElement('td');
@@ -3560,18 +3587,19 @@ function writefreqRebuildRows() {
     selScanlist.className = 'wf-scanlist';
     const optNone = document.createElement('option');
     optNone.value = '0';
-    optNone.textContent = '不参与';
+    optNone.textContent = tFunc('freqNoParticipate');
     selScanlist.appendChild(optNone);
     let sli = 0;
     for (; sli < WF_SCANLIST_MAX; sli++) {
       const opt = document.createElement('option');
       opt.value = String(sli + 1);
-      opt.textContent = '列表 ' + String(sli + 1);
+      // Use translated "列表 X" or fallback to Chinese
+      opt.textContent = window.t ? window.t('freqScanlistItem', {num: sli + 1}) : '列表 ' + String(sli + 1);
       selScanlist.appendChild(opt);
     }
     const optAll = document.createElement('option');
     optAll.value = String(WF_SCANLIST_ALL_VAL);
-    optAll.textContent = '全部';
+    optAll.textContent = tFunc('freqScanlistAll');
     selScanlist.appendChild(optAll);
     tdScanlist.appendChild(selScanlist);
 
@@ -3705,16 +3733,14 @@ async function writefreqReadFromDevice() {
     writefreqShowCurrentPage();
     updateProgress(100);
     log(
-      '表格已清空后，已从设备填入 ' +
-        validReadCount +
-        ' 条（已跳过未使用槽，以及不符合完整校验的槽：RX 范围、有效功率、属性 band 与频率一致、亚音可解析）；已扫描 ' +
-        WRITE_FREQ_MR_MAX +
-        ' 槽',
+      window.t
+        ? window.t('logWritefreqReadSuccess', { count: validReadCount, scanned: WRITE_FREQ_MR_MAX })
+        : '表格已清空后，已从设备填入 ' + validReadCount + ' 条（已跳过未使用槽，以及不符合完整校验的槽：RX 范围、有效功率、属性 band 与频率一致、亚音可解析）；已扫描 ' + WRITE_FREQ_MR_MAX + ' 槽',
       'success'
     );
     writefreqShowValidation('', false);
   } catch (e) {
-    log('写频读取失败: ' + e.message, 'error');
+    log(window.t ? window.t('logWritefreqReadFailed', {msg: e.message}) : '写频读取失败: ' + e.message, 'error');
   } finally {
     isWritefreqBusy = false;
     if (readBtn) readBtn.disabled = false;
@@ -3740,7 +3766,7 @@ async function writefreqWriteToDevice() {
   if (nameTruncationWarnings.length > 0) {
     writefreqShowCurrentPage();
     const warnJoined = nameTruncationWarnings.join('\n');
-    log('信道名截断提示（≤15 字节 UTF-8，超长末尾为 ...）：\n' + warnJoined, 'warning');
+    log(window.t ? window.t('logChannelNameTruncate', {warn: warnJoined}) : '信道名截断提示（≤15 字节 UTF-8，超长末尾为 ...）：\n' + warnJoined, 'warning');
   }
   const messages = [];
   const startCh = writefreqGetBaseChannel();
@@ -3770,7 +3796,7 @@ async function writefreqWriteToDevice() {
       messages.push(err.message);
     }
     if (fields.powerVal === '') {
-      messages.push(rowPrefix + '请选择功率（已排除 USER）');
+      messages.push(rowPrefix + (window.t ? window.t('freqValidationError') : '请选择功率（已排除 USER）'));
     }
     const powCheck = Number.parseInt(fields.powerVal, 10);
     if (fields.powerVal !== '') {
@@ -3796,7 +3822,7 @@ async function writefreqWriteToDevice() {
   if (messages.length > 0) {
     const joined = messages.join('\n');
     writefreqShowValidation(joined, true);
-    log('校验未通过，未写入设备', 'error');
+    log(window.t ? window.t('logValidationFailed') : '校验未通过，未写入设备', 'error');
     return;
   }
   writefreqShowValidation('', false);
@@ -3915,19 +3941,17 @@ async function writefreqWriteToDevice() {
     updateProgress(100);
     const clearedSlotCount = WRITE_FREQ_MR_MAX - programmedCount;
     log(
-      '已按表格写入 ' +
-        programmedCount +
-        ' 个已填写信道；其余 ' +
-        clearedSlotCount +
-        ' 个槽已在 Flash 中清空为未使用（MR/命名/属性）。请先确认固件与备份。',
+      window.t 
+        ? window.t('writeSuccess', { count: programmedCount, empty: clearedSlotCount })
+        : '已按表格写入 ' + programmedCount + ' 个已填写信道；其余 ' + clearedSlotCount + ' 个槽已在 Flash 中清空为未使用（MR/命名/属性）。请先确认固件与备份。',
       'success'
     );
-    log('正在重启设备以加载新信道数据…', 'info');
+    log(window.t ? window.t('logRebootingDevice') : '正在重启设备以加载新信道数据…', 'info');
     await sendMessage(createMessage(MSG_REBOOT, 0));
     await sleep(500);
-    log('已发送重启指令（设备将自动复位）', 'success');
+    log(window.t ? window.t('logRebootSent') : '已发送重启指令（设备将自动复位）', 'success');
   } catch (e) {
-    log('写频写入失败: ' + e.message, 'error');
+    log(window.t ? window.t('logWritefreqWriteFailed', {msg: e.message}) : '写频写入失败: ' + e.message, 'error');
   } finally {
     isWritefreqBusy = false;
     if (readBtn) readBtn.disabled = false;
@@ -3949,7 +3973,7 @@ function writefreqNormalizeCellCompact(text) {
 function writefreqPowerValToSheetLabel(powerVal) {
   const t = String(powerVal).trim();
   if (t === '') {
-    return '请选择功率';
+    return window.t ? window.t('freqSelectPower') : '请选择功率';
   }
   const n = Number.parseInt(t, 10);
   if (!Number.isFinite(n) || n < 1 || n > 7) {
@@ -4264,7 +4288,7 @@ function writefreqExportSheet() {
   }
   const exportBasename = WRITE_FREQ_EXPORT_FILE_PREFIX + '_channels_export';
   if (typeof XLSX === 'undefined' || !XLSX.utils) {
-    log('SheetJS 未加载，改用 CSV 导出', 'info');
+    log(window.t ? window.t('logSheetJSNotLoaded') : 'SheetJS 未加载，改用 CSV 导出', 'info');
     const lines = [];
     let li = 0;
     for (; li < rows.length; li++) {
@@ -4282,19 +4306,29 @@ function writefreqExportSheet() {
     a.href = URL.createObjectURL(csvBlob);
     a.download = exportBasename + '.csv';
     a.click();
-    log('已导出 CSV（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）', 'success');
+    log(
+      window.t 
+        ? window.t('exportCSVSucc', { count: exportRowCount })
+        : '已导出 CSV（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）',
+      'success'
+    );
     return;
   }
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'MR信道');
   XLSX.writeFile(wb, exportBasename + '.xlsx');
-  log('已导出 Excel（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）', 'success');
+  log(
+    window.t 
+      ? window.t('exportExcelSucc', { count: exportRowCount })
+      : '已导出 Excel（仅已填写接收频率的信道，共 ' + exportRowCount + ' 行）',
+    'success'
+  );
 }
 
 function writefreqImportSheet(rowsAoA) {
   if (!rowsAoA || rowsAoA.length < 2) {
-    log('表格内容为空或缺少表头', 'error');
+    log(window.t ? window.t('logTableEmpty') : '表格内容为空或缺少表头', 'error');
     return;
   }
   const header = rowsAoA[0].map(c => String(c).trim());
@@ -4353,7 +4387,7 @@ function writefreqImportSheet(rowsAoA) {
     const chFirstCell = firstDataRow && firstDataRow[idxCh];
     const chFirst = Number.parseInt(String(chFirstCell).trim(), 10);
     if (!Number.isFinite(chFirst)) {
-      log('首行数据信道号无效', 'error');
+      log(window.t ? window.t('logFirstRowInvalid') : '首行数据信道号无效', 'error');
       return;
     }
     if (chFirst !== 1) {
@@ -4387,7 +4421,7 @@ function writefreqImportSheet(rowsAoA) {
       const chCellRaw = cellStr(idxCh);
       const chNumParsed = Number.parseInt(String(chCellRaw).trim(), 10);
       if (!Number.isFinite(chNumParsed)) {
-        log('第 ' + (di + 1) + ' 行数据：信道号无效', 'error');
+        log(window.t ? window.t('logRowChannelInvalid', {row: di + 1}) : '第 ' + (di + 1) + ' 行数据：信道号无效', 'error');
         return;
       }
       if (chNumParsed < 1 || chNumParsed > WRITE_FREQ_MR_MAX) {
@@ -4404,7 +4438,7 @@ function writefreqImportSheet(rowsAoA) {
       }
     }
     if (destSlot < 0 || destSlot >= WRITE_FREQ_MR_MAX) {
-      log('第 ' + (di + 1) + ' 行数据：信道号映射越界', 'error');
+      log(window.t ? window.t('logRowChannelOutOfBounds', {row: di + 1}) : '第 ' + (di + 1) + ' 行数据：信道号映射越界', 'error');
       return;
     }
     const merged = writefreqEmptyRowFields();
@@ -4536,10 +4570,10 @@ if (writefreqImportBtnEl && writefreqImportFileEl) {
           const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
           writefreqImportSheet(rows);
         } else {
-          log('请先加载 SheetJS 或使用 CSV 导入', 'error');
+          log(window.t ? window.t('logLoadSheetJSFirst') : '请先加载 SheetJS 或使用 CSV 导入', 'error');
         }
       } catch (err) {
-        log('导入失败: ' + err.message, 'error');
+        log(window.t ? window.t('logImportFailed', {msg: err.message}) : '导入失败: ' + err.message, 'error');
       }
     };
     reader.readAsArrayBuffer(file);
@@ -4587,9 +4621,19 @@ if (writefreqTbodyEl) {
   });
 }
 
+// Export writefreq functions globally for lang.js to call on initialization
+window.writefreqRebuildRows = writefreqRebuildRows;
+window.writefreqUpdatePaginationUI = writefreqUpdatePaginationUI;
+
 writefreqRebuildRows();
 
-// ========== 刷机步骤条：仅在内容横向溢出时启用横向滚动（避免“装得下仍出现滚动条”） ==========
+// Listen for language change events to rebuild table with translated placeholders
+window.addEventListener('langchange', function(e) {
+  writefreqRebuildRows();
+  writefreqUpdatePaginationUI();
+});
+
+// ========== 刷机步骤条：仅在内容横向溢出时启用横向滚动（避免"装得下仍出现滚动条"） ==========
 function flashStepsBarApplyOverflowPolicy() {
   const scroll = document.querySelector('.flash-steps-scroll');
   const inner = document.querySelector('.flash-steps-inner');
@@ -4877,21 +4921,21 @@ flashStepsInitFloatingTooltips();
 
   logoUploadBtn.addEventListener('click', async function() {
     if (!logoImageData) {
-      log('请先选择一张图片', 'error');
+      log(window.t ? window.t('logSelectImageFirst') : '请先选择一张图片', 'error');
       return;
     }
     if (!port) {
       try {
         await connect();
       } catch(e) {
-        log('连接失败: ' + e.message, 'error');
+        log(window.t ? window.t('logConnectFailed', {msg: e.message}) : '连接失败: ' + e.message, 'error');
         return;
       }
     }
     try {
       isFlashing = true;
       logoUploadBtn.disabled = true;
-      log('正在上传开机图片...', 'info');
+      log(window.t ? window.t('logUploadingBootLogo') : '正在上传开机图片...', 'info');
 
       const session = await requestDeviceInfoForCalib();
       const ts = session.timestamp;
@@ -4929,14 +4973,14 @@ flashStepsInitFloatingTooltips();
         written += chunkLen;
         updateProgress((written / totalSize) * 100);
         if ((off / SPI_CHUNK_SIZE) % 10 === 0)
-          log('已写入 ' + written + '/' + totalSize + ' bytes', 'info');
+          log(window.t ? window.t('logWrittenBytesProgress', {written: written, total: totalSize}) : '已写入 ' + written + '/' + totalSize + ' bytes', 'info');
         await sleep(50);
       }
 
       updateProgress(100);
-      log('开机图片上传成功！请在菜单「开机画面」中选择「自定义」', 'success');
+      log(window.t ? window.t('logBootLogoUploadSuccess') : '开机图片上传成功！请在菜单「开机画面」中选择「自定义」', 'success');
     } catch(e) {
-      log('上传失败: ' + e.message, 'error');
+      log(window.t ? window.t('logUploadFailed', {msg: e.message}) : '上传失败: ' + e.message, 'error');
     } finally {
       isFlashing = false;
       logoUploadBtn.disabled = !logoImageData;
@@ -4948,13 +4992,13 @@ flashStepsInitFloatingTooltips();
       try {
         await connect();
       } catch(e) {
-        log('连接失败: ' + e.message, 'error');
+        log(window.t ? window.t('logConnectFailed', {msg: e.message}) : '连接失败: ' + e.message, 'error');
         return;
       }
     }
     try {
       logoReadBtn.disabled = true;
-      log('正在读取开机图片...', 'info');
+      log(window.t ? window.t('logReadingBootLogo') : '正在读取开机图片...', 'info');
 
       const session = await requestDeviceInfoForCalib();
       const ts = session.timestamp;
@@ -4981,9 +5025,9 @@ flashStepsInitFloatingTooltips();
       const dataUrl = bitmapToPngDataUrl(bitmap);
       logoDownloadLink.href = dataUrl;
       logoDownload.style.display = 'block';
-      log('开机图片读取成功', 'success');
+      log(window.t ? window.t('logBootLogoReadSuccess') : '开机图片读取成功', 'success');
     } catch(e) {
-      log('读取失败: ' + e.message, 'error');
+      log(window.t ? window.t('logReadFailed', {msg: e.message}) : '读取失败: ' + e.message, 'error');
     } finally {
       logoReadBtn.disabled = false;
     }

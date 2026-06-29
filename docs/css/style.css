@@ -1036,6 +1036,47 @@ html.theme-light .theme-toggle__icon--moon {
   position: static;
 }
 
+/* Language switcher button */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 42px;
+  margin-bottom: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--shadow-kicker);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  font-size: 0.9em;
+  font-weight: 500;
+  width: auto;
+}
+
+.lang-switch:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.lang-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lang-switch__icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.lang-switch__text {
+  white-space: nowrap;
+}
+
 /* 全局轻提示（替代 alert），固定在右上角 */
 .app-toast-root {
   position: fixed;
