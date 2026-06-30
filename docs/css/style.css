@@ -1204,6 +1204,7 @@ html.theme-light .theme-toggle__icon--moon {
 .flash-device-warning-modal__backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: rgba(1, 4, 9, 0.72);
   backdrop-filter: blur(4px);
 }
@@ -1278,6 +1279,7 @@ html.theme-light .flash-device-warning-modal__backdrop {
 .calib-check-modal__backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: rgba(1, 4, 9, 0.72);
   backdrop-filter: blur(4px);
 }
@@ -1972,6 +1974,7 @@ html.theme-light .calib-check-modal__backdrop {
 .coffee-modal__backdrop {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   cursor: pointer;
@@ -1979,6 +1982,7 @@ html.theme-light .calib-check-modal__backdrop {
 
 .coffee-modal__panel {
   position: relative;
+  z-index: 1;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-radius: 16px;
