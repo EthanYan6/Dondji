@@ -265,17 +265,21 @@ extern const uint8_t     gMemNameSymbolCharsetCount;
 
 #ifdef ENABLE_CHINESE
 // Pinyin input state for CN channel name
-#define PINYIN_MAX_LEN      8
+#define PINYIN_MAX_LEN      6
 #define CN_CANDIDATE_MAX    6
+#define PINYIN_CAND_MAX     6  // max pinyin candidates to display
 extern char              gPinyinBuffer[PINYIN_MAX_LEN + 1];
 extern uint8_t           gPinyinLen;
-extern uint8_t           gPinyinKeyIndex[PINYIN_MAX_LEN]; // which key was pressed
 extern uint16_t          gCNCandidates[CN_CANDIDATE_MAX];
 extern uint8_t           gCNCandidateCount;
 extern uint8_t           gCNCandidateOffset;
 extern uint8_t           gCNCandidateTotal;
-extern uint8_t           gPinyinTimeout_500ms; // multi-tap timeout counter
-extern uint8_t           gPinyinLookupNoMatch; // last MENU lookup returned 0 Hanzi
+// New: digit-based pinyin candidate selection
+extern char              gPinyinDigitSeq[PINYIN_MAX_LEN + 1];  // digit key sequence e.g. "24"
+extern uint8_t           gPinyinDigitLen;
+extern char              gPinyinCandidates[PINYIN_CAND_MAX][PINYIN_MAX_LEN + 1];  // candidate pinyin strings
+extern uint8_t           gPinyinCandidateCount;
+extern uint8_t           gPinyinCandidateIndex;  // currently selected candidate
 #endif
 
 void UI_DisplayMenu(void);

@@ -1051,7 +1051,6 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
 {
     const uint8_t y_mode = 20u;
     const uint8_t y_name = 28u;
-    const uint8_t y_pinyin = (uint8_t)(y_name + 4u);
     const uint8_t y_strip = (uint8_t)(y_name + 22u);
     const size_t max_b = (size_t)CHANNEL_NAME_MAX_BYTES;
 
@@ -1070,15 +1069,8 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
             UI_PrintStringSmallAtPixel(",", (uint8_t)(sub_val_x2 - 6), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
             break;
         default:
-            if (gPinyinLen > 0 && gCNCandidateCount == 0)
-            {
-                if (gUiLanguage == UI_LANGUAGE_CN)
-                    UI_PrintStringSmallAtPixel("\xe9\x80\x89\xe6\x8b\xa9", (uint8_t)(sub_val_x2 - 24), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 11u), 0u);
-                else
-                    UI_PrintStringSmallAtPixel("Sel.", (uint8_t)(sub_val_x2 - 18), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
-            }
-            else
-                UI_PrintStringSmallAtPixel("PY", (uint8_t)(sub_val_x2 - 12), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
+            // Show "PY" mode indicator, no longer showing pinyin at right side
+            UI_PrintStringSmallAtPixel("PY", (uint8_t)(sub_val_x2 - 12), (uint8_t)sub_val_x2, y_mode, (uint8_t)(y_mode + 7u), 0u);
             break;
     }
 
@@ -1195,17 +1187,45 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
         }
     }
 
-    if (gPinyinLen > 0)
+    // Display digit sequence at right side of channel name (pinyin input mode)
+    if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN && gPinyinDigitLen > 0)
     {
-        char pinyin_display[PINYIN_MAX_LEN + 2];
-        memcpy(pinyin_display, gPinyinBuffer, gPinyinLen);
-        pinyin_display[gPinyinLen] = '_';
-        pinyin_display[gPinyinLen + 1] = 0;
-        UI_PrintStringSmallAtPixel(pinyin_display, (uint8_t)(sub_val_x2 - (gPinyinLen + 1) * 6u), (uint8_t)sub_val_x2, y_pinyin,
-                                     (uint8_t)(y_pinyin + 7u), 0u);
+        // Show pressed digit keys at right side (moved left 3 pixels)
+        char digits[7];
+        uint8_t i;
+        for (i = 0; i < gPinyinDigitLen && i < 6; i++)
+        {
+            digits[i] = gPinyinDigitSeq[i];
+        }
+        digits[i] = 0;
+        UI_PrintStringSmallAtPixel(digits, (uint8_t)(sub_val_x2 - 33), (uint8_t)(sub_val_x2 - 3), y_name, (uint8_t)(y_name + 11u), 0u);
     }
 
-    if (gCNCandidateCount > 0)
+    // Display pinyin candidates at bottom strip (when in pinyin mode with candidates)
+    if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN && gPinyinCandidateCount > 0)
+    {
+        const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+        const unsigned cand_count = gPinyinCandidateCount;
+        uint8_t i;
+
+        for (i = 0; i < cand_count; i++)
+        {
+            const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * (strip_w / cand_count));
+            // Draw selection indicator for selected candidate
+            if (i == gPinyinCandidateIndex)
+            {
+                // Draw inverse background for selected (move up 10 pixels)
+                UI_PrintStringSmallAtPixelCnInverse(gPinyinCandidates[i], cx, (uint8_t)(cx + strip_w / cand_count),
+                                                     (uint8_t)(y_strip - 10u), (uint8_t)(y_strip + 1u));
+            }
+            else
+            {
+                UI_PrintStringSmallAtPixel(gPinyinCandidates[i], cx, (uint8_t)(cx + strip_w / cand_count),
+                                            y_strip, (uint8_t)(y_strip + 11u), 0u);
+            }
+        }
+    }
+    else if (gCNCandidateCount > 0)
     {
         const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
         const unsigned slot_w = strip_w / 6u;
@@ -1257,31 +1277,7 @@ static void UI_MENU_DrawMemNamePinyinEdit(unsigned int sub_val_x1, unsigned int 
 
     if (edit_index < (int)CHANNEL_NAME_MAX_BYTES)
     {
-        if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN)
-        {
-            const bool cn = (gUiLanguage == UI_LANGUAGE_CN);
-            if (gCNCandidateCount == 0 && gMemNameCandidateCount == 0)
-            {
-                const char *hint_py;
-                if (gPinyinLen > 0)
-                {
-                    if (gPinyinLookupNoMatch != 0)
-                        hint_py = cn ? "\xe6\x9c\xaa\xe6\x9f\xa5\xe5\x88\xb0 0\xe5\x88\xa0" : "No match 0 del";
-                    else
-                        hint_py = cn ? "MENU\xe7\xa1\xae\xe8\xae\xa4 0\xe5\x88\xa0" : "MENU OK 0 del";
-                }
-                else
-                    hint_py = cn ? "2-9\xe8\xbe\x93\xe5\x85\xa5 #\xe5\x88\x87\xe6\x8d\xa2\xe6\xa8\xa1\xe5\xbc\x8f" : "2-9 input # mode";
-                UI_PrintStringSmallAtPixel(hint_py, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_strip, (uint8_t)(y_strip + 7u), 0u);
-            }
-        }
-        else if (gPinyinLen == 0 && gCNCandidateCount == 0 && gMemNameCandidateCount == 0 &&
-                 gMemNameInputMode != MEM_NAME_INPUT_SYMBOL)
-        {
-            UI_PrintStringSmallAtPixel((gUiLanguage == UI_LANGUAGE_CN) ? "#\xe5\x88\x87\xe6\x8d\xa2 EXIT\xe5\x9b\x9e\xe9\x80\x80"
-                                                                       : "#switch EXIT back",
-                                       (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, y_strip, (uint8_t)(y_strip + 7u), 0u);
-        }
+        // No hint text for pinyin input - user learns through usage
     }
 }
 #endif /* ENABLE_CHINESE */
