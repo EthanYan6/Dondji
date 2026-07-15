@@ -8,7 +8,7 @@
 python App/tools/gen_cn_font.py
 ```
 
-会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **43528** 字节含版本字节，**1392** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
+会更新 `App/cn_font_data.h` 与 `docs/font/cn_font.bin`（当前约 **44132** 字节含版本字节，**1412** 个汉字字形）；运行脚本后会同步 **`docs/fonts/cn_font.bin`**。修改字表后请同步更新 `App/settings.h` 中与 `cn_font_data.h` 一致的 `CN_FONT_*` 常量（详见 `docs/add_cn_char.md`）；Web 刷字库页 `docs/js/flash.js` 中的 `CN_FONT_*`（含 `VERSION_OFFSET`）也需与头文件一致。
 
 ## 近期补充字符
 
@@ -39,5 +39,6 @@ python App/tools/gen_cn_font.py
 | 锋、棱、世、辰 | 信道命名 / UI 缺字补全 |
 | 效、军、寒、见、男、杰、诚、玲、焕、官、雁、峨、栎 | 信道命名 / UI 缺字补全 |
 | 勤、知、萨、麋、混、研、采、管、森、煲、离、总、游、侠、埔、融、媒、圩、锚、娇 | 信道命名 / UI 缺字补全（圩为多音字：wéi/xū） |
+| 额、彦、淖、邻、氯、铺、告、舶、女、职、童、区、汕、头、濠、穿、遇、险、馨、澄、玺、鸟、蕲、产 | 信道命名 / UI 缺字补全 |
 
 字模来源：`App/bdf/wenquanyi_9pt.bdf`（文泉驿点阵宋体）。

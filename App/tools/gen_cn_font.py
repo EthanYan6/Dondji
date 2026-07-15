@@ -362,6 +362,12 @@ PINYIN_MAP = {
     '研': 'yan', '采': 'cai', '管': 'guan', '森': 'sen', '煲': 'bao',
     '离': 'li', '总': 'zong', '游': 'you', '侠': 'xia', '埔': 'pu',
     '融': 'rong', '媒': 'mei', '圩': 'wei,xu', '锚': 'mao', '娇': 'jiao',
+    # 新增汉字 2025-01
+    '额': 'e', '彦': 'yan', '淖': 'nao', '邻': 'lin', '氯': 'lv',
+    '铺': 'pu', '告': 'gao', '舶': 'bo', '女': 'nv', '职': 'zhi',
+    '童': 'tong', '区': 'qu', '汕': 'shan', '头': 'tou', '濠': 'hao',
+    '穿': 'chuan', '遇': 'yu', '险': 'xian', '馨': 'xin', '澄': 'cheng',
+    '玺': 'xi', '鸟': 'niao', '蕲': 'qi', '产': 'chan',
 }
 
 # Remove duplicate keys (keep first occurrence), support comma-separated multi-pinyin

@@ -92,7 +92,7 @@
       'flashFirmware': '刷入固件',
       
       // Font tab
-      'fontDesc1': '将中文字库刷入 SPI Flash，支持 1392 个中文字符（省份、城市、姓氏、全国中继常用字等）。如果最新版本更新日志中，字库有变化，就需要重新刷入字库。',
+      'fontDesc1': '将中文字库刷入 SPI Flash，支持 1412 个中文字符（省份、城市、姓氏、全国中继常用字等）。如果最新版本更新日志中，字库有变化，就需要重新刷入字库。',
       'fontWarning1': '⚠️ 仅 V4.5.3 及以后支持中文信道的固件需要刷入字库。',
       'fontWarning2': '⚠️ 请先正常开机进入使用界面后再连接 USB 刷字库（与备份/恢复校准相同，无需 BOOT 模式）。',
       'fontFile': '字库文件 (.bin)',
@@ -512,7 +512,7 @@
       'flashFirmware': 'Flash Firmware',
       
       // Font tab
-      'fontDesc1': 'Flash Chinese font to SPI Flash, supports 1392 Chinese characters (provinces, cities, surnames, relay common characters etc.). Re-flash if font changes in latest version update log.',
+      'fontDesc1': 'Flash Chinese font to SPI Flash, supports 1412 Chinese characters (provinces, cities, surnames, relay common characters etc.). Re-flash if font changes in latest version update log.',
       'fontWarning1': '⚠️ Only firmware V4.5.3+ supporting Chinese channels needs font flash.',
       'fontWarning2': '⚠️ Please enter normal usage interface first before connecting USB to flash font (same as backup/restore calibration, no BOOT mode needed).',
       'fontFile': 'Font file (.bin)',
