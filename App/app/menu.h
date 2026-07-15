@@ -47,6 +47,10 @@ void MENU_UpdateMenuFilterForIcon(uint8_t icon_index);
 void MENU_RefreshIconFilterAfterRxModeChange(void);
 void MENU_RecordSelectionBeforeLeaveMenuToMain(void);
 
+#ifdef ENABLE_CHINESE
+void MENU_EnsurePinyinPageVisible(void);
+#endif
+
 void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 
 #endif

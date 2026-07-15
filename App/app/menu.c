@@ -53,7 +53,7 @@ bool gMenuMainPageActive;
 bool gMenuUseMainOnlyStatus;
 uint8_t gMenuMainPageIconIndex;
 static uint8_t gMenuFilteredCount;
-static uint8_t gMenuFilteredMap[200];
+static uint8_t gMenuFilteredMap[80];
 static bool gMenuMainPageLastValid;
 static uint8_t gMenuMainPageLastIconIndex;
 static bool gMenuSecondPageLastValid[8];
@@ -79,6 +79,7 @@ uint8_t  gPinyinDigitLen;
 char     gPinyinCandidates[PINYIN_CAND_MAX][PINYIN_MAX_LEN + 1];
 uint8_t  gPinyinCandidateCount;
 uint8_t  gPinyinCandidateIndex;
+uint8_t  gPinyinCandidateOffset;
 
 static void MENU_PinyinSearch(void)
 {
@@ -113,6 +114,7 @@ static void MENU_PinyinReset(void)
     gPinyinDigitSeq[0] = 0;
     gPinyinCandidateCount = 0;
     gPinyinCandidateIndex = 0;
+    gPinyinCandidateOffset = 0;
 }
 
 // Forward declaration
@@ -157,6 +159,7 @@ static void MENU_BuildPinyinCandidatesFromDigits(void)
 {
     gPinyinCandidateCount = 0;
     gPinyinCandidateIndex = 0;
+    gPinyinCandidateOffset = 0;
 
     if (gPinyinDigitLen == 0)
         return;
@@ -191,6 +194,23 @@ static void MENU_BuildPinyinCandidatesFromDigits(void)
         offset++;
         offset += char_count * 2;
     }
+}
+
+void MENU_EnsurePinyinPageVisible(void)
+{
+    uint8_t idx = gPinyinCandidateIndex;
+    uint8_t offset, x = 0;
+
+    if (idx >= gPinyinCandidateCount) idx = gPinyinCandidateCount ? gPinyinCandidateCount - 1u : 0;
+    gPinyinCandidateIndex = idx;
+
+    for (offset = idx; offset > 0; offset--)
+    {
+        uint8_t py_w = (uint8_t)strlen(gPinyinCandidates[offset - 1]) * 6u + 6u;
+        if (x + py_w > 126u) break;
+        x += py_w;
+    }
+    gPinyinCandidateOffset = offset;
 }
 
 #endif
@@ -809,7 +829,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 
         case MENU_VOL:
 #ifdef ENABLE_FEAT_F4HWN
-            *pMax = 6;
+            *pMax = 5;
 #else
             *pMax = 0;
 #endif
@@ -2582,6 +2602,7 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                         gPinyinDigitSeq[0] = 0;
                         gPinyinCandidateCount = 0;
                         gPinyinCandidateIndex = 0;
+                        gPinyinCandidateOffset = 0;
                         gCNCandidateCount = 0;
                         gCNCandidateOffset = 0;
                         gCNCandidateTotal = 0;
@@ -2919,6 +2940,8 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
                 MENU_PinyinSearch();
                 // Keep digit sequence for display, but clear pinyin candidates
                 gPinyinCandidateCount = 0;
+                gPinyinCandidateIndex = 0;
+                gPinyinCandidateOffset = 0;
                 gRequestDisplayScreen = DISPLAY_MENU;
                 return;
             }
@@ -2937,6 +2960,8 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
                 gPinyinDigitLen = 0;
                 gPinyinDigitSeq[0] = 0;
                 gPinyinCandidateCount = 0;
+                gPinyinCandidateIndex = 0;
+                gPinyinCandidateOffset = 0;
                 gRequestDisplayScreen = DISPLAY_MENU;
                 return;
             }
@@ -3154,13 +3179,14 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
     if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gUiLanguage == UI_LANGUAGE_CN && gIsInSubMenu &&
         edit_index >= 0)
     {
-        // Select pinyin candidate with UP/DOWN keys (for K5 mode or when using UP/DOWN for nav)
+        // Select or page through pinyin candidates with UP/DOWN keys (for K5 mode or when using UP/DOWN for nav)
         // Disabled when showing hanzi candidates - use number keys to select
         if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN && gPinyinCandidateCount > 0 &&
             gCNCandidateCount == 0 && bKeyPressed && Direction != 0)
         {
             gPinyinCandidateIndex = (uint8_t)NUMBER_AddWithWraparound(
                 gPinyinCandidateIndex, Direction > 0 ? 1 : -1, 0, gPinyinCandidateCount - 1u);
+            MENU_EnsurePinyinPageVisible();
             gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
             gRequestDisplayScreen = DISPLAY_MENU;
             return;
@@ -3363,7 +3389,6 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 break;
             }
 #ifdef ENABLE_CHINESE
-            // Select pinyin candidate with side keys
             // When showing hanzi candidates, use side keys to page through them
             if (UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME && gIsInSubMenu && edit_index >= 0 &&
                 gUiLanguage == UI_LANGUAGE_CN && gMemNameInputMode == MEM_NAME_INPUT_PINYIN &&
@@ -3383,21 +3408,6 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                     const uint8_t new_page = (uint8_t)NUMBER_AddWithWraparound(cur_page, delta, 0, pages - 1u);
                     gCNCandidateOffset = (uint8_t)(new_page * per_page);
                     MENU_PinyinSearch();
-                    gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-                    gRequestDisplayScreen = DISPLAY_MENU;
-                    break;
-                }
-                // Select pinyin candidate
-                if (gPinyinCandidateCount > 0)
-                {
-                    int8_t delta = (Key == KEY_SIDE2) ? 1 : -1;
-                    // In K1 mode (SET_NAV=0), reverse side key direction for consistency
-                    if (!gEeprom.SET_NAV)
-                    {
-                        delta = -delta;
-                    }
-                    gPinyinCandidateIndex = (uint8_t)NUMBER_AddWithWraparound(
-                        gPinyinCandidateIndex, delta, 0, gPinyinCandidateCount - 1u);
                     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
                     gRequestDisplayScreen = DISPLAY_MENU;
                     break;

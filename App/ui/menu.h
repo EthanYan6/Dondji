@@ -280,6 +280,7 @@ extern uint8_t           gPinyinDigitLen;
 extern char              gPinyinCandidates[PINYIN_CAND_MAX][PINYIN_MAX_LEN + 1];  // candidate pinyin strings
 extern uint8_t           gPinyinCandidateCount;
 extern uint8_t           gPinyinCandidateIndex;  // currently selected candidate
+extern uint8_t           gPinyinCandidateOffset; // current page offset for pinyin candidates
 #endif
 
 void UI_DisplayMenu(void);
