@@ -1216,8 +1216,8 @@ static void DrawSpectrumEnhanced(void)
     uint8_t prevX = SpecIdxToXWithBars(0, bars);  /* Use cached bars value */
     uint8_t slot0 = GetHistorySlot(0);
     uint8_t prevY = Rssi2Y(rssiHistory[slot0]);
-    /* If slot 0 has no data (rssi=0), use minimum Y (bottom of spectrum) */
-    if (rssiHistory[slot0] == 0)
+    /* 0 = empty, 0xFFFF = blacklisted (uint16 wrap): pin to floor */
+    if ((uint16_t)(rssiHistory[slot0] + 1) <= 1u)
         prevY = SHADE_MAX_Y;
 
     for (uint16_t i = 1; i < displayBars; i++) {
@@ -1229,8 +1229,8 @@ static void DrawSpectrumEnhanced(void)
         uint16_t rssiVal = rssiHistory[slot];
         uint8_t currY;
         
-        /* If slot has no data (rssi=0), use bottom of spectrum */
-        if (rssiVal == 0)
+        /* 0 = empty, 0xFFFF = blacklisted (uint16 wrap): pin to floor */
+        if ((uint16_t)(rssiVal + 1) <= 1u)
             currY = SHADE_MAX_Y;
         else
             currY = Rssi2Y(rssiVal);
