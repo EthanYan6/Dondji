@@ -1583,7 +1583,8 @@ void SETTINGS_InitCNFont(void)
 int16_t SETTINGS_CNCharToIndex(uint16_t unicode)
 {
     // Search the Unicode index table in SPI Flash
-    // Each entry: uint32_t = (unicode:16 | index:16)
+    // Each entry: uint32_t = (unicode:16 | char_index:16)
+    // char_index is character position (0,1,2...), NOT bitmap offset
     uint32_t entry;
     for (uint16_t i = 0; i < CN_FONT_CHAR_COUNT; i++)
     {
@@ -1599,9 +1600,10 @@ int16_t SETTINGS_CNCharToIndex(uint16_t unicode)
 
 void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap)
 {
-    // charIndex is the uint16_t array offset from the index table (0, 12, 24, ...)
-    // Each uint16_t is 2 bytes, so byte offset = charIndex * 2
-    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + (charIndex * 2u),
+    // charIndex is the character index (0, 1, 2, ...) from the index table
+    // Each character has 12 rows, so uint16_t offset = charIndex * 12
+    // Byte offset = (charIndex * 12) * 2 = charIndex * 24
+    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + (charIndex * 24u),
                        (uint8_t *)bitmap, 24);
 }
 

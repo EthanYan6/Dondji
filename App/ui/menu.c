@@ -223,47 +223,6 @@ static uint8_t UI_MENU_GetRowPixelStart(const uint8_t row)
     return pixel_start;
 }
 
-static void UI_MENU_FormatBuildTimeBeijing(char *time_output, const size_t output_size)
-{
-    if (time_output == NULL || output_size < 18u)
-    {
-        return;
-    }
-
-    if (BuildTime[0] < '0' || BuildTime[0] > '9' ||
-        BuildTime[1] < '0' || BuildTime[1] > '9' ||
-        BuildTime[2] != ':' ||
-        BuildTime[3] < '0' || BuildTime[3] > '9' ||
-        BuildTime[4] < '0' || BuildTime[4] > '9' ||
-        BuildTime[5] != ':' ||
-        BuildTime[6] < '0' || BuildTime[6] > '9' ||
-        BuildTime[7] < '0' || BuildTime[7] > '9')
-    {
-        strcpy(time_output, BuildTime);
-        return;
-    }
-
-    time_output[0] = 'U';
-    time_output[1] = 'T';
-    time_output[2] = 'C';
-    time_output[3] = ' ';
-    time_output[4] = BuildTime[0];
-    time_output[5] = BuildTime[1];
-    time_output[6] = ':';
-    time_output[7] = BuildTime[3];
-    time_output[8] = BuildTime[4];
-    time_output[9] = ':';
-    time_output[10] = BuildTime[6];
-    time_output[11] = BuildTime[7];
-    time_output[12] = ' ';
-    time_output[13] = '+';
-    time_output[14] = '8';
-    time_output[15] = ':';
-    time_output[16] = '0';
-    time_output[17] = '0';
-    time_output[18] = '\0';
-}
-
 static void UI_MENU_FormatBuildDateSlash(char *date_output, const size_t output_size)
 {
     int month_number = 0;
@@ -2728,14 +2687,10 @@ void UI_DisplayMenu(void)
                 uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
-                uint8_t info_line3_y_start = 0u;
-                uint8_t info_line3_y_end = 0u;
                 uint8_t info_label_print_y_start = 0u;
                 uint8_t info_label_print_y_end = 0u;
-                char beijing_build_time[20];
                 char build_date_slash[16];
 
-                UI_MENU_FormatBuildTimeBeijing(beijing_build_time, sizeof(beijing_build_time));
                 UI_MENU_FormatBuildDateSlash(build_date_slash, sizeof(build_date_slash));
 
                 info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
@@ -2759,8 +2714,6 @@ void UI_DisplayMenu(void)
                 }
                 info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
                 info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
-                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
-                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
                 info_label_print_y_start = info_label_y_start;
                 info_label_print_y_end = info_label_y_end;
 
@@ -2779,7 +2732,6 @@ void UI_DisplayMenu(void)
 
                 UI_PrintStringSmallAtPixel(SUBV("BUILD", "打包时间"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
                 UI_PrintStringSmallAtPixel(build_date_slash, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
-                UI_PrintStringSmallAtPixel(beijing_build_time, menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
                 if (level2_value_down_offset_pixels > 0u)
                 {
                     uint8_t build_commit_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(5));

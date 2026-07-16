@@ -430,12 +430,14 @@ def generate_header(char_list, bdf_chars, output_file):
 
     # Generate font bitmaps
     font_data = []
-    char_map = []  # [(unicode, index), ...]
+    char_map = []  # [(unicode, char_index), ...] - char_index is position (0,1,2...), NOT bitmap offset
 
-    for ch in valid_chars:
+    for char_index, ch in enumerate(valid_chars):
         code = ord(ch)
         bitmap = bdf_chars[code]
-        char_map.append((code, len(font_data)))
+        # Store char_index (0,1,2...) instead of bitmap offset (0,12,24...)
+        # This avoids overflow when bitmap_idx > 65535 for >5461 chars
+        char_map.append((code, char_index))
         rows = bitmap_to_uint16(bitmap)
         font_data.extend(rows)
 
@@ -548,10 +550,11 @@ def generate_bin(char_list, bdf_chars, output_file):
 
     font_data = []
     char_map = []
-    for ch in valid_chars:
+    for char_index, ch in enumerate(valid_chars):
         code = ord(ch)
         bitmap = bdf_chars[code]
-        char_map.append((code, len(font_data)))
+        # Store char_index (0,1,2...) instead of bitmap offset
+        char_map.append((code, char_index))
         font_data.extend(bitmap_to_uint16(bitmap))
 
     pinyin_table = build_pinyin_table(valid_chars)
