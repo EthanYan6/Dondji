@@ -338,10 +338,10 @@ void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO,
 #define CN_FONT_BITMAP_SIZE     162384u
 #define CN_FONT_INDEX_SIZE      27064u
 #define CN_FONT_PY_OFFSET       189448u
-#define CN_FONT_PY_COUNT        401u
+#define CN_FONT_PY_COUNT        402u
 #define CN_FONT_VERSION         2u
-#define CN_FONT_VERSION_OFFSET  205087u
-#define CN_FONT_PY_TOTAL_SIZE   15639u
+#define CN_FONT_VERSION_OFFSET  205366u
+#define CN_FONT_PY_TOTAL_SIZE   15918u
 #endif
 
 #ifdef ENABLE_CHINESE

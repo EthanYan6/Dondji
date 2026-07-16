@@ -175,7 +175,7 @@ const OBFUS_TBL = new Uint8Array([
 
 const CN_FONT_FLASH_BASE  = 0x024000;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
-const CN_FONT_VERSION_OFFSET = 205087;
+const CN_FONT_VERSION_OFFSET = 205366;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
 const CN_FONT_BITMAP_SIZE = 162384;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
