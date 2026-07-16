@@ -113,6 +113,12 @@ static void CheckForIncoming(void)
     if (!g_SquelchLost)
         return;          // squelch is closed
 
+#ifdef ENABLE_FMRADIO
+    // FM扫描时不处理外部信号，只有正常收听FM时才接收信号退出
+    if (gFmRadioMode && gFM_ScanState != FM_SCAN_OFF)
+        return;
+#endif
+
     // squelch is open
 
     if (gScanStateDir == SCAN_OFF)
