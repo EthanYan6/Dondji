@@ -173,7 +173,7 @@ const OBFUS_TBL = new Uint8Array([
   0x21, 0x35, 0xd5, 0x40, 0x13, 0x03, 0xe9, 0x80
 ]);
 
-const CN_FONT_FLASH_BASE  = 0x010200;
+const CN_FONT_FLASH_BASE  = 0x024000;
 /** 与 App/settings.h、App/cn_font_data.h 中 CN_FONT_VERSION_OFFSET 一致（gen_cn_font.py 生成） */
 const CN_FONT_VERSION_OFFSET = 205087;
 /** 与 App/cn_font_data.h 一致；字库重生成后须同步 */
@@ -1103,9 +1103,9 @@ $('fontFlashBtn').addEventListener('click', async () => {
     await sendMessage(readMsg);
     const readResp = await waitForMsg(MSG_SPI_FLASH_READ_RESP, 100);
     if (readResp) {
-      const probe = new DataView(readResp.data.buffer);
-      const w0 = probe.getUint16(8, true);
-      const w1 = probe.getUint16(10, true);
+      const probe = new DataView(readResp.data.buffer, readResp.data.byteOffset, readResp.data.byteLength);
+      const w0 = probe.getUint16(6, true);
+      const w1 = probe.getUint16(8, true);
       if (w0 === 0x1100 && w1 === 0x2100)
         log(window.t ? window.t('logVerifyPass') : '验证通过：字库数据正确', 'success');
       else
@@ -1835,6 +1835,7 @@ const WRITE_FREQ_SPI_READ_RETRIES = 5;
 const WRITE_FREQ_SPI_WRITE_WAIT_ITERATIONS = 1500;
 
 const WRITE_FREQ_ADDR_EN_BASE = 0x004000;
+/** 旧中文名区；字库已迁至 0x024000，与该区不再重叠。写频仍只写统一名区 0x004000。 */
 const WRITE_FREQ_ADDR_CN_BASE = 0x020000;
 /** 与 misc.c FLASH_CHANNEL_ATTR_BASE 一致；每信道 2 字节，擦除态 0xFFFF 表示未使用 */
 const WRITE_FREQ_ATTR_BASE = 0x008000;
@@ -3851,7 +3852,6 @@ async function writefreqWriteToDevice() {
       const rxTrimmedWrite = writefreqSafeRxTrim(fields);
       const baseAddr = chIndex0 * 16;
       const enAddr = WRITE_FREQ_ADDR_EN_BASE + chIndex0 * 16;
-      const cnAddr = WRITE_FREQ_ADDR_CN_BASE + chIndex0 * 16;
       const attrAddr = WRITE_FREQ_ATTR_BASE + chIndex0 * 2;
       if (rxTrimmedWrite === '') {
         const erasedMain = writefreqErasedMrBlock16();
@@ -3864,11 +3864,7 @@ async function writefreqWriteToDevice() {
         if (!enClearOk) {
           throw new Error('覆盖写入清空命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
         }
-        const cnBufClear = writefreqLegacyCnSlotCleared16();
-        const cnClearOk = await spiFlashWriteChunk(sessionTs, cnAddr, cnBufClear);
-        if (!cnClearOk) {
-          throw new Error('覆盖写入清空旧中文名区失败 @ CH ' + (chIndex0 + 1));
-        }
+        /* 旧中文名区 0x020000 与字库位图重叠，禁止再擦写该区 */
         const attrEraseBuf = new Uint8Array([0xff, 0xff]);
         const attrEraseOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrEraseBuf);
         if (!attrEraseOk) {
@@ -3922,11 +3918,7 @@ async function writefreqWriteToDevice() {
       if (!enOk) {
         throw new Error('写入命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
       }
-      const cnBuf = writefreqLegacyCnSlotCleared16();
-      const cnOk = await spiFlashWriteChunk(sessionTs, cnAddr, cnBuf);
-      if (!cnOk) {
-        throw new Error('写入旧中文名区（清除）失败 @ CH ' + (chIndex0 + 1));
-      }
+      /* 旧中文名区 0x020000 与字库位图重叠，禁止写入/清除，否则会破坏字形 */
       const attrExisting = await spiFlashReadChunk(sessionTs, attrAddr, 2);
       const attrValMerged = writefreqBuildAttrUint16ForProgram(attrExisting, rxStored, scanlistVal);
       const attrPayload = writefreqUint16ToLeBytes(attrValMerged);

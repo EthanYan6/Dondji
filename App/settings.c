@@ -1561,39 +1561,75 @@ bool SETTINGS_ChannelNameHasCjkUtf8(const char *s)
 }
 
 // ── CN Font SPI Flash functions ──
-// Font data is written to SPI Flash at CN_FONT_FLASH_BASE (0x010200)
+// Font data is written to SPI Flash at CN_FONT_FLASH_BASE (0x024000)
 // Layout: [bitmaps][unicode_index][pinyin_table]
 
 void SETTINGS_InitCNFont(void)
 {
     // Font data is written to SPI Flash via web tool (USB SPI Flash write command).
-    // On boot, just verify the font is valid. If not, Chinese chars will show as blank.
+    // On boot, verify the font is valid and matches firmware constants.
+    // If not, Chinese chars will show as blank/black boxes.
     uint8_t ver;
     uint16_t probe[2];
+
+    // Check version byte
     PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_VERSION_OFFSET, &ver, 1);
+    if (ver != CN_FONT_VERSION)
+        return;  // Version mismatch
+
+    // Check header probe values (first two character bitmaps)
     PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE, (uint8_t *)probe, 4);
+    if (probe[0] != 0x1100 || probe[1] != 0x2100)
+        return;  // Header probe mismatch
 
-    if (ver == CN_FONT_VERSION && probe[0] == 0x1100 && probe[1] == 0x2100)
-        return;
+    // Verify critical constants by checking known data points
+    // Check that index table entry for '的' (U+7684, first char in font) exists at correct position
+    // The index table is sorted by Unicode, so U+7684 may not be at position 0
+    // Instead, verify by reading total character count marker stored in font
 
-    // Font not valid - will be written via web tool
-    // Chinese channel names will not display until font is flashed
+    // Read character count from font (stored after bitmaps, before index table)
+    // Actually, we verify by checking a known character index entry
+    // Read first entry of index table to verify it starts with valid Unicode
+    uint32_t first_entry;
+    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE, (uint8_t *)&first_entry, 4);
+
+    // The index table is sorted by Unicode, so first entry should have smallest Unicode
+    // For our font, first entry Unicode should be <= 0x4E00 (CJK unified)
+    uint16_t first_unicode = (uint16_t)(first_entry >> 16);
+    if (first_unicode < 0x4E00 || first_unicode > 0x9FFF)
+        return;  // Index table offset seems wrong
+
+    // Font validation passed
 }
 
 int16_t SETTINGS_CNCharToIndex(uint16_t unicode)
 {
-    // Search the Unicode index table in SPI Flash
+    // Binary search the Unicode index table in SPI Flash
     // Each entry: uint32_t = (unicode:16 | char_index:16)
-    // char_index is character position (0,1,2...), NOT bitmap offset
-    uint32_t entry;
-    for (uint16_t i = 0; i < CN_FONT_CHAR_COUNT; i++)
+    // Index table is sorted by unicode, so we can use binary search
+    uint16_t lo = 0;
+    uint16_t hi = CN_FONT_CHAR_COUNT;
+
+    while (lo < hi)
     {
-        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (i * 4),
+        uint16_t mid = (lo + hi) / 2;
+        uint32_t entry;
+        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (mid * 4),
                            (uint8_t *)&entry, 4);
         uint16_t stored_unicode = (uint16_t)(entry >> 16);
-        uint16_t stored_index = (uint16_t)(entry & 0xFFFF);
+
         if (stored_unicode == unicode)
-            return (int16_t)stored_index;
+        {
+            return (int16_t)(entry & 0xFFFF);
+        }
+        else if (stored_unicode < unicode)
+        {
+            lo = mid + 1;
+        }
+        else
+        {
+            hi = mid;
+        }
     }
     return -1;
 }
@@ -1610,7 +1646,8 @@ void SETTINGS_ReadCNFontBitmap(uint16_t charIndex, uint16_t *bitmap)
 int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int maxCount, int startOffset)
 {
     // Search pinyin table in SPI Flash
-    // Format per entry: [str_len:1][ascii:str_len][char_count:1][indices:char_count*2]
+    // Format per entry: [str_len:1][ascii:str_len][char_count:1][unicodes:char_count*2]
+    // Each unicode is stored as 2 bytes (big-endian for efficient lookup)
     // Returns total matching candidate count; fills unicodeOut with up to maxCount entries from startOffset
     uint16_t offset = 0;
     int count = 0;
@@ -1642,19 +1679,14 @@ int SETTINGS_CNGetPinyinCandidates(const char *pinyin, uint16_t *unicodeOut, int
 
                 for (uint8_t j = 0; j < char_count; j++)
                 {
-                    uint8_t idx_bytes[2];
-                    PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
-                                       idx_bytes, 2);
-                    uint16_t font_idx = (uint16_t)((idx_bytes[0] << 8) | idx_bytes[1]);
-
                     if (j >= startOffset && count < maxCount)
                     {
-                        uint32_t entry;
-                        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_BITMAP_SIZE + (font_idx * 4),
-                                           (uint8_t *)&entry, 4);
-                        unicodeOut[count++] = (uint16_t)(entry >> 16);
+                        uint8_t uni_bytes[2];
+                        PY25Q16_ReadBuffer(CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET + offset,
+                                           uni_bytes, 2);
+                        // Read unicode directly (big-endian: high byte first)
+                        unicodeOut[count++] = (uint16_t)((uni_bytes[0] << 8) | uni_bytes[1]);
                     }
-
                     offset += 2;
                 }
                 return total;

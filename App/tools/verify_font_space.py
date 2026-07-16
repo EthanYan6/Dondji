@@ -5,7 +5,7 @@ Verify font library space usage and overlap with legacy region
 """
 
 # Font library
-font_base = 0x010200
+font_base = 0x024000
 font_size = 40150
 font_end = font_base + font_size
 

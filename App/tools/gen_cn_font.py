@@ -395,8 +395,8 @@ def get_pinyin(ch):
     return None
 
 def build_pinyin_table(char_list):
-    """Build pinyin syllable → character indices mapping"""
-    syllable_to_indices = {}
+    """Build pinyin syllable → character unicode mapping"""
+    syllable_to_uni = {}
     for i, ch in enumerate(char_list):
         # First try PINYIN_MAP_CLEAN (list of pinyin), then try pypinyin
         pys = PINYIN_MAP_CLEAN.get(ch)
@@ -404,10 +404,11 @@ def build_pinyin_table(char_list):
             py = get_pinyin(ch)
             pys = [py] if py else ['zz']
         for py in pys:
-            if py not in syllable_to_indices:
-                syllable_to_indices[py] = []
-            syllable_to_indices[py].append(i)
-    return syllable_to_indices
+            if py not in syllable_to_uni:
+                syllable_to_uni[py] = []
+            # Store unicode directly (not char_index) for efficient firmware lookup
+            syllable_to_uni[py].append(ord(ch))
+    return syllable_to_uni
 
 def generate_header(char_list, bdf_chars, output_file):
     """Generate C header with full font data arrays for embedded SPI Flash init"""
@@ -441,6 +442,9 @@ def generate_header(char_list, bdf_chars, output_file):
         rows = bitmap_to_uint16(bitmap)
         font_data.extend(rows)
 
+    # Sort char_map by unicode for binary search in firmware
+    char_map.sort(key=lambda x: x[0])
+
     # Build pinyin table
     pinyin_table = build_pinyin_table(valid_chars)
     pinyin_sorted = sorted(pinyin_table.items())
@@ -465,8 +469,8 @@ def generate_header(char_list, bdf_chars, output_file):
         f.write("#include <stdint.h>\n\n")
 
         # ── SPI Flash address layout ──
-        f.write("/* SPI Flash layout for CN font data (base: 0x010200) */\n")
-        f.write(f"#define CN_FONT_FLASH_BASE      0x010200u\n")
+        f.write("/* SPI Flash layout for CN font data (base: 0x024000, after legacy CN 0x020000..0x023FFF) */\n")
+        f.write(f"#define CN_FONT_FLASH_BASE      0x024000u\n")
         f.write(f"#define CN_FONT_CHAR_COUNT      {len(valid_chars)}u\n")
         f.write(f"#define CN_FONT_BITMAP_SIZE     {font_size}u   /* {len(font_data)} uint16_t */\n")
         f.write(f"#define CN_FONT_INDEX_SIZE      {index_size}u   /* {len(char_map)} entries x 4 bytes */\n")
@@ -510,25 +514,26 @@ def generate_header(char_list, bdf_chars, output_file):
         # ── Pinyin table ──
         f.write(f"/* Pinyin lookup table */\n")
         f.write(f"/* Write to SPI Flash at CN_FONT_FLASH_BASE + CN_FONT_PY_OFFSET */\n")
-        f.write(f"/* Format per entry: [str_len:1][ascii:str_len][char_count:1][indices:char_count*2] */\n")
+        f.write(f"/* Format per entry: [str_len:1][ascii:str_len][char_count:1][unicodes:char_count*2] */\n")
+        f.write(f"/* Each unicode is stored as 2 bytes big-endian */\n")
         f.write(f"#define CN_FONT_PY_TOTAL_SIZE  {total_py_bytes}u\n\n")
 
         f.write(f"static const uint8_t cn_pinyin_data[{total_py_bytes}] = {{\n")
         offset = 0
-        for py, indices in pinyin_sorted:
+        for py, unilist in pinyin_sorted:
             line = f"    /* {py:6s} */ "
             data_bytes = []
             data_bytes.append(len(py))
             for c in py:
                 data_bytes.append(ord(c))
-            data_bytes.append(len(indices))
-            for idx in indices:
-                data_bytes.append(idx >> 8)
-                data_bytes.append(idx & 0xFF)
+            data_bytes.append(len(unilist))
+            for uni in unilist:
+                data_bytes.append(uni >> 8)
+                data_bytes.append(uni & 0xFF)
             line += ', '.join(f'0x{b:02X}' for b in data_bytes)
             if offset + len(data_bytes) < total_py_bytes:
                 line += ','
-            line += f'  /* {py} → {len(indices)} chars */\n'
+            line += f'  /* {py} → {len(unilist)} chars */\n'
             f.write(line)
             offset += len(data_bytes)
         f.write("};\n\n")
@@ -557,6 +562,9 @@ def generate_bin(char_list, bdf_chars, output_file):
         char_map.append((code, char_index))
         font_data.extend(bitmap_to_uint16(bitmap))
 
+    # Sort char_map by unicode for binary search in firmware
+    char_map.sort(key=lambda x: x[0])
+
     pinyin_table = build_pinyin_table(valid_chars)
     pinyin_sorted = sorted(pinyin_table.items())
 
@@ -569,13 +577,13 @@ def generate_bin(char_list, bdf_chars, output_file):
         for unicode_val, idx in char_map:
             f.write(struct.pack('<I', (unicode_val << 16) | idx))
 
-        # Pinyin table
-        for py, indices in pinyin_sorted:
+        # Pinyin table (unicodes stored as big-endian uint16)
+        for py, unilist in pinyin_sorted:
             f.write(struct.pack('B', len(py)))
             f.write(py.encode('ascii'))
-            f.write(struct.pack('B', len(indices)))
-            for idx in indices:
-                f.write(struct.pack('>H', idx))
+            f.write(struct.pack('B', len(unilist)))
+            for uni in unilist:
+                f.write(struct.pack('>H', uni))
 
         # Version marker at offset 20825
         # Pad to version offset

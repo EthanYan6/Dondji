@@ -88,7 +88,7 @@ Flash firmware and font data directly from your browser — no software installa
 | Parameter | Value |
 |-----------|-------|
 | Font file | `docs/font/cn_font.bin` |
-| SPI Flash start address | `0x010200` |
+| SPI Flash start address | `0x024000` |
 | Character count | 6766 (full GB2312) |
 | Font size | 205,088 bytes (about 200 KB) |
 | SPI Flash usage | ~9.8% (total capacity 2MB) |
