@@ -21,6 +21,7 @@
 
 void CRC_Init(void);
 uint16_t CRC_Calculate(const void *pBuffer, uint16_t Size);
+uint16_t compute_crc(const void *data, const unsigned int data_len);
 
 #endif
 

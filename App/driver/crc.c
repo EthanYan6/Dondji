@@ -47,3 +47,20 @@ uint16_t CRC_Calculate(const void *pBuffer, uint16_t Size)
 
     return Crc;
 }
+
+/* MDC1200 CRC — same as reference firmware software fallback / CRC_InitReverse path */
+uint16_t compute_crc(const void *data, const unsigned int data_len)
+{
+    unsigned int i;
+    const uint8_t *data8 = (const uint8_t *)data;
+    uint16_t crc = 0;
+
+    for (i = 0; i < data_len; i++) {
+        unsigned int k;
+        crc ^= data8[i];
+        for (k = 8; k > 0; k--)
+            crc = (crc & 1u) ? (crc >> 1) ^ 0x8408 : crc >> 1;
+    }
+
+    return crc ^ 0xFFFF;
+}

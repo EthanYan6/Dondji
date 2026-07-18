@@ -1829,12 +1829,10 @@ void BK4819_PlayRoger(void)
         BK4819_PlayRogerNormal();
     } else if (gEeprom.ROGER == ROGER_MODE_MDC) {
         if (gMDC1200_ID != 0) {
-            uint8_t packet[40];
+            uint8_t packet[42];
             unsigned int size;
             size = MDC1200_encode_single_packet(packet, MDC1200_OP_CODE_PTT_ID, 0x80, gMDC1200_ID);
             BK4819_PlayMDC1200(packet, size, false);
-        } else {
-            BK4819_PlayRogerMDC();
         }
     }
 }
@@ -1881,118 +1879,49 @@ void BK4819_PlayMDC1200(const uint8_t *data, const unsigned int size, const bool
     const uint16_t filt_val = BK4819_ReadRegister(BK4819_REG_2B);
     BK4819_WriteRegister(BK4819_REG_2B, (1u << 2) | (1u << 0));
 
-    BK4819_WriteRegister(BK4819_REG_58, 0x37C3);
+    // Same REG_58 setup as reference BK4819_send_MDC1200
+    BK4819_WriteRegister(BK4819_REG_58,
+        (1u << 13) |		// FFSK 1200/1800 TX
+        (7u << 10) |		// FFSK 1200/1800 RX
+        (0u <<  8) |		// FSK RX gain
+        (0u <<  6) |
+        (0u <<  4) |		// preamble type
+        (1u <<  1) |		// FFSK 1200/1800 bandwidth
+        (1u <<  0));		// FSK enable
 
     BK4819_WriteRegister(BK4819_REG_72, scale_freq(1200));
 
-    // REG_70
-    //
-    // <15>   0 TONE-1
-    //        1 = enable
-    //        0 = disable
-    //
-    // <14:8> 0 TONE-1 tuning
-    //
-    // <7>    0 TONE-2
-    //        1 = enable
-    //        0 = disable
-    //
-    // <6:0>  0 TONE-2 / FSK tuning
-    //        0 ~ 127
-    //
-    // enable tone-2, set gain
-    //
-    BK4819_WriteRegister(BK4819_REG_70,   // 0 0000000 1 1100000
-        ( 0u << 15) |    // 0
-        ( 0u <<  8) |    // 0
-        ( 1u <<  7) |    // 1
-        (96u <<  0));    // 96
+    BK4819_WriteRegister(BK4819_REG_70,
+        (0u << 15) |
+        (0u <<  8) |
+        (1u <<  7) |
+        (96u <<  0));
 
-    // REG_59
-    //
-    // <15>  0 TX FIFO             1 = clear
-    // <14>  0 RX FIFO             1 = clear
-    // <13>  0 FSK Scramble        1 = Enable
-    // <12>  0 FSK RX              1 = Enable
-    // <11>  0 FSK TX              1 = Enable
-    // <10>  0 FSK data when RX    1 = Invert
-    // <9>   0 FSK data when TX    1 = Invert
-    // <8>   0 ???
-    //
-    // <7:4> 0 FSK preamble length selection
-    //       0  =  1 byte
-    //       1  =  2 bytes
-    //       2  =  3 bytes
-    //       15 = 16 bytes
-    //
-    // <3>   0 FSK sync length selection
-    //       0 = 2 bytes (FSK Sync Byte 0, 1)
-    //       1 = 4 bytes (FSK Sync Byte 0, 1, 2, 3)
-    //
-    // <2:0> 0 ???
-    //
-    fsk_reg59 = (0u << 15) |   // 0/1     1 = clear TX FIFO
-                (0u << 14) |   // 0/1     1 = clear RX FIFO
-                (0u << 13) |   // 0/1     1 = scramble
-                (0u << 12) |   // 0/1     1 = enable RX
-                (0u << 11) |   // 0/1     1 = enable TX
-                (0u << 10) |   // 0/1     1 = invert data when RX
-                (0u <<  9) |   // 0/1     1 = invert data when TX
-                (0u <<  8) |   // 0/1     ???
-                (0u <<  4) |   // 0 ~ 15  preamble length .. bit toggling
-                (1u <<  3) |   // 0/1     sync length
-                (0u <<  0);    // 0 ~ 7   ???
+    fsk_reg59 = (0u << 15) |
+                (0u << 14) |
+                (0u << 13) |
+                (0u << 12) |
+                (0u << 11) |
+                (0u << 10) |
+                (0u <<  9) |
+                (0u <<  8) |
+                (0u <<  4) |
+                (1u <<  3) |
+                (0u <<  0);
     fsk_reg59 |= long_preamble ? 15u << 4 : 3u << 4;
 
-    {
-        unsigned int padded_size = ((size + 1) / 2) * 2;
-        BK4819_WriteRegister(BK4819_REG_5D, ((size - 1) << 8));
+    BK4819_WriteRegister(BK4819_REG_5D, ((size - 1) << 8));
+    BK4819_WriteRegister(BK4819_REG_5A, 0x0000);
+    BK4819_WriteRegister(BK4819_REG_5B, 0x0000);
+    BK4819_WriteRegister(BK4819_REG_5C, 0x5625);
 
-        // REG_5A
-        //
-        // <15:8> 0x55 FSK Sync Byte 0 (Sync Byte 0 first, then 1,2,3)
-        // <7:0>  0x55 FSK Sync Byte 1
-        //
-        BK4819_WriteRegister(BK4819_REG_5A, 0x0000);                   // bytes 1 & 2
+    BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
+    BK4819_WriteRegister(BK4819_REG_59, fsk_reg59);
 
-        // REG_5B
-        //
-        // <15:8> 0x55 FSK Sync Byte 2 (Sync Byte 0 first, then 1,2,3)
-        // <7:0>  0xAA FSK Sync Byte 3
-        //
-        BK4819_WriteRegister(BK4819_REG_5B, 0x0000);                   // bytes 2 & 3
-
-        // CRC setting (plus other stuff we don't know what)
-        //
-        // REG_5C
-        //
-        // <15:7> ???
-        //
-        // <6>    1 CRC option enable    0 = disable  1 = enable
-        //
-        // <5:0>  ???
-        //
-        // disable CRC
-        //
-        // NB, this also affects TX pre-amble in some way
-        //
-        BK4819_WriteRegister(BK4819_REG_5C, 0x5625);   // 010101100 0 100101
-
-        BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
-        BK4819_WriteRegister(BK4819_REG_59, fsk_reg59);
-
-        for (i = 0; i < (padded_size / sizeof(p[0])); i++) {
-            uint16_t word;
-            if ((i + 1) * sizeof(p[0]) <= size)
-                word = p[i];
-            else
-                word = data[(i * sizeof(p[0]))] | (0x00 << 8);
-            BK4819_WriteRegister(BK4819_REG_5F, word);
-        }
-    }
+    for (i = 0; i < (size / sizeof(p[0])); i++)
+        BK4819_WriteRegister(BK4819_REG_5F, p[i]);
 
     BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_3F_FSK_TX_FINISHED);
-
     BK4819_WriteRegister(BK4819_REG_59, (1u << 11) | fsk_reg59);
 
     {

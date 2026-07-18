@@ -7,24 +7,6 @@
 
 const uint8_t mdc1200_pre_amble[] = {0x00, 0x00, 0x00};
 const uint8_t mdc1200_sync[5] = {0x07, 0x09, 0x2a, 0x44, 0x6f};
-
-static uint16_t mdc1200_compute_crc(const void *data, const unsigned int data_len)
-{
-    unsigned int i;
-    const uint8_t *data8 = (const uint8_t *)data;
-    uint16_t crc = 0;
-
-    for (i = 0; i < data_len; i++)
-    {
-        unsigned int k;
-        crc ^= data8[i];
-        for (k = 8; k > 0; k--)
-            crc = (crc & 1u) ? (crc >> 1) ^ 0x8408 : crc >> 1;
-    }
-
-    return crc ^ 0xFFFF;
-}
-
 const uint8_t mdc1200_sync_suc_xor[5] = {0xfb, 0x72, 0x40, 0x99, 0xa7};
 
 uint16_t gMDC1200_ID = 0x0000;
@@ -96,7 +78,7 @@ bool decode_data(void *data) {
 
     error_correction(data);
 
-    crc1 = mdc1200_compute_crc(data, 4);
+    crc1 = compute_crc(data, 4);
     crc2 = ((uint16_t) data8[5] << 8) | (data8[4] << 0);
 
     return (crc1 == crc2) ? true : false;
@@ -172,11 +154,16 @@ unsigned int MDC1200_encode_single_packet(void *data, const uint8_t op, const ui
     uint16_t crc;
     uint8_t *p = (uint8_t *) data;
 
+    memcpy(p, mdc1200_pre_amble, sizeof(mdc1200_pre_amble));
+    p += sizeof(mdc1200_pre_amble);
+    memcpy(p, mdc1200_sync, sizeof(mdc1200_sync));
+    p += sizeof(mdc1200_sync);
+
     p[0] = op;
     p[1] = arg;
     p[2] = (unit_id >> 8) & 0x00ff;
     p[3] = (unit_id >> 0) & 0x00ff;
-    crc = mdc1200_compute_crc(p, 4);
+    crc = compute_crc(p, 4);
     p[4] = (crc >> 0) & 0x00ff;
     p[5] = (crc >> 8) & 0x00ff;
     p[6] = 0;
@@ -327,7 +314,7 @@ void MDC1200_SaveID(void) {
 
 void MDC1200_SendPTTID(void)
 {
-    uint8_t packet[40];
+    uint8_t packet[42];
     unsigned int size;
 
     size = MDC1200_encode_single_packet(packet, MDC1200_OP_CODE_PTT_ID, 0x80, gMDC1200_ID);
