@@ -1093,19 +1093,13 @@ $('fontFlashBtn').addEventListener('click', async () => {
     if (!verResp) log(window.t ? window.t('logVersionWriteTimeout') : '版本标记写入超时（可能固件不支持 SPI Flash 写入）', 'error');
     else log(window.t ? window.t('logVersionWritten') : '版本标记已写入', 'success');
 
-    // Verify: read back first 4 bytes
-    const readMsg = createMessage(MSG_SPI_FLASH_READ, 12);
-    const rv = new DataView(readMsg.buffer);
-    rv.setUint32(4, CN_FONT_FLASH_BASE, true);
-    rv.setUint16(8, 4, true);
-    rv.setUint16(10, 0, true);
-    rv.setUint32(12, ts, true);
-    await sendMessage(readMsg);
-    const readResp = await waitForMsg(MSG_SPI_FLASH_READ_RESP, 100);
-    if (readResp) {
-      const probe = new DataView(readResp.data.buffer, readResp.data.byteOffset, readResp.data.byteLength);
-      const w0 = probe.getUint16(6, true);
-      const w1 = probe.getUint16(8, true);
+    // Verify: 与固件 SETTINGS_InitCNFont / menu 一致，读 Flash 基址首 4 字节（「的」前两行）
+    // 必须走 spiFlashReadChunk：0x0520 响应前 8 字节是 Address/Size/Padding，payload 从偏移 8 起
+    const probeBytes = await spiFlashReadChunk(ts, CN_FONT_FLASH_BASE, 4);
+    if (probeBytes) {
+      const probe = new DataView(probeBytes.buffer, probeBytes.byteOffset, probeBytes.byteLength);
+      const w0 = probe.getUint16(0, true);
+      const w1 = probe.getUint16(2, true);
       if (w0 === 0x1100 && w1 === 0x2100)
         log(window.t ? window.t('logVerifyPass') : '验证通过：字库数据正确', 'success');
       else
