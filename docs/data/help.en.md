@@ -256,7 +256,21 @@ Example: for “山” (shan), try `7426`, then pick from candidates.
 
 ## 1.6 Spectrum
 
-On the main screen, **`F+5`** enters spectrum. Behavior follows the UV-K6 “Luosihu” spectrum logic.
+On the main screen, **`F+5`** opens the spectrum.
+
+### Display mode: Simple / Expert
+
+Before entering the spectrum, choose the UI style in the menu:
+
+1. Short press **MENU** → find **Spectrum Display (SpDisp)** → press **MENU** again.
+2. Use **↑/↓** to select, then **MENU** to confirm:
+
+| Option | Description |
+|------|------|
+| **Simple** | Spectrum plot sits lower; frequency cursor has guide lines and scale ticks — easier to read for everyday scanning |
+| **Expert** | Denser layout with more room for parameters/markers above — better when you need more detail at once |
+
+This setting is stored in configuration (SPI `0x00A148`) and is included in config backup/restore.
 
 ![Spectrum screen](images/频谱.jpg)
 
@@ -282,8 +296,6 @@ On the main screen, **`F+5`** enters spectrum. Behavior follows the UV-K6 “Luo
 | `SIDE1` | Blacklist current frequency |
 | `SIDE2` | Toggle backlight |
 | `PTT` | Enter STILL and tune to peak |
-
-The menu can also set spectrum display mode (simple/expert, etc., if enabled in firmware).
 
 ---
 

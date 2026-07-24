@@ -203,6 +203,10 @@ body.writefreq-full .subtitle-chips { display: none; }
 .subtitle-chip--weixin .subtitle-chip-label { color: #4ade80; }
 .subtitle-chip--fmo .subtitle-icon { color: #f97316; }
 .subtitle-chip--fmo .subtitle-chip-label { color: #fb923c; }
+.subtitle-chip--travel .subtitle-icon { color: #14b8a6; }
+.subtitle-chip--travel .subtitle-chip-label { color: #2dd4bf; }
+.subtitle-chip--dagojo .subtitle-icon { color: #38bdf8; }
+.subtitle-chip--dagojo .subtitle-chip-label { color: #7dd3fc; }
 .subtitle-chip--mangosteen .subtitle-icon { color: #a855f7; }
 .subtitle-chip--mangosteen .subtitle-chip-label { color: #c084fc; }
 a.subtitle-chip {
