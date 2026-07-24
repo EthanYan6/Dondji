@@ -8,7 +8,6 @@
 |------|--------|
 | `docs/data/help.zh.md` | New Chinese manual (reorg + additions) |
 | `docs/data/help.en.md` | New English parallel |
-| `docs/data/help.md` | Compatibility stub |
 | `docs/help.html` | Lang-aware load + `langchange` reload |
 | `docs/js/lang.js` | Error hint paths |
 | `docs/superpowers/specs/2026-07-24-help-manual-reorg-design.md` | Design |

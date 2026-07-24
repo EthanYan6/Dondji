@@ -19,7 +19,6 @@
 |------|------|
 | `docs/data/help.zh.md` | 中文正文 |
 | `docs/data/help.en.md` | 英文正文（结构对齐） |
-| `docs/data/help.md` | 兼容保留：指向 `help.zh.md` 的说明，或同步中文副本 |
 | `docs/help.html` | 按语言加载对应 md，监听 `langchange` 重载 |
 
 ## 必改纠错
