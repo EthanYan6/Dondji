@@ -141,7 +141,7 @@
       'helpContentLoading': '正在加载文档...',
       'helpTocEmpty': '暂无目录',
       'helpContentError': '加载文档失败',
-      'helpContentErrorHint': '请确保 data/help.md 文件存在。',
+      'helpContentErrorHint': '请确保 data/help.zh.md 与 data/help.en.md 文件存在。',
       'helpTocError': '加载失败',
       
       // Language switcher
@@ -563,7 +563,7 @@
       'helpContentLoading': 'Loading documentation...',
       'helpTocEmpty': 'No TOC',
       'helpContentError': 'Failed to load document',
-      'helpContentErrorHint': 'Please ensure data/help.md file exists.',
+      'helpContentErrorHint': 'Please ensure data/help.zh.md and data/help.en.md exist.',
       'helpTocError': 'Load failed',
       
       // Language switcher

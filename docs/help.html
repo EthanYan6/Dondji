@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>帮助文档 - 叮咚鸡（Dondji）</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260630a">
-  <link rel="stylesheet" href="css/help.min.css?v=20260629l">
+  <link rel="stylesheet" href="css/style.min.css?v=20260724a">
+  <link rel="stylesheet" href="css/help.min.css?v=20260724a">
   <script>
     (function () {
       try {
@@ -62,9 +62,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="js/lang.min.js?v=20260629k"></script>
+  <script src="js/lang.min.js?v=20260724b"></script>
   <script>
     (function() {
+      var loadToken = 0;
+
       var themeBtn = document.getElementById('themeToggleBtn');
       if (themeBtn) {
         themeBtn.addEventListener('click', function() {
@@ -74,67 +76,63 @@
           } catch (e) {}
         });
       }
-    })();
 
-    function extractHeadings(html) {
-      var headings = [];
-      var tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      var headingElements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      headingElements.forEach(function(heading, index) {
-        var id = 'heading-' + index + '-' + heading.textContent.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
-        heading.id = id;
-        headings.push({
-          level: parseInt(heading.tagName.charAt(1)),
-          id: id,
-          text: heading.textContent
-        });
-      });
-      return tempDiv.innerHTML;
-    }
-
-    function buildToc(headings) {
-      if (headings.length === 0) {
-        return '<div class="help-toc-empty">暂无目录</div>';
+      function t(key) {
+        if (typeof window.t === 'function') return window.t(key);
+        return key;
       }
 
-      var html = '<ul class="help-toc-list">';
-      headings.forEach(function(heading) {
-        var indent = (heading.level - 1) * 16;
-        html += '<li class="help-toc-item help-toc-item--level-' + heading.level + '" style="padding-left: ' + indent + 'px">';
-        html += '<a href="#' + heading.id + '" class="help-toc-link">' + heading.text + '</a>';
-        html += '</li>';
-      });
-      html += '</ul>';
-      return html;
-    }
+      function getLang() {
+        if (typeof window.getCurrentLang === 'function') return window.getCurrentLang();
+        return 'zh';
+      }
 
-    function loadHelpDoc() {
-      var contentEl = document.getElementById('helpContent');
-      var tocEl = document.getElementById('helpToc');
+      function helpMdPath() {
+        return getLang() === 'en' ? 'data/help.en.md' : 'data/help.zh.md';
+      }
+
+      function buildToc(headings) {
+        if (headings.length === 0) {
+          return '<div class="help-toc-empty">' + t('helpTocEmpty') + '</div>';
+        }
+
+        var html = '<ul class="help-toc-list">';
+        headings.forEach(function(heading) {
+          var indent = (heading.level - 1) * 16;
+          html += '<li class="help-toc-item help-toc-item--level-' + heading.level + '" style="padding-left: ' + indent + 'px">';
+          html += '<a href="#' + heading.id + '" class="help-toc-link">' + heading.text + '</a>';
+          html += '</li>';
+        });
+        html += '</ul>';
+        return html;
+      }
 
       function renderMarkdown(md) {
+        var contentEl = document.getElementById('helpContent');
+        var tocEl = document.getElementById('helpToc');
+        if (!contentEl || !tocEl) return;
+
         marked.setOptions({
           breaks: true,
           gfm: true
         });
-        
+
         var rawHtml = marked.parse(md);
         var headings = [];
         var tempDiv = document.createElement('div');
         tempDiv.innerHTML = rawHtml;
-        
+
         var headingElements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
         headingElements.forEach(function(heading, index) {
           var id = 'heading-' + index + '-' + heading.textContent.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
           heading.id = id;
           headings.push({
-            level: parseInt(heading.tagName.charAt(1)),
+            level: parseInt(heading.tagName.charAt(1), 10),
             id: id,
             text: heading.textContent
           });
         });
-        
+
         contentEl.innerHTML = tempDiv.innerHTML;
         tocEl.innerHTML = buildToc(headings);
 
@@ -152,50 +150,77 @@
         });
 
         if (window.location.hash) {
-          var targetId = window.location.hash.slice(1);
-          var targetElement = document.getElementById(targetId);
-          if (targetElement) {
+          var hashId = window.location.hash.slice(1);
+          var hashEl = document.getElementById(hashId);
+          if (hashEl) {
             setTimeout(function() {
-              targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              hashEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
           }
         }
       }
 
-      function loadWithXhr() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'data/help.md?v=' + Date.now(), true);
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === 4) {
+      function showLoadError() {
+        var contentEl = document.getElementById('helpContent');
+        var tocEl = document.getElementById('helpToc');
+        if (contentEl) {
+          contentEl.innerHTML = '<div class="help-content-error"><p>' + t('helpContentError') + '</p><p>' + t('helpContentErrorHint') + '</p></div>';
+        }
+        if (tocEl) {
+          tocEl.innerHTML = '<div class="help-toc-empty">' + t('helpContentError') + '</div>';
+        }
+      }
+
+      function loadHelpDoc() {
+        var token = ++loadToken;
+        var contentEl = document.getElementById('helpContent');
+        var tocEl = document.getElementById('helpToc');
+        var path = helpMdPath() + '?v=' + Date.now();
+
+        if (contentEl) {
+          contentEl.innerHTML = '<div class="help-content-loading"><div class="loading-spinner"></div><span data-i18n="helpContentLoading">' + t('helpContentLoading') + '</span></div>';
+        }
+        if (tocEl) {
+          tocEl.innerHTML = '<div class="help-toc-loading" data-i18n="helpTocLoading">' + t('helpTocLoading') + '</div>';
+        }
+
+        function loadWithXhr() {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', path, true);
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4 || token !== loadToken) return;
             if (xhr.status === 200 || xhr.status === 0) {
               renderMarkdown(xhr.responseText);
             } else {
-              contentEl.innerHTML = '<div class="help-content-error"><p>加载文档失败</p><p>请确保 data/help.md 文件存在。</p></div>';
-              tocEl.innerHTML = '<div class="help-toc-empty">加载失败</div>';
+              showLoadError();
             }
-          }
-        };
-        xhr.send();
+          };
+          xhr.send();
+        }
+
+        fetch(path)
+          .then(function(response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+          })
+          .then(function(md) {
+            if (token !== loadToken) return;
+            renderMarkdown(md);
+          })
+          .catch(function() {
+            if (token !== loadToken) return;
+            loadWithXhr();
+          });
       }
 
-      fetch('data/help.md?v=' + Date.now())
-        .then(function(response) {
-          if (!response.ok) {
-            throw new Error('无法加载文档: ' + response.status);
-          }
-          return response.text();
-        })
-        .then(renderMarkdown)
-        .catch(function(error) {
-          loadWithXhr();
-        });
-    }
+      window.addEventListener('langchange', loadHelpDoc);
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', loadHelpDoc);
-    } else {
-      loadHelpDoc();
-    }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadHelpDoc);
+      } else {
+        loadHelpDoc();
+      }
+    })();
   </script>
 </body>
 </html>
