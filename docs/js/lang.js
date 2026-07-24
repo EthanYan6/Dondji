@@ -38,6 +38,8 @@
       'fmoScreen': 'FMO副屏',
       'clickView': '点击查看',
       'wechatGroup': '微信群',
+      'otherFirmwareLink': '其它固件',
+      'otherFirmwareName': '山竹',
       'otherFirmware': '其它固件合集',
       
       // Timeline sidebar
@@ -458,6 +460,8 @@
       'fmoScreen': 'FMO Screen',
       'clickView': 'Click to view',
       'wechatGroup': 'WeChat Group',
+      'otherFirmwareLink': 'Other Firmware',
+      'otherFirmwareName': 'Mangosteen',
       'otherFirmware': 'Other Firmware Collection',
       
       // Timeline sidebar
