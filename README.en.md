@@ -2,7 +2,7 @@
 
 # 🚀 Dondji
 
-> Firmware enhancement for UV-K1 / UV-K5·K6 V3 (PY32F071)
+> Open-source radio firmware project · UV-K1 / UV-K5·K6 V3 (PY32F071)
 
 <p>
   <a href="./README.md">🏠 Home</a> |
@@ -13,29 +13,46 @@
 
 ---
 
+## Maintainer
+
+**BD1AHN**
+
+## Official Website
+
+https://ethanyan6.github.io/Dondji/
+
+---
+
 ## Commercial Cooperation
 
 Dondji source code is licensed under Apache License 2.0.
 
 The source is open for use.
 
-However:
+However, the following are project brand assets:
 
-The “Dondji” / “叮咚鸡” brand name, logo, official identity, and partnership claims are **not** covered by Apache License 2.0.
+- The Dondji / 叮咚鸡 name;
+- Logo;
+- Official website;
+- Official flash portal;
+- Official identity;
+- Official partnership claims.
 
 For any commercial product that needs:
 
-- Official co-branding;
 - Firmware pre-install;
+- Co-branding;
 - Brand licensing;
-- Commercial partnership;
+- Official certification;
 
-please contact **BD1AHN** (see contact info on the [flash website](https://ethanyan6.github.io/Dondji/)).
+please contact:
+
+**BD1AHN**
 
 Details:
 
-- [Commercial Use](COMMERCIAL_USE.md)
-- [Trademark Policy](TRADEMARK.md)
+- Commercial Use: [COMMERCIAL_USE.md](COMMERCIAL_USE.md)
+- Trademark Policy: [TRADEMARK.md](TRADEMARK.md)
 
 ---
 

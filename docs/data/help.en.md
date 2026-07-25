@@ -732,55 +732,70 @@ Project maintainer:
 
 Apache License 2.0 grants the right to obtain, use, modify, and distribute this project’s source code.
 
+---
+
 ### 2. Personal Use
 
-Individual amateur radio operators, developers, and learners may freely:
+Individual amateur radio operators and developers may freely:
 
 - Download the source;
 - Study and research;
-- Build locally;
+- Build firmware;
 - Modify the code;
-- Flash firmware to personal devices;
-- Use it for non-profit personal purposes.
+- Flash personal devices;
+- Use it for personal testing.
 
 Personal non-commercial use has no extra restrictions.
 
-### 3. About Commercial Use
+---
+
+### 3. Commercial Use
 
 Apache License 2.0 grants rights to the source code.
 
 The following are **not** covered by Apache License 2.0:
 
-- The “Dondji” / “叮咚鸡” project name;
+- The Dondji / 叮咚鸡 name;
 - The Dondji logo;
-- The official project website;
+- Project branding;
+- Official website;
+- Official flash portal;
 - Official release channels;
-- BD1AHN’s maintainer identity;
-- Official partnership claims;
-- Official certification statements.
+- BD1AHN’s official maintainer identity;
+- Official partnership claims.
+
+---
 
 ### 4. Commercial Product Cooperation
 
 Any company, vendor, or commercial organization that plans to:
 
 - Pre-install Dondji firmware on hardware products for sale;
-- Build commercial products based on Dondji firmware;
-- Use “叮咚鸡” or “Dondji” in product marketing;
+- Build commercial devices based on Dondji;
+- Use the Dondji name in product marketing;
+- Offer co-branded hardware;
 - Claim official BD1AHN support or certification;
-- Offer co-branded products;
 
-must contact maintainer **BD1AHN** in advance and obtain written commercial authorization. Contact info: https://ethanyan6.github.io/Dondji/
+must contact:
+
+**BD1AHN**
+
+in advance and obtain written commercial authorization.
+
+---
 
 ### 5. Unauthorized Commercial Conduct
 
-Without written authorization from BD1AHN, you may not:
+Without authorization from BD1AHN, you may not:
 
 - Use “Dondji” / “叮咚鸡” as a commercial product name;
-- Use the Dondji logo or official visual assets;
-- Claim a product is an “official Dondji edition”;
+- Use the Dondji logo;
+- Claim a product is an official Dondji edition;
 - Imply an official partnership with BD1AHN;
-- Remove or hide project copyright notices;
-- Impersonate official release channels.
+- Impersonate the official flash website;
+- Remove project copyright notices.
+
+---
 
 ### 6. Scope of Commercial Authorization
 
@@ -788,22 +803,25 @@ Commercial authorization may include:
 
 - Firmware pre-install rights;
 - Co-branded hardware;
-- Official certification;
 - Brand licensing;
+- Official certification;
 - Technical support;
 - Custom development;
-- Commercial distribution partnerships.
+- Commercial distribution support.
 
-Details are negotiated separately between BD1AHN and the partner.
+Details are negotiated between BD1AHN and the partner.
 
-### 7. Notes
+---
+
+### 7. Official Notes
 
 This document does not limit rights already granted by Apache License 2.0.
 
 It clarifies:
 
 - Dondji brand rights;
-- Official identity;
+- Official project identity;
+- Official website ownership;
 - Commercial partnership relationships.
 
 ## 4.2 Dondji Trademark Policy
@@ -814,59 +832,75 @@ It clarifies:
 
 The following are project brand assets:
 
-- The name Dondji / 叮咚鸡;
+- The Dondji / 叮咚鸡 name;
 - The Dondji logo;
 - Project visual elements;
+- Official website;
+- Official flash page;
 - Official release channels;
 - Official certification marks.
+
+---
 
 ### Apache License 2.0
 
 Dondji source code is licensed under Apache License 2.0.
 
-Apache License 2.0 grants rights to the source code.
+Apache License 2.0 grants rights to the source code only.
 
-It does **not** grant anyone the right to use:
+It does **not** grant anyone the right to:
 
-- The Dondji brand name;
-- The Dondji logo;
-- Official identity.
+- Use the Dondji brand name;
+- Use the Dondji logo;
+- Claim official identity;
+- Claim official partnership.
 
-### Commercial Use Restrictions
+---
+
+### Official Website
+
+Official Dondji flash website:
+
+https://ethanyan6.github.io/Dondji/
+
+Without authorization from BD1AHN, third parties may not:
+
+- Create lookalike official websites;
+- Impersonate the official flash portal;
+- Use similar names to mislead users.
+
+---
+
+### Commercial Use
 
 Without written permission from BD1AHN, you may not:
 
-- Use “Dondji” / “叮咚鸡” to name a commercial product;
-- Use the Dondji logo in sales marketing;
-- Claim a product is an official edition;
-- Claim official BD1AHN certification.
+- Use Dondji as a commercial product brand;
+- Use the logo to sell products;
+- Claim official certification;
+- Claim official partnership.
 
-### Permitted Use
+---
+
+### Reasonable Use
 
 The following are reasonable uses:
 
-- Referring to the project name in technical discussion;
-- Attributing the project as a source;
-- Submitting code contributions;
-- Study and research.
+- Technical discussion;
+- Project attribution;
+- Study and research;
+- Open-source contributions.
+
+---
 
 ### Commercial Authorization
 
-For:
-
-- Co-branded products;
-- Official certification;
-- Commercial firmware pre-install;
-- Brand partnerships;
-
-please contact:
+For commercial cooperation, contact:
 
 Project maintainer:
 
-**BD1AHN**
+BD1AHN
 
-Contact info: https://ethanyan6.github.io/Dondji/
+Project:
 
-Project name:
-
-**Dondji (叮咚鸡)**
+Dondji (叮咚鸡)

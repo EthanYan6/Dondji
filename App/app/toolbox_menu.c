@@ -3,19 +3,7 @@
  *
  * Copyright (c) 2026 BD1AHN
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- *
- * You may obtain a copy of the License at:
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed under the Apache License, Version 2.0
  *
  * Project:
  *     叮咚鸡 (Dondji)
@@ -23,8 +11,13 @@
  * Maintainer:
  *     BD1AHN
  *
- * Commercial products using the Dondji brand require separate authorization.
+ * Official Website:
+ *     https://ethanyan6.github.io/Dondji/
+ *
+ * The Dondji name, logo, and official project identity
+ * are protected separately from the source code license.
  */
+
 
 #include "app/toolbox_menu.h"
 #include "app/mokuyu.h"

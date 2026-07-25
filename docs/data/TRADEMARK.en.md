@@ -6,67 +6,75 @@
 
 The following are project brand assets:
 
-- The name Dondji / 叮咚鸡;
+- The Dondji / 叮咚鸡 name;
 - The Dondji logo;
 - Project visual elements;
+- Official website;
+- Official flash page;
 - Official release channels;
 - Official certification marks.
 
 ---
 
-## Apache License 2.0
+# Apache License 2.0
 
 Dondji source code is licensed under Apache License 2.0.
 
-Apache License 2.0 grants rights to the source code.
+Apache License 2.0 grants rights to the source code only.
 
-It does **not** grant anyone the right to use:
+It does **not** grant anyone the right to:
 
-- The Dondji brand name;
-- The Dondji logo;
-- Official identity.
+- Use the Dondji brand name;
+- Use the Dondji logo;
+- Claim official identity;
+- Claim official partnership.
 
 ---
 
-## Commercial Use Restrictions
+# Official Website
+
+Official Dondji flash website:
+
+https://ethanyan6.github.io/Dondji/
+
+Without authorization from BD1AHN, third parties may not:
+
+- Create lookalike official websites;
+- Impersonate the official flash portal;
+- Use similar names to mislead users.
+
+---
+
+# Commercial Use
 
 Without written permission from BD1AHN, you may not:
 
-- Use “Dondji” / “叮咚鸡” to name a commercial product;
-- Use the Dondji logo in sales marketing;
-- Claim a product is an official edition;
-- Claim official BD1AHN certification.
+- Use Dondji as a commercial product brand;
+- Use the logo to sell products;
+- Claim official certification;
+- Claim official partnership.
 
 ---
 
-## Permitted Use
+# Reasonable Use
 
 The following are reasonable uses:
 
-- Referring to the project name in technical discussion;
-- Attributing the project as a source;
-- Submitting code contributions;
-- Study and research.
+- Technical discussion;
+- Project attribution;
+- Study and research;
+- Open-source contributions.
 
 ---
 
-## Commercial Authorization
+# Commercial Authorization
 
-For:
-
-- Co-branded products;
-- Official certification;
-- Commercial firmware pre-install;
-- Brand partnerships;
-
-please contact:
+For commercial cooperation, contact:
 
 Project maintainer:
 
-**BD1AHN**
+BD1AHN
 
-Contact info: https://ethanyan6.github.io/Dondji/
+Project:
 
-Project name:
-
-**Dondji (叮咚鸡)**
+Dondji (叮咚鸡)

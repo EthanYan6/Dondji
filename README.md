@@ -2,7 +2,8 @@
 
 # 🚀 Dondji（叮咚鸡）
 
-> Firmware for UV-K1 / UV-K5·K6 V3 (PY32F071 MCU)
+> Firmware for UV-K1 / UV-K5·K6 V3 (PY32F071 MCU)  
+> 开源对讲机固件项目
 
 <p>
   <a href="./README.zh.md">🇨🇳 中文文档</a> |
@@ -36,18 +37,42 @@
 
 **BD1AHN**
 
+## Official Website
+
+https://ethanyan6.github.io/Dondji/
+
+---
+
 ## 商业合作声明
 
-| | |
-|:--|:--|
-| **源码** | Apache License 2.0，开放使用 |
-| **品牌** | 「叮咚鸡（Dondji）」名称、Logo、官方身份及合作关系 **不属于** Apache License 2.0 授权范围 |
+叮咚鸡（Dondji）源码采用 Apache License 2.0 开源协议。
 
-商业产品如需 **官方联名 / 固件预装 / 品牌授权 / 商业合作**，请联系 **BD1AHN**。
+源码开放使用。
 
-联系方式见 [刷机网站](https://ethanyan6.github.io/Dondji/)。
+但是以下内容属于项目品牌资产：
 
-详情：[商业使用说明](COMMERCIAL_USE.md) · [品牌使用政策](TRADEMARK.md)
+- 叮咚鸡（Dondji）名称；
+- Logo；
+- 官方网站；
+- 官方刷机入口；
+- 官方身份；
+- 官方合作关系。
+
+任何商业产品如需：
+
+- 固件预装；
+- 联名合作；
+- 品牌授权；
+- 官方认证；
+
+请联系：
+
+**BD1AHN**
+
+详细说明：
+
+- 商业使用说明：[COMMERCIAL_USE.md](COMMERCIAL_USE.md)
+- 品牌政策：[TRADEMARK.md](TRADEMARK.md)
 
 ---
 ## ✨ Features

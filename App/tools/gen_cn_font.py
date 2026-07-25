@@ -4,19 +4,7 @@
 #
 # Copyright (c) 2026 BD1AHN
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-#
-# You may obtain a copy of the License at:
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Licensed under the Apache License, Version 2.0
 #
 # Project:
 #     叮咚鸡 (Dondji)
@@ -24,8 +12,11 @@
 # Maintainer:
 #     BD1AHN
 #
-# Commercial products using the Dondji brand require separate authorization.
-
+# Official Website:
+#     https://ethanyan6.github.io/Dondji/
+#
+# The Dondji name, logo, and official project identity
+# are protected separately from the source code license.
 """
 Generate Chinese font bitmap + pinyin table for UV-K5 CN channel names.
 CN_CHARS_500 is ordered unique Han (~1254); reads BDF and writes cn_font_data.h + cn_font.bin.
@@ -643,34 +634,46 @@ def generate_header(char_list, bdf_chars, output_file):
     # ── Generate full header with arrays ──
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(
-            "/*\n"
-            " * Dondji Firmware\n"
-            " *\n"
-            " * Copyright (c) 2026 BD1AHN\n"
-            " *\n"
-            " * Licensed under the Apache License, Version 2.0 (the \"License\");\n"
-            " * you may not use this file except in compliance with the License.\n"
-            " *\n"
-            " * You may obtain a copy of the License at:\n"
-            " *\n"
-            " *     http://www.apache.org/licenses/LICENSE-2.0\n"
-            " *\n"
-            " * Unless required by applicable law or agreed to in writing, software\n"
-            " * distributed under the License is distributed on an \"AS IS\" BASIS,\n"
-            " * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n"
-            " *\n"
-            " * See the License for the specific language governing permissions and\n"
-            " * limitations under the License.\n"
-            " *\n"
-            " * Project:\n"
-            " *     叮咚鸡 (Dondji)\n"
-            " *\n"
-            " * Maintainer:\n"
-            " *     BD1AHN\n"
-            " *\n"
-            " * Commercial products using the Dondji brand require separate authorization.\n"
-            " */\n"
-            "\n"
+            "/*
+"
+            " * Dondji Firmware
+"
+            " *
+"
+            " * Copyright (c) 2026 BD1AHN
+"
+            " *
+"
+            " * Licensed under the Apache License, Version 2.0
+"
+            " *
+"
+            " * Project:
+"
+            " *     叮咚鸡 (Dondji)
+"
+            " *
+"
+            " * Maintainer:
+"
+            " *     BD1AHN
+"
+            " *
+"
+            " * Official Website:
+"
+            " *     https://ethanyan6.github.io/Dondji/
+"
+            " *
+"
+            " * The Dondji name, logo, and official project identity
+"
+            " * are protected separately from the source code license.
+"
+            " */
+"
+            "
+"
         )
         f.write("/* Auto-generated Chinese font + pinyin data for CN channel names */\n")
         f.write("/* Font: WenQuanYi Bitmap Song 9pt (12x12) */\n")
