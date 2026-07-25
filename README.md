@@ -32,37 +32,24 @@
 
 ---
 
-Maintainer:
+## Maintainer
 
 **BD1AHN**
 
----
-
 ## 商业合作声明
 
-叮咚鸡（Dondji）源码采用 Apache License 2.0 开源协议。
+| | |
+|:--|:--|
+| **源码** | Apache License 2.0，开放使用 |
+| **品牌** | 「叮咚鸡（Dondji）」名称、Logo、官方身份及合作关系 **不属于** Apache License 2.0 授权范围 |
 
-源码开放使用。
+商业产品如需 **官方联名 / 固件预装 / 品牌授权 / 商业合作**，请联系 **BD1AHN**。
 
-但是：
+联系方式见 [刷机网站](https://ethanyan6.github.io/Dondji/)。
 
-“叮咚鸡（Dondji）”品牌名称、Logo、官方身份及合作关系不属于 Apache License 2.0 授权范围。
+详情：[商业使用说明](COMMERCIAL_USE.md) · [品牌使用政策](TRADEMARK.md)
 
-任何商业产品如需：
-
-- 官方联名；
-- 固件预装；
-- 品牌授权；
-- 商业合作；
-
-请联系 BD1AHN（联系方式见 [刷机网站](https://ethanyan6.github.io/Dondji/)）。
-
-详细说明：
-
-- [商业使用说明](COMMERCIAL_USE.md)
-- [品牌使用政策](TRADEMARK.md)
-
-
+---
 ## ✨ Features
 
 - Based on **F4HWN v5.3.1**; current Dondji release **v5.2.2** (UV-K1 / UV-K5·K6 V3, PY32F071)
@@ -79,7 +66,7 @@ Maintainer:
 - 📖 Built-in ZH/EN help manual
 - 📻 Common Fusion extras: dedicated FM radio screen, custom boot logo / boot sound, RX/TX timer, etc.
 
-s---
+---
 
 ## 📸 UI Preview
 
