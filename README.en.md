@@ -2,7 +2,7 @@
 
 # 🚀 Dondji
 
-> Firmware enhancement for UV-K1 / UV-K5 V3 (PY32F071)
+> Firmware enhancement for UV-K1 / UV-K5·K6 V3 (PY32F071)
 
 <p>
   <a href="./README.md">🏠 Home</a> |
@@ -13,15 +13,47 @@
 
 ---
 
+## Commercial Cooperation
+
+Dondji source code is licensed under Apache License 2.0.
+
+The source is open for use.
+
+However:
+
+The “Dondji” / “叮咚鸡” brand name, logo, official identity, and partnership claims are **not** covered by Apache License 2.0.
+
+For any commercial product that needs:
+
+- Official co-branding;
+- Firmware pre-install;
+- Brand licensing;
+- Commercial partnership;
+
+please contact **BD1AHN** (see contact info on the [flash website](https://ethanyan6.github.io/Dondji/)).
+
+Details:
+
+- [Commercial Use](COMMERCIAL_USE.md)
+- [Trademark Policy](TRADEMARK.md)
+
+---
+
 ## ✨ Features
 
-* Based on F4HWN firmware v5.3.1
-* Motorola R7-style UI (`motorola_r7` branch)
-* Dual VFO UI redesign
-* Classic icon menu
-* Lock screen redesign
-* Chinese localization
-* Reworked channel rename flow; phone-style nine-grid (T9) text input
+* Based on F4HWN **v5.3.1**; current Dondji release **v5.2.2**
+* Motorola R7-style UI (`motorola_r7` branch) + classic phone-style icon menu
+* Dual VFO / MAIN ONLY layout redesign (UV-KX-inspired)
+* Keypad lock / lock-screen UI redesign
+* Chinese / English UI with runtime language switch
+* Menu restructuring & UI refactor
+* Full GB2312 Chinese font in SPI Flash (6766 chars) + T9 pinyin channel naming
+* Browser web flash: firmware, font, calibration, config, channel programming, boot logo
+* Spectrum (`F+5`): Simple / Professional modes + waterfall
+* Toolbox (`F+7`): electronic wooden fish + CW practice
+* MDC1200 Roger / unit ID (TX + RX popup)
+* Built-in ZH/EN help manual
+* Common Fusion extras: dedicated FM radio screen, custom boot logo / boot sound, RX/TX timer, etc.
 
 ---
 
@@ -34,18 +66,20 @@
 ## 🧭 MAIN ONLY Mode
 
 1. Press Menu
-2. Go to Display (No.3)
-3. Go to RxMode (No.2)
-4. Select MAIN ONLY
+2. Open the 3rd icon: **Display**
+3. Open item 2: **RxMode**
+4. Select **MAIN ONLY**
 5. Exit
 
 ---
 
 ## ⏱ Timer
 
-Enable:
+RX/TX timer is enabled by default in Fusion and other default presets (`ENABLE_FEAT_F4HWN_RX_TX_TIMER`).
 
-```bash id="en1"
+To enable it explicitly in a custom build:
+
+```bash
 -DENABLE_FEAT_F4HWN_RX_TX_TIMER=ON
 ```
 
@@ -73,8 +107,10 @@ Flash firmware and font data directly from your browser — no software installa
 |---------|-------------|
 | Flash Firmware | Pull latest from GitHub Releases, or select a local .bin file |
 | Flash Font | Write 6766 Chinese characters (full GB2312) to SPI Flash for channel naming |
-| Dump Calibration | Export device calibration data |
-| Restore Calibration | Restore calibration from backup |
+| Dump / Restore Calibration | Export or restore device calibration data |
+| Backup / Restore Config | Export or restore menu and key settings |
+| Freq Program | Channel / config programming (for this firmware) |
+| Boot Logo | Upload a custom 128×64 boot image |
 
 **Steps:**
 1. Open [flash page](https://ethanyan6.github.io/Dondji/) in Chrome / Edge
@@ -90,7 +126,7 @@ Flash firmware and font data directly from your browser — no software installa
 | Font file | `docs/font/cn_font.bin` |
 | SPI Flash start address | `0x024000` |
 | Character count | 6766 (full GB2312) |
-| Font size | 205,088 bytes (about 200 KB) |
+| Font size | 205,367 bytes (about 200 KB) |
 | SPI Flash usage | ~9.8% (total capacity 2MB) |
 
 ---

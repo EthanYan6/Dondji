@@ -1,10 +1,11 @@
 # Dondji User Manual
 
-This manual is divided into three chapters:
+This manual is divided into four chapters:
 
 1. **Chapter 1 — System User Guide**: Day-to-day operation after flashing Dondji firmware (radio, scanning, saving channels, naming, spectrum, toolbox, etc.)
 2. **Chapter 2 — Firmware & Flashing**: Web-based flashing, calibration, configuration, storage addresses, and technical notes
 3. **Chapter 3 — FAQ & Other**: Frequently asked questions and contact information
+4. **Chapter 4 — Licensing & Brand**: Commercial use notice and trademark policy
 
 > Compatible only with Quansheng **UV-K1**, and **UV-K5 / UV-K6 V3**. For K5/K6, confirm the body label shows **V3** (K1 has no V3 variant).
 

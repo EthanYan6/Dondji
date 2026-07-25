@@ -62,7 +62,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="js/lang.min.js?v=20260724b"></script>
+  <script src="js/lang.min.js?v=20260725a"></script>
   <script>
     (function() {
       var loadToken = 0;
@@ -89,6 +89,51 @@
 
       function helpMdPath() {
         return getLang() === 'en' ? 'data/help.en.md' : 'data/help.zh.md';
+      }
+
+      function licenseMdPaths() {
+        if (getLang() === 'en') {
+          return ['data/COMMERCIAL_USE.en.md', 'data/TRADEMARK.en.md'];
+        }
+        return ['data/COMMERCIAL_USE.md', 'data/TRADEMARK.md'];
+      }
+
+      function demoteHeadings(md, levels) {
+        return md.replace(/^(#{1,6})\s/gm, function(_, hashes) {
+          return '#'.repeat(Math.min(6, hashes.length + levels)) + ' ';
+        });
+      }
+
+      function fetchText(path) {
+        var url = path + '?v=' + Date.now();
+        return fetch(url).then(function(response) {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return response.text();
+        }).catch(function() {
+          return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState !== 4) return;
+              if (xhr.status === 200 || xhr.status === 0) {
+                resolve(xhr.responseText);
+              } else {
+                reject(new Error('HTTP ' + xhr.status));
+              }
+            };
+            xhr.send();
+          });
+        });
+      }
+
+      function assembleHelpMarkdown(parts) {
+        var chapterTitle = getLang() === 'en'
+          ? '\n\n# Chapter 4 — Licensing & Brand\n\n'
+          : '\n\n# 第四章 授权与品牌\n\n';
+        var licenses = parts.slice(1).map(function(md) {
+          return demoteHeadings(md, 1);
+        }).join('\n\n');
+        return parts[0] + chapterTitle + licenses;
       }
 
       function buildToc(headings) {
@@ -175,7 +220,7 @@
         var token = ++loadToken;
         var contentEl = document.getElementById('helpContent');
         var tocEl = document.getElementById('helpToc');
-        var path = helpMdPath() + '?v=' + Date.now();
+        var paths = [helpMdPath()].concat(licenseMdPaths());
 
         if (contentEl) {
           contentEl.innerHTML = '<div class="help-content-loading"><div class="loading-spinner"></div><span data-i18n="helpContentLoading">' + t('helpContentLoading') + '</span></div>';
@@ -184,32 +229,14 @@
           tocEl.innerHTML = '<div class="help-toc-loading" data-i18n="helpTocLoading">' + t('helpTocLoading') + '</div>';
         }
 
-        function loadWithXhr() {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', path, true);
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState !== 4 || token !== loadToken) return;
-            if (xhr.status === 200 || xhr.status === 0) {
-              renderMarkdown(xhr.responseText);
-            } else {
-              showLoadError();
-            }
-          };
-          xhr.send();
-        }
-
-        fetch(path)
-          .then(function(response) {
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            return response.text();
-          })
-          .then(function(md) {
+        Promise.all(paths.map(fetchText))
+          .then(function(parts) {
             if (token !== loadToken) return;
-            renderMarkdown(md);
+            renderMarkdown(assembleHelpMarkdown(parts));
           })
           .catch(function() {
             if (token !== loadToken) return;
-            loadWithXhr();
+            showLoadError();
           });
       }
 
