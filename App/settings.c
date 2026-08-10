@@ -477,7 +477,6 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         int tmp = ((Data[5] & 0xF0) >> 4);
 
         gSetting_set_inv = (((tmp >> 0) & 0x01) < 2) ? ((tmp >> 0) & 0x01): 0;
-        gSetting_set_lck = (((tmp >> 1) & 0x01) < 2) ? ((tmp >> 1) & 0x01): 0;
         gSetting_set_met = (((tmp >> 2) & 0x01) < 2) ? ((tmp >> 2) & 0x01): 0;
         gSetting_set_gui = (((tmp >> 3) & 0x01) < 2) ? ((tmp >> 3) & 0x01): 0;
         gSetting_set_ctr = (((Data[5] & 0x0F)) > 00 && ((Data[5] & 0x0F)) < 16) ? ((Data[5] & 0x0F)) : 10;
@@ -492,7 +491,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
 #else
         gSetting_set_inv = 0;
 #endif
-        gSetting_set_lck = (tmp >> 1) & 0x01;
+        gSetting_set_lck = (Data[2] < SET_LCK_LEN) ? Data[2] : SET_LCK_KEYS;
         gSetting_set_met = (tmp >> 2) & 0x01;
         gSetting_set_gui = (tmp >> 3) & 0x01;
 
@@ -510,7 +509,6 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
 
         // And set special session settings for actions
         gSetting_set_ptt_session = gSetting_set_ptt;
-        gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
     #endif
 }
 
@@ -1119,8 +1117,6 @@ void SETTINGS_SaveSettings(void)
 
     if(gSetting_set_inv == 1)
         tmp = tmp | (1 << 0);
-    if (gSetting_set_lck == 1)
-        tmp = tmp | (1 << 1);
     if (gSetting_set_met == 1)
         tmp = tmp | (1 << 2);
     if (gSetting_set_gui == 1)
@@ -1134,10 +1130,10 @@ void SETTINGS_SaveSettings(void)
 #endif
 
     tmp =   (gSetting_set_inv << 0) |
-            (gSetting_set_lck << 1) |
             (gSetting_set_met << 2) |
             (gSetting_set_gui << 3);
 
+    State[2] = gSetting_set_lck;
     State[5] = ((tmp << 4) | (gSetting_set_ctr & 0x0F));
     State[6] = ((gSetting_set_tot << 4) | (gSetting_set_eot & 0x0F));
     uint8_t set_ptt_scn_sav = gSetting_set_ptt & 0x01;
@@ -1150,8 +1146,6 @@ void SETTINGS_SaveSettings(void)
 #endif
 
     State[7] = ((gSetting_set_pwr << 4) | set_ptt_scn_sav);
-
-    gEeprom.KEY_LOCK_PTT = gSetting_set_lck;
 
     PY25Q16_WriteBuffer(0x00A158, SecBuf, 8, false);
 #endif
@@ -1216,7 +1210,7 @@ void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO,
 
         PY25Q16_WriteBuffer(OffsetVFO, Buf, 0x10, false);
 
-        SETTINGS_UpdateChannel(Channel, pVFO, true, true, true);
+        SETTINGS_UpdateChannel(Channel, pVFO, true);
 
         if (IS_MR_CHANNEL(Channel)) {
 #ifndef ENABLE_KEEP_MEM_NAME
@@ -1247,58 +1241,32 @@ void SETTINGS_SaveChannelName(uint16_t channel, const char * name)
     PY25Q16_WriteBuffer(0x004000 + offset, buf, 0x10, false);
 }
 
-void SETTINGS_UpdateChannel(uint16_t channel, const VFO_Info_t *pVFO, bool keep, bool check, bool save)
+void SETTINGS_UpdateChannel(uint16_t channel, const VFO_Info_t *pVFO, bool keep)
 {
 #ifdef ENABLE_NOAA
-    if (!IS_NOAA_CHANNEL(channel))
+    if (IS_NOAA_CHANNEL(channel))
+        return;
 #endif
-    {
-        ChannelAttributes_t  state;
-        ChannelAttributes_t  att = {
-            .band = 0x7,
-            .compander = 0,
-            .unused_1 = 0,
-            .unused_2 = 0,
-            .exclude = 0,
-            .scanlist = 0,
-            };        // default attributes
 
-        // 0x0D60
-        PY25Q16_ReadBuffer(0x008000 + (channel * 2), &state, 2);
+    ChannelAttributes_t att = {
+        .band = 0x7,
+        .compander = 0,
+        .unused_1 = 0,
+        .unused_2 = 0,
+        .exclude = 0,
+        .scanlist = 0,
+    };
 
-        if (keep) {
-            att.band = pVFO->Band;
-            att.compander = pVFO->Compander;
-            att.unused_1 = 0;
-            att.unused_2 = 0;
-            att.exclude = 0;
-            att.scanlist = pVFO->SCANLIST_PARTICIPATION;
-            if (check && state.__val == att.__val)
-                return; // no change in the attributes
-        }
-
-        state.__val = att.__val;
-
-#ifndef ENABLE_FEAT_F4HWN
-        save = true;
-#endif
-        if(save)
-        {
-            uint16_t buf[MR_CHANNELS_MAX + 24];
-            PY25Q16_ReadBuffer(0x008000, buf, sizeof(buf));
-            buf[channel] = state.__val;
-            PY25Q16_WriteBuffer(0x008000, buf, sizeof(buf), false);
-        }
-
-        MR_SetChannelAttributes(channel, &att);
-
-        if (IS_MR_CHANNEL(channel)) {   // it's a memory channel
-            if (!keep) {
-                // clear/reset the channel name
-                SETTINGS_SaveChannelName(channel, "");
-            }
-        }
+    if (keep) {
+        att.band = pVFO->Band;
+        att.compander = pVFO->Compander;
+        att.scanlist = pVFO->SCANLIST_PARTICIPATION;
     }
+
+    MR_SetChannelAttributes(channel, &att);
+
+    if (IS_MR_CHANNEL(channel) && !keep)
+        SETTINGS_SaveChannelName(channel, "");
 }
 
 void SETTINGS_WriteBuildOptions(void)

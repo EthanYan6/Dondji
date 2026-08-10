@@ -863,7 +863,20 @@ void UART_HandleCommand(uint32_t Port)
 #endif
     } // switch
 
-    #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        gUART_LockScreenshot = 20; // lock screenshot
+    #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        gUART_LockK5Viewer = 20; // lock the K5Viewer stream
     #endif
+}
+
+void UART_ServiceCommands(void)
+{
+#ifdef ENABLE_USB
+    if (UART_IsCommandAvailable(UART_PORT_VCP))
+        UART_HandleCommand(UART_PORT_VCP);
+#endif
+
+#ifdef ENABLE_UART
+    if (UART_IsCommandAvailable(UART_PORT_UART))
+        UART_HandleCommand(UART_PORT_UART);
+#endif
 }

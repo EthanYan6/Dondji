@@ -32,6 +32,6 @@ enum
 
 bool UART_IsCommandAvailable(uint32_t Port);
 void UART_HandleCommand(uint32_t Port);
+void UART_ServiceCommands(void);
 
 #endif
-

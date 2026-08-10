@@ -20,6 +20,7 @@
 #include "driver/py25q16.h"
 #include "driver/st7565.h"
 #include "external/printf/printf.h"
+#include "font.h"
 #include "helper/battery.h"
 #include "settings.h"
 #include "misc.h"
@@ -29,8 +30,8 @@
 #include "version.h"
 #include "bitmaps.h"
 
-#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-    #include "screenshot.h"
+#ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+    #include "k5viewer.h"
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_LOGO
@@ -312,17 +313,33 @@ void UI_DisplayWelcome(void)
         UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 
 #ifdef ENABLE_FEAT_F4HWN
-        UI_PrintStringSmallNormal(Version, 0, 128, 4);
+        const size_t version_width = strlen(DisplayVersion) * (ARRAY_SIZE(gFontSmall[0]) + 1u);
+        const uint8_t version_x = version_width < LCD_WIDTH
+            ? (uint8_t)((LCD_WIDTH - version_width + 1u) / 2u)
+            : 0u;
+        const uint8_t capsule_left = version_x > 2u ? (uint8_t)(version_x - 3u) : 0u;
+        const size_t capsule_right_candidate = version_x + version_width + 2u;
+        const uint8_t capsule_right = capsule_right_candidate < LCD_WIDTH
+            ? (uint8_t)capsule_right_candidate
+            : (LCD_WIDTH - 1u);
 
-        UI_DrawLineBuffer(gFrameBuffer, 0, 35, 18, 35, 1);
-        gFrameBuffer[4][19] ^= 0x7F;
-        for (uint8_t x = 20; x < 108; x++)
+        UI_PrintStringSmallNormal(DisplayVersion, version_x, 0, 4);
+
+        if (capsule_left > 0u)
+        {
+            UI_DrawLineBuffer(gFrameBuffer, 0, 35, capsule_left - 1u, 35, 1);
+        }
+        gFrameBuffer[4][capsule_left] ^= 0x7F;
+        for (uint8_t x = capsule_left + 1u; x < capsule_right; x++)
         {
             gFrameBuffer[4][x] ^= 0xFF;
             gFrameBuffer[3][x] ^= 0x80;
         }
-        gFrameBuffer[4][108] ^= 0x7F;
-        UI_DrawLineBuffer(gFrameBuffer, 109, 35, 127, 35, 1);
+        gFrameBuffer[4][capsule_right] ^= 0x7F;
+        if (capsule_right < LCD_WIDTH - 1u)
+        {
+            UI_DrawLineBuffer(gFrameBuffer, capsule_right + 1u, 35, LCD_WIDTH - 1u, 35, 1);
+        }
 
         /*
         #ifdef ENABLE_FEAT_F4HWN_MEM
@@ -355,7 +372,7 @@ void UI_DisplayWelcome(void)
     ST7565_BlitStatusLine();
     ST7565_BlitFullScreen();
 
-    #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        SCREENSHOT_Update(true);
+    #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        K5VIEWER_Update(true);
     #endif
 }

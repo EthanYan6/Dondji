@@ -68,6 +68,7 @@ center_line_t center_line = CENTER_LINE_NONE;
 
 #ifdef ENABLE_FEAT_F4HWN_SCAN_PROGRESS
 #define SCAN_PROGRESS_MR_CHANNEL_BYTES ((MR_CHANNELS_MAX + 7u) / 8u)
+#define SCAN_LIST_NAME_HOLD_500MS       (2000u / 500u)
 
 static bool     gScanProgressSessionActive;
 static bool     gScanProgressSessionIsMemory;
@@ -82,6 +83,7 @@ static bool     gScanProgressPrevResetVfosFlag;
 static bool     gScanProgressForceRebuild;
 static uint16_t gScanProgressLastMemoryIndex;
 static uint8_t  gScanProgressPriorityState;
+static uint8_t  gScanListNameCountdown_500ms;
 #define SCAN_PROGRESS_PRIORITY_LABEL_MASK 0x03u
 #define SCAN_PROGRESS_PRIORITY_SEEN_SHIFT 2
 #define SCAN_PROGRESS_PRIORITY_SEEN_MASK  0x1cu
@@ -90,15 +92,24 @@ static uint8_t  gScanProgressPriorityState;
 #define SCAN_PROGRESS_PRIORITY_HOLD_FRAMES 6
 #endif
 
+#if defined(ENABLE_FEAT_F4HWN_BEAM) || defined(ENABLE_FEAT_F4HWN_SCAN_PROGRESS)
+// Shared center-line renderer: clear the line and print bold text on it.
+static void UI_MAIN_DrawCenterBoldLine(const char *text, uint8_t start)
+{
+#ifdef ENABLE_FEAT_F4HWN
+    const uint8_t line = isMainOnly() ? 5 : 3;
+#else
+    const uint8_t line = 3;
+#endif
+    memset(gFrameBuffer[line], 0, LCD_WIDTH);
+    UI_PrintStringSmallBold(text, start, LCD_WIDTH - 1, line);
+}
+#endif
+
 #ifdef ENABLE_FEAT_F4HWN_BEAM
 static void UI_MAIN_DrawBeamLine(void)
 {
     const char *text;
-#ifdef ENABLE_FEAT_F4HWN
-    const unsigned int line = isMainOnly() ? 5 : 3;
-#else
-    const unsigned int line = 3;
-#endif
 
     switch (gBeamStatus) {
     case BEAM_STATUS_TX_WAIT:
@@ -125,12 +136,11 @@ static void UI_MAIN_DrawBeamLine(void)
         break;
     }
 
-    memset(gFrameBuffer[line], 0, LCD_WIDTH);
-    UI_PrintStringSmallBold(text, 2, 127, line);
+    UI_MAIN_DrawCenterBoldLine(text, 2);
 }
 #endif
 
-const char *VfoStateStr[] = {
+const char *const VfoStateStr[] = {
        [VFO_STATE_NORMAL]="",
        [VFO_STATE_BUSY]="BUSY",
        [VFO_STATE_BAT_LOW]="BAT LOW",
@@ -214,12 +224,20 @@ static void ScanProgress_ResetSession(void)
     gScanProgressForceRebuild = false;
     gScanProgressLastMemoryIndex = 0;
     gScanProgressPriorityState = 0;
+    gScanListNameCountdown_500ms = 0;
 }
 
 void UI_MAIN_NotifyScanProgressDataChanged(void)
 {
     gScanProgressForceRebuild = true;
     gUpdateStatus = true;
+}
+
+void UI_MAIN_NotifyScanListChanged(void)
+{
+    UI_MAIN_NotifyScanProgressDataChanged();
+    gScanListNameCountdown_500ms = SCAN_LIST_NAME_HOLD_500MS;
+    gUpdateDisplay = true;
 }
 
 static inline void ScanProgress_SetBit(uint8_t *map, uint16_t ch)
@@ -241,6 +259,33 @@ static uint8_t ScanProgress_GetActiveScanList(void)
         scan_list = max_scan_list;
 
     return scan_list;
+}
+
+static void UI_MAIN_DrawScanListName(void)
+{
+    const uint8_t scan_list = ScanProgress_GetActiveScanList();
+    char text[16];
+
+    // Manual formatting instead of snprintf: much smaller on a divide-less M0 core
+    strcpy(text, "SCAN LIST ");
+    char *p = text + 10;                     // sizeof("SCAN LIST ") - 1
+
+    if (scan_list > MR_CHANNELS_LIST) {
+        *p++ = 'A'; *p++ = 'L'; *p++ = 'L';
+    } else {
+        const char *name = gListName[scan_list - 1];
+
+        if (IsEmptyName(name, sizeof(gListName[0]))) {
+            *p++ = (char)('0' + scan_list / 10);
+            *p++ = (char)('0' + scan_list % 10);
+        } else {
+            for (uint8_t i = 0; i < 3 && name[i]; i++)
+                *p++ = name[i];
+        }
+    }
+    *p = '\0';
+
+    UI_MAIN_DrawCenterBoldLine(text, 0);
 }
 
 static bool ScanProgress_ChannelBelongsToList(uint16_t channel, const ChannelAttributes_t *att, uint8_t scan_list)
@@ -488,6 +533,12 @@ static bool UI_DrawScanProgress(void)
     if (!show_memory && !show_range) {
         ScanProgress_ResetSession();
         return false;
+    }
+
+    // Right after a scan-list change, briefly show its name instead of the progress bar
+    if (show_memory && gScanListNameCountdown_500ms > 0) {
+        UI_MAIN_DrawScanListName();
+        return true;
     }
 
     if (show_memory) {
@@ -1167,6 +1218,10 @@ void UI_MAIN_PrintAGC(bool now)
 void UI_MAIN_TimeSlice500ms(void)
 {
     if(gScreenToDisplay==DISPLAY_MAIN) {
+#ifdef ENABLE_FEAT_F4HWN_SCAN_PROGRESS
+        if (gScanListNameCountdown_500ms > 0 && --gScanListNameCountdown_500ms == 0)
+            gUpdateDisplay = true;
+#endif
 #ifdef ENABLE_AGC_SHOW_DATA
         UI_MAIN_PrintAGC(true);
         return;
@@ -1526,7 +1581,11 @@ void UI_DisplayMain(void)
                 }
             }
             else {
-                if(RxOnVfofrequency == frequency && !isMainOnly()) {
+                if(RxOnVfofrequency == frequency && !isMainOnly()
+#if defined(ENABLE_FEAT_F4HWN_SCAN_FASTER) && defined(ENABLE_FEAT_F4HWN_SCAN_RSSI)
+                    && !CHFRSCANNER_HasScanRssiSparkline()
+#endif
+                ) {
                     //UI_PrintStringSmallNormal(">>", 8, 0, line);
                     //memcpy(p_line0 + 14, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
                     GUI_DisplaySmallest(">>", 8, RxLine == 0 ? 1 : 33, false, true);
@@ -1537,11 +1596,6 @@ void UI_DisplayMain(void)
             }
 #endif
         }
-
-#if defined(ENABLE_FEAT_F4HWN_SCAN_FASTER) && defined(ENABLE_FEAT_F4HWN_SCAN_RSSI)
-        if (vfo_num == gEeprom.RX_VFO && gScanStateDir != SCAN_OFF && !FUNCTION_IsRx())
-            UI_MAIN_DrawScanRssiSparkline(line);
-#endif
 
         if((gScanStateDir == SCAN_OFF || vfo_num != gEeprom.RX_VFO) && TX_freq_check(frequency) != 0 && gEeprom.VfoInfo[vfo_num].TX_LOCK == true)
         {
@@ -1726,8 +1780,6 @@ void UI_DisplayMain(void)
 #endif
 
                 #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
-                {
-                    }
                 }
                 #endif
 
@@ -2055,7 +2107,11 @@ void UI_DisplayMain(void)
             #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
                 const char dir_list[][2] = {"", "+", "-", "D"};
 
-                if(gTxVfo->TX_OFFSET_FREQUENCY_DIRECTION != 0 && gTxVfo->pTX == &gTxVfo->freq_config_RX && !vfoInfo->FrequencyReverse)
+                if(gRemoveOffset &&
+                   vfoInfo == gTxVfo &&
+                   gTxVfo->TX_OFFSET_FREQUENCY_DIRECTION != 0 &&
+                   gTxVfo->pTX == &gTxVfo->freq_config_RX &&
+                   !vfoInfo->FrequencyReverse)
                 {
                     i = 3;
                 }
@@ -2197,6 +2253,11 @@ void UI_DisplayMain(void)
         }
 #endif
     }
+
+#if defined(ENABLE_FEAT_F4HWN_SCAN_FASTER) && defined(ENABLE_FEAT_F4HWN_SCAN_RSSI)
+    if (gScanStateDir != SCAN_OFF && !FUNCTION_IsRx())
+        UI_MAIN_DrawScanRssiSparkline(isMainOnly() ? 0 : (uint8_t)(gEeprom.RX_VFO * 4u));
+#endif
 
 #ifdef ENABLE_AGC_SHOW_DATA
     center_line = CENTER_LINE_IN_USE;

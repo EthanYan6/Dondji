@@ -195,7 +195,7 @@ extern const char* const            gSubMenu_D_RSP[4];
     extern const char* const        gSubMenu_SET_PWR[7];
     extern const char* const        gSubMenu_SET_PTT[2];
     extern const char* const        gSubMenu_SET_TOT[4];
-    extern const char* const        gSubMenu_SET_LCK[2];
+    extern const char* const        gSubMenu_SET_LCK[];
     extern const char* const        gSubMenu_SET_MET[2];
     #ifdef ENABLE_FEAT_F4HWN_SCAN_FASTER
         extern const char* const    gSubMenu_SET_SCN[2];

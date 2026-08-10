@@ -29,7 +29,7 @@ static uint8_t    scanRangeCssCandidate = 0xFF;
 static uint8_t    scanRangeCssHitCount  = 0;
 #endif
 
-#define SCAN_RANGE_SKIP_MAX 32
+#define SCAN_RANGE_SKIP_MAX 64
 #if (SCAN_RANGE_SKIP_MAX & (SCAN_RANGE_SKIP_MAX - 1)) != 0
     #error SCAN_RANGE_SKIP_MAX must be a power of two
 #endif
@@ -771,12 +771,16 @@ void CHFRSCANNER_Start(const bool storeBackupSettings, const int8_t scan_directi
 #endif
 
     if (IS_MR_CHANNEL(gNextMrChannel))
-    {   
+    {
+        bool scanListChanged = false;
 
         if(!RADIO_CheckValidList(gEeprom.SCAN_LIST_DEFAULT)) {
             RADIO_NextValidList(1);
-            UI_MAIN_NotifyScanProgressDataChanged();
+            scanListChanged = true;
         }
+
+        if (storeBackupSettings || scanListChanged)
+            UI_MAIN_NotifyScanListChanged();
 
         // channel mode
         if (storeBackupSettings) {

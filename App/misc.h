@@ -181,6 +181,19 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN
+    // Keypad lock scope. Values are BOTH a bitmask (ACTIONS/PTT bits tested
+    // individually) AND a contiguous 0..3 menu index: the order must stay
+    // aligned with gSubMenu_SET_LCK[] and any new entry must keep the range
+    // contiguous so that SET_LCK_LEN remains valid as menu bound and EEPROM
+    // range check.
+    enum SET_LCK_t {
+        SET_LCK_KEYS        = 0u,
+        SET_LCK_ACTIONS     = 1u,
+        SET_LCK_PTT         = 2u,
+        SET_LCK_ACTIONS_PTT = SET_LCK_ACTIONS | SET_LCK_PTT,
+        SET_LCK_LEN
+    };
+
     #ifdef ENABLE_FEAT_F4HWN_LOGO_SAV
         enum SET_SAV_t {
             SET_SAV_OFF,
@@ -197,7 +210,7 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     extern uint8_t            gSetting_set_ctr;
     extern bool               gSetting_set_inv;
     extern uint8_t            gSetting_set_eot;
-    extern bool               gSetting_set_lck;
+    extern uint8_t            gSetting_set_lck;
     extern bool               gSetting_set_met;
     extern bool               gSetting_set_gui;
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
@@ -336,11 +349,11 @@ extern volatile bool         gTxTimeoutReached;
     #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
         extern volatile uint16_t gRxTimerCountdown_500ms;
     #endif
-    #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        extern volatile uint8_t  gUART_LockScreenshot; // lock screenshot if Chirp is used
-        extern bool gUSB_ScreenshotEnabled;
+    #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        extern volatile uint8_t  gUART_LockK5Viewer; // lock the K5Viewer stream if Chirp is used
+        extern bool gUSB_K5ViewerEnabled;
 
-        bool SCREENSHOT_IsLocked(void);
+        bool K5VIEWER_IsLocked(void);
     #endif
 #endif
 

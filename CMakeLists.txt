@@ -19,6 +19,8 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 
 enable_language(C ASM)
 
+option(DEV "Prepare the rolling Fusion development firmware" OFF)
+
 find_package(Git QUIET)
 set(BUILD_COMMIT "unknown")
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
@@ -71,7 +73,17 @@ else()
     set(EXE_NAME "firmware")
 endif()
 
+if(DEV)
+    if(NOT "${TARGET}" STREQUAL "f4hwn.fusion")
+        message(FATAL_ERROR "DEV is only supported for the Fusion target")
+    endif()
+    set(DISPLAY_VERSION_STRING_2 "${VERSION_STRING_2} Dev")
+else()
+    set(DISPLAY_VERSION_STRING_2 "${VERSION_STRING_2}")
+endif()
+
 message("EXE_NAME = " ${EXE_NAME})
+message("Development build = " ${DEV})
 
 add_executable(${EXE_NAME})
 
@@ -109,6 +121,17 @@ add_custom_command(
     COMMAND ${CMAKE_OBJCOPY} -O binary ${EXE_NAME}.elf ${EXE_NAME}.bin
     COMMENT "Generating .bin file"
 )
+
+if(DEV)
+    add_custom_command(
+        TARGET ${EXE_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}.bin"
+                "${CMAKE_SOURCE_DIR}/archive/f4hwn.fusion.development.bin"
+        COMMENT "Preparing archive/f4hwn.fusion.development.bin"
+    )
+endif()
 
 # Generate .hex file
 add_custom_command(

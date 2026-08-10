@@ -421,7 +421,9 @@ const char* const gSubMenu_SCRAMBLER[] =
     const char* const gSubMenu_SET_LCK[] =
     {
         "KEYS",
-        "KEYS+PTT"
+        "KEYS\nACTIONS",
+        "KEYS\nPTT",
+        "KEYS\nACTIONS\nPTT"
     };
 
     const char* const gSubMenu_SET_MET[] =
@@ -497,10 +499,6 @@ const t_sidefunction gSubMenu_SIDEFUNCTIONS[] =
 #ifdef ENABLE_TX1750
     {"1750Hz",          ACTION_OPT_1750},
 #endif
-#ifdef ENABLE_REGA
-    {"REGA\nALARM",     ACTION_OPT_REGA_ALARM},
-    {"REGA\nTEST",      ACTION_OPT_REGA_TEST},
-#endif
     {"LOCK\nKEYPAD",    ACTION_OPT_KEYLOCK},
     {"VFO A\nVFO B",    ACTION_OPT_A_B},
     {"VFO\nMEM",        ACTION_OPT_VFO_MR},
@@ -523,6 +521,12 @@ const t_sidefunction gSubMenu_SIDEFUNCTIONS[] =
     #endif
     #ifdef ENABLE_FEAT_F4HWN_BEAM
         {"BEAM",            ACTION_OPT_BEAM},
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN_RXTX_LOG
+        {"RF LOG",          ACTION_OPT_RXTX_LOG},
+    #endif
+    #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
+        {"FOX HUNT\nBEACON", ACTION_OPT_FOXHUNT},
     #endif
 #endif
 };
@@ -1186,7 +1190,7 @@ void UI_DisplayMenu(void)
             if (page == p++) {
                 // Page 0: firmware identity.
 #ifdef ENABLE_FEAT_F4HWN
-                sprintf(String, "%s\n%s", AUTHOR_STRING_2, VERSION_STRING_2);
+                sprintf(String, "%s\n%s", AUTHOR_STRING_2, DISPLAY_VERSION_STRING_2);
                 UI_PrintStringSmallNormal(Edition, menu_item_x1 - 1, menu_item_x2, 6);
 #else
                 sprintf(String, "%u.%02uV\n%u%%",

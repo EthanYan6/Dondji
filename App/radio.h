@@ -149,6 +149,9 @@ extern DCS_CodeType_t gCurrentCodeType;
 
 extern VfoState_t     VfoState[2];
 
+// Human-readable label per VfoState_t (defined in ui/main.c), e.g. "TX DISABLE".
+extern const char *const VfoStateStr[];
+
 bool     RADIO_CheckValidList(uint8_t scanList);
 void     RADIO_NextValidList(int8_t direction);
 bool     RADIO_CheckValidChannel(uint16_t channel, bool checkScanList, uint8_t scanList);

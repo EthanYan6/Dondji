@@ -30,8 +30,8 @@
 #include "settings.h"
 #include <stddef.h>
 
-#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-#include "screenshot.h"
+#ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+#include "k5viewer.h"
 #endif
 
 static const uint16_t Obfuscation[8] = { 0x6C16, 0xE614, 0x912E, 0x400D, 0x3521, 0x40D5, 0x0313, 0x80E9 };
@@ -90,10 +90,11 @@ DECLARE_AIRCOPY_BANK(1)
 static const AIRCOPY_Segment_t AIRCOPY_Segments_Settings[] = {
     { 0xA000, 0xA170, AIRCOPY_WRITE_BYTES },
     { 0x880E, 0x886E, AIRCOPY_WRITE_BYTES },
-    { 0x9000, 0x90D6, AIRCOPY_WRITE_BYTES }, // VFO area (so scan-range source frequencies are replicated)
+    { 0x9000, 0x90E5, AIRCOPY_WRITE_BYTES }, // VFO area (full 14 VFOs 0x9000..0x90E0) +
+                                             // Fox Hunt settings tail 0x90E0..0x90E5
 };
 
-// total_blocks = ceil(0x170/64) + ceil(0x60/64) + ceil(0xD6/64) = 6 + 2 + 4 = 12
+// total_blocks = ceil(0x170/64) + ceil(0x60/64) + ceil(0xE5/64) = 6 + 2 + 4 = 12
 static const AIRCOPY_TransferMap_t AIRCOPY_Map_Settings = {
     .segments = AIRCOPY_Segments_Settings,
     .num_segments = 3,
@@ -140,8 +141,8 @@ static void AIRCOPY_clear()
     {
         crc[i] = 0;
     }
-    #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        SCREENSHOT_Update(true);
+    #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        K5VIEWER_Update(true);
     #endif
 }
 
@@ -170,8 +171,8 @@ static inline void AIRCOPY_CheckComplete(uint16_t *num)
     if (done >= map->total_blocks)
     {
         gAircopyState = AIRCOPY_COMPLETE;
-#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        SCREENSHOT_Update(false);
+#ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        K5VIEWER_Update(false);
 #endif
     }
 }
@@ -222,8 +223,8 @@ bool AIRCOPY_SendMessage(void)
     // Check if transfer is complete
     if (CurrentSegmentIndex >= map->num_segments) {
         gAircopyState = AIRCOPY_COMPLETE;
-        #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-            SCREENSHOT_Update(false);
+        #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+            K5VIEWER_Update(false);
         #endif
         return 0;
     }

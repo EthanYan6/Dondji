@@ -54,6 +54,17 @@ static int16_t currentBrightness = 0;
 static int16_t targetBrightness = 0;
 static int16_t fadeStep = 0;
 
+static void BACKLIGHT_SetHardwareBrightness(uint8_t brightness);
+
+#ifdef ENABLE_FEAT_F4HWN
+    // Power-on fade-in tuning.
+    // STEPS  = number of intermediate brightness stops (smoothness).
+    // STEP_MS = pacing between stops.
+    // STEPS * STEP_MS ~= total fade duration in ms.
+    #define BL_STARTUP_FADE_STEPS   40
+    #define BL_STARTUP_FADE_STEP_MS 12
+#endif
+
 #ifdef ENABLE_FEAT_F4HWN
     const uint8_t value[] = {
         0,    // 0 off
@@ -130,6 +141,37 @@ void BACKLIGHT_UpdateTickless(void) {
     }
 }
 
+#ifdef ENABLE_FEAT_F4HWN
+// Soft, progressive power-on fade-in.
+// Ramps from the current brightness (0 at power-on) to targetBrightness using
+// a smoothstep (3x^2 - 2x^3) easing curve. Easing gently at both ends reads as
+// a smooth, progressive fade instead of the abrupt linear ramp, and stepping
+// through many fine stops keeps it fluid even with the 32-level PWM.
+static void BACKLIGHT_FadeInStartup(void)
+{
+    const int16_t from = currentBrightness;         // 0 at power-on
+    const int16_t span = targetBrightness - from;   // ramp amplitude
+
+    if (span <= 0) {
+        gUpdateBacklight = false;
+        return;
+    }
+
+    for (uint16_t s = 1; s < BL_STARTUP_FADE_STEPS; s++) {
+        // x in Q8 (0..256), e = smoothstep(x) in Q16 (0..65536)
+        uint32_t x = (uint32_t)s * 256 / BL_STARTUP_FADE_STEPS;
+        uint32_t e = (x * x * (768 - 2 * x)) >> 8;
+        currentBrightness = from + (int16_t)(((uint32_t)span * e) >> 16);
+        BACKLIGHT_SetHardwareBrightness((uint8_t)currentBrightness);
+        SYSTEM_DelayMs(BL_STARTUP_FADE_STEP_MS);
+    }
+
+    currentBrightness = targetBrightness;
+    BACKLIGHT_SetHardwareBrightness((uint8_t)currentBrightness);
+    gUpdateBacklight = false;
+}
+#endif
+
 void BACKLIGHT_TurnOn(void)
 {
     #ifdef ENABLE_FEAT_F4HWN_SLEEP
@@ -163,10 +205,11 @@ void BACKLIGHT_TurnOn(void)
     if(startup)
 #endif
     {
-        BACKLIGHT_UpdateTickless();
 #ifdef ENABLE_FEAT_F4HWN
+        BACKLIGHT_FadeInStartup();
         BACKLIGHT_Sound();
 #else
+        BACKLIGHT_UpdateTickless();
         startup = false;
 #endif
     }

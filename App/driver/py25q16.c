@@ -284,9 +284,13 @@ void PY25Q16_WriteBuffer(uint32_t Address, const void *pBuffer, uint32_t Size, b
         if (0 != memcmp(pBuffer, (char *)SectorCache + SecOffset, SecSize))
         {
             bool Erase = false;
+            const uint8_t *oldData = SectorCache + SecOffset;
+            const uint8_t *newData = (const uint8_t *)pBuffer;
+
             for (uint32_t i = 0; i < SecSize; i++)
             {
-                if (0xff != SectorCache[SecOffset + i])
+                // NOR flash programming can only change bits from 1 to 0.
+                if ((oldData[i] & newData[i]) != newData[i])
                 {
                     Erase = true;
                     break;

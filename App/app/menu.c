@@ -426,7 +426,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         #endif
         case MENU_SET_LCK:
             //*pMin = 0;
-            *pMax = ARRAY_SIZE(gSubMenu_SET_LCK) - 1;
+            *pMax = SET_LCK_LEN - 1;
             break;
         case MENU_SET_MET:
         case MENU_SET_GUI:
@@ -725,7 +725,7 @@ void MENU_AcceptSetting(void)
 
         case MENU_LIST_CH:
             gTxVfo->SCANLIST_PARTICIPATION = gSubMenuSelection;
-            SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true, false, true);
+            SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
             gVfoConfigureMode = VFO_CONFIGURE;
             gFlagResetVfos    = true;
             return;
@@ -752,7 +752,7 @@ void MENU_AcceptSetting(void)
 
         case MENU_COMPAND:
             gTxVfo->Compander = gSubMenuSelection;
-            SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true, false, true);
+            SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
             gVfoConfigureMode = VFO_CONFIGURE;
             gFlagResetVfos    = true;
 //          gRequestSaveChannel = 1;
@@ -864,7 +864,7 @@ void MENU_AcceptSetting(void)
         #endif
 
         case MENU_DEL_CH:
-            SETTINGS_UpdateChannel(gSubMenuSelection, NULL, false, false, true);
+            SETTINGS_UpdateChannel(gSubMenuSelection, NULL, false);
             gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
             gFlagResetVfos    = true;
             return;

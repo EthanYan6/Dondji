@@ -127,7 +127,7 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     uint8_t       gSetting_set_ctr = 10;
     bool          gSetting_set_inv = false;
     uint8_t       gSetting_set_eot = 0;
-    bool          gSetting_set_lck = false;
+    uint8_t       gSetting_set_lck = SET_LCK_KEYS;
     bool          gSetting_set_met = 0;
     bool          gSetting_set_gui = 0;
     #ifdef ENABLE_FEAT_F4HWN_AUDIO
@@ -210,9 +210,9 @@ volatile bool     gTxTimeoutReached;
     #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
         volatile uint16_t gRxTimerCountdown_500ms;
     #endif
-    #ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-        volatile uint8_t  gUART_LockScreenshot = 0; // lock screenshot if Chirp is used
-        bool gUSB_ScreenshotEnabled = false;
+    #ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+        volatile uint8_t  gUART_LockK5Viewer = 0; // lock the K5Viewer stream if Chirp is used
+        bool gUSB_K5ViewerEnabled = false;
     #endif
 #endif
 
@@ -646,11 +646,11 @@ void MR_PrintCacheStats(void)
 
 #endif
 
-#ifdef ENABLE_FEAT_F4HWN_SCREENSHOT
-    bool SCREENSHOT_IsLocked(void) 
+#ifdef ENABLE_FEAT_F4HWN_K5VIEWER
+    bool K5VIEWER_IsLocked(void) 
     {
-        if (gUART_LockScreenshot > 0) {
-            gUART_LockScreenshot--;
+        if (gUART_LockK5Viewer > 0) {
+            gUART_LockK5Viewer--;
             return true;
         }
         

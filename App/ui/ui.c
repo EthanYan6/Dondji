@@ -30,8 +30,8 @@
 #ifdef ENABLE_FMRADIO
     #include "ui/fmradio.h"
 #endif
-#ifdef ENABLE_REGA
-    #include "app/rega.h"
+#ifdef ENABLE_FEAT_F4HWN_RXTX_LOG
+    #include "app/rxtx_log.h"
 #endif
 #include "ui/inputbox.h"
 #include "ui/main.h"
@@ -48,7 +48,7 @@ bool              gAskToSave;
 bool              gAskToDelete;
 
 
-void (*UI_DisplayFunctions[])(void) = {
+void (*const UI_DisplayFunctions[])(void) = {
     [DISPLAY_MAIN] = &UI_DisplayMain,
     [DISPLAY_MENU] = &UI_DisplayMenu,
     [DISPLAY_SCANNER] = &UI_DisplayScanner,
@@ -61,8 +61,8 @@ void (*UI_DisplayFunctions[])(void) = {
     [DISPLAY_AIRCOPY] = &UI_DisplayAircopy,
 #endif
 
-#ifdef ENABLE_REGA
-    [DISPLAY_REGA] = &UI_DisplayREGA,
+#ifdef ENABLE_FEAT_F4HWN_RXTX_LOG
+    [DISPLAY_RXTX_LOG] = &UI_DisplayRxTxLog,
 #endif
 };
 
