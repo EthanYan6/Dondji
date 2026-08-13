@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260724b">
+  <link rel="stylesheet" href="css/style.min.css?v=20260813a">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script>
   <script>
     (function () {
@@ -99,7 +99,16 @@
       <button type="button" class="flash-device-warning-modal__btn" id="flashDeviceWarningOkBtn" data-i18n="flashWarningOk">我已了解</button>
     </div>
   </div>
-  <div class="subtitle-chips" aria-label="社交平台账号" style="position:fixed;right:10px;bottom:20px;z-index:9980;">
+  <div class="subtitle-chips" id="subtitleChips" aria-label="社交平台账号" style="position:fixed;right:10px;bottom:20px;z-index:9980;">
+    <div class="subtitle-chips-header">
+      <span class="subtitle-chips-title" data-i18n="mediaAccount">BD1AHN媒体账号</span>
+      <button class="subtitle-chips-toggle" id="subtitleChipsToggle" type="button" aria-label="收起" title="收起" data-i18n-title="collapseChips" data-i18n-aria="collapseChips">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+    </div>
+    <div class="subtitle-chips-body" id="subtitleChipsBody">
     <span class="subtitle-chip subtitle-chip--douyin" title="抖音 · 小闫连不上">
       <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 3v9.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
@@ -107,14 +116,14 @@
       <span class="subtitle-chip-label" data-i18n="douyin">抖音</span>
       <span class="subtitle-chip-name" data-i18n="douyinName">小闫连不上</span>
     </span>
-    <span class="subtitle-chip subtitle-chip--bili" title="哔哩哔哩 · 小闫同学啊">
+    <span class="subtitle-chip subtitle-chip--bili" title="哔哩哔哩 · 小闫连不上">
       <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/>
         <path d="M6 8l2 3h8l2-3"/>
         <path d="M9.5 15h5"/>
       </svg>
       <span class="subtitle-chip-label" data-i18n="bili">B站</span>
-      <span class="subtitle-chip-name" data-i18n="biliName">小闫同学啊</span>
+      <span class="subtitle-chip-name" data-i18n="biliName">小闫连不上</span>
     </span>
     <span class="subtitle-chip subtitle-chip--redbook" title="小红书 · 小闫同学">
       <svg class="subtitle-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -189,6 +198,8 @@
       <span class="subtitle-chip-label" data-i18n="otherFirmware">其它固件合集</span>
       <span class="subtitle-chip-name" data-i18n="clickView">点击查看</span>
     </a>
+    </div>
+    <div class="subtitle-chips-collapsed" id="subtitleChipsCollapsed" data-i18n="mediaAccount" role="button" tabindex="0" title="展开" data-i18n-title="expandChips" data-i18n-aria="expandChips">BD1AHN媒体账号</div>
   </div>
   <div class="page-layout">
     <!-- VERSION TIMELINE SIDEBAR -->
@@ -1063,6 +1074,63 @@
         closeDowngradeModal();
       }
     });
+  })();
+
+  (function() {
+    var chips = document.getElementById('subtitleChips');
+    var toggleBtn = document.getElementById('subtitleChipsToggle');
+    var collapsedEl = document.getElementById('subtitleChipsCollapsed');
+    if (!chips || !toggleBtn || !collapsedEl) return;
+
+    toggleBtn.addEventListener('click', function() {
+      chips.classList.add('collapsed');
+    });
+
+    collapsedEl.addEventListener('click', function() {
+      chips.classList.remove('collapsed');
+    });
+
+    collapsedEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        chips.classList.remove('collapsed');
+      }
+    });
+  })();
+
+  (function() {
+    function patchTranslations() {
+      var lang = (window.getCurrentLang ? window.getCurrentLang() : 'zh');
+      var isEn = lang === 'en';
+      var biliNameEl = document.querySelector('[data-i18n="biliName"]');
+      if (biliNameEl) {
+        biliNameEl.textContent = isEn ? "Little Yan Can't Connect" : '\u5c0f\u9699\u8fde\u4e0d\u4e0a';
+      }
+      var biliChip = document.querySelector('.subtitle-chip--bili');
+      if (biliChip) {
+        biliChip.title = isEn ? "Bilibili \u00b7 Little Yan Can't Connect" : '\u54d4\u54e9\u54d4\u54e9 \u00b7 \u5c0f\u9699\u8fde\u4e0d\u4e0a';
+      }
+      var mediaText = isEn ? 'BD1AHN Media Accounts' : 'BD1AHN\u5a92\u4f53\u8d26\u53f7';
+      document.querySelectorAll('[data-i18n="mediaAccount"]').forEach(function(el) {
+        el.textContent = mediaText;
+      });
+      var collapseText = isEn ? 'Collapse' : '\u6536\u8d77';
+      document.querySelectorAll('[data-i18n-title="collapseChips"]').forEach(function(el) {
+        el.title = collapseText;
+        el.setAttribute('aria-label', collapseText);
+      });
+      var expandText = isEn ? 'Expand' : '\u5c55\u5f00';
+      document.querySelectorAll('[data-i18n-title="expandChips"]').forEach(function(el) {
+        el.title = expandText;
+        el.setAttribute('aria-label', expandText);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', patchTranslations);
+    } else {
+      patchTranslations();
+    }
+    window.addEventListener('langchange', patchTranslations);
   })();
   </script>
 </body>

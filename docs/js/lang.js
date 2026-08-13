@@ -51,7 +51,7 @@
       'douyin': '抖音',
       'douyinName': '小闫连不上',
       'bili': 'B站',
-      'biliName': '小闫同学啊',
+      'biliName': '小闫连不上',
       'redbook': '小红书',
       'redbookName': '小闫同学',
       'wechatVideo': '微信视频号',
@@ -64,6 +64,9 @@
       'otherFirmwareLink': '其它固件',
       'otherFirmwareName': '山竹',
       'otherFirmware': '其它固件合集',
+      'mediaAccount': 'BD1AHN媒体账号',
+      'collapseChips': '收起',
+      'expandChips': '展开',
       
       // Timeline sidebar
       'timelineTitle': '叮咚鸡（Dondji）历史版本',
@@ -475,7 +478,7 @@
       'douyin': 'Douyin',
       'douyinName': 'Little Yan Can\'t Connect',
       'bili': 'Bilibili',
-      'biliName': 'Little Yan Student',
+      'biliName': "Little Yan Can't Connect",
       'redbook': 'Red',
       'redbookName': 'Little Yan Student',
       'wechatVideo': 'WeChat Video',
@@ -488,6 +491,9 @@
       'otherFirmwareLink': 'Other Firmware',
       'otherFirmwareName': 'Mangosteen',
       'otherFirmware': 'Other Firmware Collection',
+      'mediaAccount': 'BD1AHN Media Accounts',
+      'collapseChips': 'Collapse',
+      'expandChips': 'Expand',
       
       // Timeline sidebar
       'timelineTitle': 'Dondji Version History',
