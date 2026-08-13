@@ -288,7 +288,7 @@ extern const uint8_t     gMemNameSymbolCharsetCount;
 // Pinyin input state for CN channel name
 #define PINYIN_MAX_LEN      6
 #define CN_CANDIDATE_MAX    6
-#define PINYIN_CAND_MAX     6  // max pinyin candidates to display
+#define PINYIN_CAND_MAX     16  // max pinyin candidates to store (scroll to view)
 extern char              gPinyinBuffer[PINYIN_MAX_LEN + 1];
 extern uint8_t           gPinyinLen;
 extern uint16_t          gCNCandidates[CN_CANDIDATE_MAX];

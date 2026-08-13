@@ -220,15 +220,27 @@ static void MENU_BuildPinyinCandidatesFromDigits(void)
 void MENU_EnsurePinyinPageVisible(void)
 {
     uint8_t idx = gPinyinCandidateIndex;
-    uint8_t offset, x = 0;
+    uint8_t offset, x;
 
     if (idx >= gPinyinCandidateCount) idx = gPinyinCandidateCount ? gPinyinCandidateCount - 1u : 0;
     gPinyinCandidateIndex = idx;
 
+    /* Check if selected candidate is already visible with current offset */
+    x = 0;
+    for (offset = gPinyinCandidateOffset; offset < gPinyinCandidateCount; offset++)
+    {
+        uint8_t py_w = (uint8_t)strlen(gPinyinCandidates[offset]) * 6u + 6u;
+        if (x + py_w > 123u) break;
+        if (offset == idx) return;  /* already visible, keep current offset */
+        x += py_w;
+    }
+
+    /* Selected candidate not visible — recalculate offset to include it */
+    x = (uint8_t)strlen(gPinyinCandidates[idx]) * 6u + 6u;
     for (offset = idx; offset > 0; offset--)
     {
         uint8_t py_w = (uint8_t)strlen(gPinyinCandidates[offset - 1]) * 6u + 6u;
-        if (x + py_w > 126u) break;
+        if (x + py_w > 123u) break;
         x += py_w;
     }
     gPinyinCandidateOffset = offset;
