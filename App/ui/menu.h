@@ -277,6 +277,8 @@ enum {
     MEM_NAME_INPUT_SYMBOL,
     MEM_NAME_INPUT_PINYIN
 };
+/* 编辑空位占位符；不可用 '_'（符号模式可选真实下划线） */
+#define MEM_NAME_EDIT_PAD ' '
 extern uint8_t           gMemNameInputMode;
 extern uint8_t           gMemNameCandidateCount;
 extern char              gMemNameCandidates[6];
