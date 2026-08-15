@@ -318,7 +318,8 @@ void     SETTINGS_FetchChannelName(char *s, const uint16_t channel);
 #ifdef ENABLE_CHINESE
 bool     SETTINGS_ChannelNameHasCjkUtf8(const char *s);
 #endif
-void     SETTINGS_FactoryReset(bool bIsAll);
+/* mode: 0=VFO, 1=ALL, 2=OEM (wipe AES sector, then power-off prompt) */
+void     SETTINGS_FactoryReset(uint8_t mode);
 #ifdef ENABLE_FMRADIO
     void SETTINGS_SaveFM(void);
 #endif

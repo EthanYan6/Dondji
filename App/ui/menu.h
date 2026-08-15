@@ -240,7 +240,7 @@ extern const char        gSubMenu_D_RSP[4][11];
 extern const char* const gSubMenu_PTT_ID[5];
 extern const char        gSubMenu_PONMSG[3][8];
 extern const char        gSubMenu_ROGER[3][6];
-extern const char        gSubMenu_RESET[2][4];
+extern const char        gSubMenu_RESET[3][4];
 extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];

@@ -639,7 +639,8 @@ const char gSubMenu_ROGER[][6] =
 const char gSubMenu_RESET[][4] =
 {
     "VFO",
-    "ALL"
+    "ALL",
+    "OEM"
 };
 
 const char * const gSubMenu_F_LOCK[] =

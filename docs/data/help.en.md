@@ -621,7 +621,7 @@ Legacy Chinese channel names: `0x020000`–`0x023FFF` (non-overlapping with font
    Font/firmware version mismatch, or browser cached an old font — clear cache and reflash.
 
 4. **Password when flashing back to factory?**  
-   Password is often `000000`. Or: factory reset → flash F4HWN v4 → factory reset again → official tool for factory firmware. WeChat group help via the site’s floating button is recommended.
+   **Other → Factory Reset → OEM** → confirm → power off when you see “PWR OFF” → flash stock with official CPS. This wipes the AES programming-key sector so CPS usually won’t ask for a password. See the same tutorial in the site’s Emergency Toolbox. WeChat group help via the site’s floating button is recommended.
 
 5. **Snow screen / erratic battery / wrong voltage?**  
    Bad calibration: restore factory calibration; if no backup, use factory calibration from the web page.
@@ -661,7 +661,7 @@ Legacy Chinese channel names: `0x020000`–`0x023FFF` (non-overlapping with font
    Answer: **Other → Lock Range** can lock keypad only or include PTT.
 
 10. **Password when flashing back to factory?**  
-    Answer: Often `000000`. Or: factory reset → F4HWN gen-4 firmware → factory reset → official tool for factory firmware. WeChat group via site floating button is recommended.
+    Answer: **Other → Factory Reset → OEM**, confirm, power off at “PWR OFF”, then flash stock with official CPS. See the Emergency Toolbox tutorial on this site. WeChat group via site floating button is recommended.
 
 11. **Snow screen / jumping battery / wrong voltage?**  
     Answer: Calibration issue — restore factory calibration; use web factory calibration if no backup.

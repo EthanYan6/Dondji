@@ -81,7 +81,8 @@ const char gSubMenu_ROGER_CN[][6] = {
 
 const char gSubMenu_RESET_CN[][8] = {
     "VFO",
-    "\xe5\x85\xa8\xe9\x83\xa8",
+    "\xe5\x85\xa8\xe9\x83\xa8",           /* 全部 */
+    "\xe5\x8e\x9f\xe5\x8e\x82",             /* 原厂 */
 };
 
 const char *const gSubMenu_F_LOCK_CN[] = {

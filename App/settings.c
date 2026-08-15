@@ -21,11 +21,15 @@
 #ifdef ENABLE_FMRADIO
     #include "app/fm.h"
 #endif
+#include "driver/backlight.h"
 #include "driver/bk1080.h"
 #include "driver/bk4819.h"
 #include "driver/py25q16.h"
+#include "driver/st7565.h"
+#include "driver/system.h"
 #include "misc.h"
 #include "settings.h"
+#include "ui/helper.h"
 #include "ui/menu.h"
 
 EEPROM_Config_t gEeprom = { 0 };
@@ -712,23 +716,46 @@ void SETTINGS_FetchChannelName(char *s, const uint16_t channel)
         s[i--] = 0;
 }
 
-void SETTINGS_FactoryReset(bool bIsAll)
+static void SETTINGS_ShowPowerOffPrompt(void)
 {
-    // PY25Q16_SectorErase(0x000000);
-    // PY25Q16_SectorErase(0x001000);
-    // PY25Q16_SectorErase(0x002000);
-    // PY25Q16_SectorErase(0x003000);
-    // PY25Q16_SectorErase(0x004000);
-    // PY25Q16_SectorErase(0x005000);
-    // PY25Q16_SectorErase(0x006000);
-    // PY25Q16_SectorErase(0x007000);
-    // PY25Q16_SectorErase(0x008000);
-    // PY25Q16_SectorErase(0x009000);
+    BACKLIGHT_TurnOn();
+    UI_DisplayClear();
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN) {
+        /* 请关机 */
+        UI_PrintStringSmallAtPixel("\xe8\xaf\xb7\xe5\x85\xb3\xe6\x9c\xba",
+                                   0u, LCD_WIDTH - 1u, 24u, 35u, 0u);
+    } else {
+        UI_PrintStringSmallNormal("PWR OFF", 0, 127, 3);
+    }
+#else
+    UI_PrintStringSmallNormal("PWR OFF", 0, 127, 3);
+#endif
+    ST7565_BlitFullScreen();
+
+    while (1) {
+        SYSTEM_DelayMs(100);
+    }
+}
+
+void SETTINGS_FactoryReset(uint8_t mode)
+{
+    /* OEM: erase sectors 0-15 (incl. AES key @ 0xA000), keep calibration @ 0x010000.
+     * No write-back — leave Flash blank for stock CPS, then ask user to power off. */
+    if (mode == 2) {
+        for (uint32_t addr = 0x000000; addr <= 0x00F000; addr += 0x1000) {
+            PY25Q16_SectorErase(addr);
+        }
+        SETTINGS_ShowPowerOffPrompt();
+        return;
+    }
+
+    const bool bIsAll = (mode != 0);
 
     for (uint32_t addr = 0x000000; addr <= 0x009000; addr += 0x1000) {
         PY25Q16_SectorErase(addr);
     }
-    
+
     // 0d60 - 0e30
     if (bIsAll)
     {

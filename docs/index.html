@@ -825,53 +825,32 @@
       <h2 id="downgradeGuideModalTitle" class="coffee-modal__title" data-i18n="downgradeTitle">🔧 刷回官方解锁写频密码</h2>
       <div class="coffee-modal__content">
         <p class="coffee-modal__text">
-          <strong data-i18n="downgradeSubtitle">叮咚鸡降级官方解锁写频密码：</strong>
+          <strong data-i18n="downgradeSubtitle">用叮咚鸡菜单「恢复出厂 → 原厂(OEM)」擦除写频密钥后，再用官方 CPS 刷回原厂固件：</strong>
         </p>
         <ol class="downgrade-steps" style="text-align: left; margin: 12px 0; padding-left: 20px; color: var(--text-muted); line-height: 1.6; font-size: 0.9em;">
           <li style="margin-bottom: 8px;">
-            <strong style="color: var(--accent);" data-i18n="downgradeStep1Title">恢复全部出厂设置：</strong><br>
-            <span data-i18n="downgradeStep1Content">按住 "PTT+ 侧键 1" 开机，选择：恢复出厂->全部->确定。</span>
+            <strong style="color: var(--accent);" data-i18n="downgradeStep1Title">解锁全部菜单：</strong><br>
+            <span data-i18n="downgradeStep1Content">关机后，同时按住 PTT 与紧挨其下方的侧键开机，进入完整菜单。</span>
           </li>
           <li style="margin-bottom: 8px;">
-            <strong style="color: var(--accent);" data-i18n="downgradeStep2Title">降级到 V4.3.2 版本：</strong><br>
-            <span data-i18n="downgradeStep2Content">刷 "f4hwn.IOTCU_K1_v4.323_b02.bin" 固件</span>
+            <strong style="color: var(--accent);" data-i18n="downgradeStep2Title">执行「原厂」恢复：</strong><br>
+            <span data-i18n="downgradeStep2Content">打开「其它」→「恢复出厂」→ 选择「原厂」(OEM) → 确认。</span>
           </li>
           <li style="margin-bottom: 8px;">
-            <strong style="color: var(--accent);" data-i18n="downgradeStep3Title">恢复降级配置：</strong><br>
-            <span data-i18n="downgradeStep3Content1">恢复 "降级配置.bin"</span><br>
-            <span data-i18n="downgradeStep3Content2">恢复配置地址：</span><a href="https://k5.vicicode.cn/#/tool/backup" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">https://k5.vicicode.cn/#/tool/backup</a><br>
-            <span style="color: #f0883e; font-size: 0.9em;" data-i18n="downgradeStep3Note">注意：进度正常卡到 50%-60% 左右，直接关机就行，不用重复恢复。</span>
+            <strong style="color: var(--accent);" data-i18n="downgradeStep3Title">关机：</strong><br>
+            <span data-i18n="downgradeStep3Content">屏幕显示「请关机」后关机（英文界面为 PWR OFF）。</span>
           </li>
           <li style="margin-bottom: 8px;">
-            <strong style="color: var(--accent);" data-i18n="downgradeStep4Title">恢复全部出厂设置：</strong><br>
-            <span data-i18n="downgradeStep4Content">按住 PTT+ 侧键 1 开机，选择：恢复出厂设置->全部参数->确定。</span>
-          </li>
-          <li style="margin-bottom: 8px;">
-            <strong style="color: var(--accent);" data-i18n="downgradeStep5Title">官方 CPS 写频软件更新官方固件：</strong><br>
-            <span data-i18n="downgradeStep5Content">设备->升级程序->升级。</span>
+            <strong style="color: var(--accent);" data-i18n="downgradeStep4Title">官方 CPS 刷原厂固件：</strong><br>
+            <span data-i18n="downgradeStep4Content">用官方写频软件：设备 → 升级程序 → 升级。原厂固件可在本页应急工具箱下载。</span>
           </li>
         </ol>
-        <div class="downgrade-files" style="margin-top: 16px;">
-          <p class="coffee-modal__text" style="margin-bottom: 8px;"><strong data-i18n="downgradeFiles">所需文件下载：</strong></p>
-          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-            <a href="archive/降级配置.bin" download class="downgrade-file-btn">
-              <svg style="width: 16px; height: 16px; vertical-align: middle;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span data-i18n="downgradeConfigBin">降级配置.bin</span>
-            </a>
-            <a href="archive/f4hwn.IOTCU_K1_v4.323_b02.bin" download class="downgrade-file-btn">
-              <svg style="width: 16px; height: 16px; vertical-align: middle;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              f4hwn.IOTCU_K1_v4.323_b02.bin
-            </a>
-          </div>
-        </div>
+        <p class="coffee-modal__text" style="margin-top: 12px; color: var(--text-muted); font-size: 0.9em;" data-i18n="downgradeNote">
+          说明：该操作会擦除含 AES 写频密钥的 Flash 区，避免刷回官方后 CPS 要密码；校准数据保留。
+        </p>
+        <p class="coffee-modal__text" style="margin-top: 8px; text-align: right; color: var(--text-muted); font-size: 0.85em;" data-i18n="downgradeCredit">
+          感谢@sfyzzw提供思路
+        </p>
       </div>
       <button type="button" class="coffee-modal__btn" id="downgradeGuideModalCloseBtn" data-i18n="close">关闭</button>
     </div>
@@ -881,7 +860,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/lang.min.js?v=20260724c"></script>
+  <script src="js/lang.min.js?v=20260815f"></script>
   <script src="js/flash.min.js?v=20260718a"></script>
   <script>
   (function() {
