@@ -2289,6 +2289,15 @@ html.theme-light .calib-check-modal__backdrop {
   max-width: 100%;
 }
 
+.toolbox-card-tip {
+  font-size: 0.8em;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  max-width: 100%;
+}
+
 .downgrade-file-btn {
   display: inline-flex;
   align-items: center;

@@ -380,6 +380,8 @@
       'toolboxK1StockCn': 'K1 官方中文固件',
       'toolboxK5V3StockCn': 'K5 V3 官方固件',
       'toolboxK1CPS': 'K1 官方写频软件',
+      'toolboxK1InitFreq': '频率初始化(应急)',
+      'toolboxK1InitFreqTip': '如果频率有问题，用原厂写频软件写频导入',
       'toolboxK1VoiceRes': 'K1 中文字库语音资源',
       
       // Downgrade guide modal
@@ -806,6 +808,8 @@
       'toolboxK1StockCn': 'K1 Chinese Stock Firmware',
       'toolboxK5V3StockCn': 'K5 V3 Stock Firmware',
       'toolboxK1CPS': 'K1 Official CPS',
+      'toolboxK1InitFreq': 'Frequency Init (Emergency)',
+      'toolboxK1InitFreqTip': 'If frequencies are wrong, import with the official CPS',
       'toolboxK1VoiceRes': 'K1 Chinese Font & Voice Resource',
       
       // Downgrade guide modal
