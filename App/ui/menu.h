@@ -191,6 +191,8 @@ enum
     MENU_MLONG,
     MENU_BATTYP,
     MENU_MDC_ID,
+    MENU_YAN_ID,
+    MENU_YAN_ID_RX,
     MENU_LANGUAGE
 };
 
@@ -239,7 +241,7 @@ extern const char        gSubMenu_D_RSP[4][11];
 
 extern const char* const gSubMenu_PTT_ID[5];
 extern const char        gSubMenu_PONMSG[3][8];
-extern const char        gSubMenu_ROGER[3][6];
+extern const char        gSubMenu_ROGER[4][7];
 extern const char        gSubMenu_RESET[3][4];
 extern const char* const gSubMenu_F_LOCK[F_LOCK_LEN];
 extern const char        gSubMenu_RX_TX[4][6];

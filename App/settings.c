@@ -293,10 +293,27 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     #ifdef ENABLE_ALARM
         gEeprom.ALARM_MODE                 = (Data[0] <  2) ? Data[0] : true;
     #endif
-    gEeprom.ROGER                          = (Data[1] <  3) ? Data[1] : ROGER_MODE_OFF;
+    gEeprom.ROGER                          = (Data[1] <  4) ? Data[1] : ROGER_MODE_OFF;
     gEeprom.REPEATER_TAIL_TONE_ELIMINATION = (Data[2] < 11) ? Data[2] : 0;
     gEeprom.TX_VFO                         = (Data[3] <  2) ? Data[3] : 0;
     gEeprom.BATTERY_TYPE                   = (Data[4] < BATTERY_TYPE_UNKNOWN) ? Data[4] : BATTERY_TYPE_1600_MAH;
+
+    // 0EB0..0EB7 — Yan ID + receive flag (mangosteen-compatible gap)
+    {
+        uint8_t yan[8];
+        PY25Q16_ReadBuffer(0x00A0A8 + 0x20, yan, 8);
+        memset(gEeprom.yan_id, 0, sizeof(gEeprom.yan_id));
+        for (uint8_t i = 0; i < YAN_ID_LEN; i++) {
+            const char c = (char)yan[i];
+            if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+                gEeprom.yan_id[i] = c;
+            else if (c >= 'a' && c <= 'z')
+                gEeprom.yan_id[i] = (char)(c - 32);
+            else
+                break;
+        }
+        gEeprom.yan_id_rx = (yan[7] == 1);
+    }
 
     // 0ED0..0ED7
     PY25Q16_ReadBuffer(0x00A0A8 + 0x40, Data, 8);
@@ -1015,6 +1032,13 @@ void SETTINGS_SaveSettings(void)
     State[2] = gEeprom.REPEATER_TAIL_TONE_ELIMINATION;
     State[3] = gEeprom.TX_VFO;
     State[4] = gEeprom.BATTERY_TYPE;
+
+    // 0x0EB0 — Yan ID + yan_id_rx
+    State = SecBuf + 0x20;
+    memset(State, 0, 8);
+    for (uint8_t i = 0; i < YAN_ID_LEN && gEeprom.yan_id[i]; i++)
+        State[i] = (uint8_t)gEeprom.yan_id[i];
+    State[7] = gEeprom.yan_id_rx ? 1 : 0;
 
     // 0x0ED0
     State = SecBuf + 0x40;

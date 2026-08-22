@@ -18,6 +18,7 @@
 
 #include "app/dtmf.h"
 #include "app/mdc1200.h"
+#include "app/yan_id_rf.h"
 #if defined(ENABLE_FMRADIO)
     #include "app/fm.h"
 #endif
@@ -157,6 +158,7 @@ void FUNCTION_Transmit()
     BK4819_DisableDTMF();
 
     BK4819_DisableMDC1200Rx();
+    YAN_RF_DisableRx();
 
 #ifdef ENABLE_DTMF_CALLING
     // clear the DTMF RX buffer

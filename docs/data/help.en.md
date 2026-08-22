@@ -2,7 +2,7 @@
 
 This manual is divided into four chapters:
 
-1. **Chapter 1 — System User Guide**: Day-to-day operation after flashing Dondji firmware (radio, scanning, saving channels, naming, spectrum, toolbox, etc.)
+1. **Chapter 1 — System User Guide**: Day-to-day operation after flashing Dondji firmware (radio, scanning, saving channels, naming, spectrum, CW trainer, etc.)
 2. **Chapter 2 — Firmware & Flashing**: Web-based flashing, calibration, configuration, storage addresses, and technical notes
 3. **Chapter 3 — FAQ & Other**: Frequently asked questions and contact information
 4. **Chapter 4 — Licensing & Brand**: Commercial use notice and trademark policy
@@ -63,7 +63,7 @@ Welcome to **Dondji (叮咚鸡)**. This chapter covers basic operation after pow
 | `F+5` | Enter spectrum |
 | `Long 5` | Dual watch + dual VFO: range scan (see 1.3) |
 | `Long 6` or `F+6` | Switch power level |
-| `F+7` | Open **Toolbox** (electronic wooden fish / CW) — not a game |
+| `F+7` | Enter **CW trainer** |
 | `Long 8` | Reverse frequency (swap TX/RX) |
 | `F+8` | Switch backlight mode |
 | `Long 9` | Jump to the channel set in **Other → PTT Call** |
@@ -300,16 +300,11 @@ This setting is stored in configuration (SPI `0x00A148`) and is included in conf
 
 ---
 
-## 1.7 Toolbox (F+7)
+## 1.7 CW Trainer (F+7)
 
-On the main screen, **`F+7`** opens the **Toolbox** (not the brick-breaker game):
+On the main screen, **`F+7`** opens the **CW trainer** directly.
 
-| Item | Description |
-|------|------|
-| **Electronic wooden fish** | Fun tap sound |
-| **cw** | Morse practice / related features |
-
-**EXIT** leaves the toolbox.
+**EXIT** leaves the trainer.
 
 ---
 

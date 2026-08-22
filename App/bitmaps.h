@@ -43,6 +43,12 @@ extern const uint8_t BITMAP_compand[6];
 
 extern const uint8_t BITMAP_NOAA[12];
 
+/* Yan ID popup phone icon — page-major 16×16 (2 pages × 16 cols). */
+#define BITMAP_CALL_PHONE_WIDTH  16
+#define BITMAP_CALL_PHONE_HEIGHT 16
+#define BITMAP_CALL_PHONE_PAGES  (BITMAP_CALL_PHONE_HEIGHT / 8)
+extern const uint8_t BITMAP_CALL_PHONE[BITMAP_CALL_PHONE_PAGES * BITMAP_CALL_PHONE_WIDTH];
+
 #ifndef ENABLE_CUSTOM_MENU_LAYOUT
     extern const uint8_t BITMAP_CurrentIndicator[8];
 #endif

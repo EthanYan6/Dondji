@@ -19,7 +19,6 @@
 #include "app/spectrum.h"
 #endif
 #ifdef ENABLE_FEAT_F4HWN_GAME
-#include "app/mokuyu.h"
 #endif
 #include "driver/st7565.h"
 #include "screenshot.h"
@@ -104,13 +103,8 @@ void SCREENSHOT_Update(bool force)
     is_spectrum_active = APP_IsSpectrumActive();
 #endif
 
-    bool is_mokuyu_active = false;
-#ifdef ENABLE_FEAT_F4HWN_GAME
-    is_mokuyu_active = APP_IsMokuyuActive();
-#endif
-
     bool is_dual_vfo_tight_top = UI_IsDualVfoMainScreen();
-    if (is_spectrum_active || is_mokuyu_active)
+    if (is_spectrum_active)
     {
         is_dual_vfo_tight_top = false;
     }

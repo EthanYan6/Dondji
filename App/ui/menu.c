@@ -426,6 +426,8 @@ const t_menu_item MenuList[] =
 #endif
     {"Roger",       MENU_ROGER         },
     {"MDC ID",      MENU_MDC_ID        },
+    {"Yan ID",      MENU_YAN_ID        },
+    {"Yan Rx",      MENU_YAN_ID_RX     },
     {"STE",         MENU_STE           },
     {"RP STE",      MENU_RP_STE        },
     {"1 Call",      MENU_1_CALL        },
@@ -629,11 +631,12 @@ const char gSubMenu_PONMSG[][8] =
     "Logo",
 };
 
-const char gSubMenu_ROGER[][6] =
+const char gSubMenu_ROGER[][7] =
 {
     "OFF",
     "ROGER",
-    "MDC"
+    "MDC",
+    "Yan ID"
 };
 
 const char gSubMenu_RESET[][4] =
@@ -984,13 +987,12 @@ static void UI_MENU_DrawMemNameSymbolSixPack(unsigned int x1, unsigned int x2)
 }
 
 #ifdef ENABLE_CHINESE
-/* 命名信道编辑页（中/英共用；拼音/汉字条仅中文语言） */
-static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_val_x2)
+/* 命名信道 / Yan ID 编辑页（中/英共用；拼音/汉字条仅中文语言） */
+static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_val_x2, size_t max_b)
 {
     const uint8_t y_mode = 20u;
     const uint8_t y_name = 28u;
     const uint8_t y_strip = (uint8_t)(y_name + 22u);
-    const size_t max_b = (size_t)CHANNEL_NAME_MAX_BYTES;
 
     switch (gMemNameInputMode)
     {
@@ -1068,7 +1070,7 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
             slot_count++;
         }
 
-        if (edit_index >= 0 && (size_t)edit_index == CHANNEL_NAME_MAX_BYTES && slot_count < 15 && x + eng_cw <= sub_val_x2)
+        if (edit_index >= 0 && (size_t)edit_index == max_b && slot_count < 15 && x + eng_cw <= sub_val_x2)
         {
             slot_x[slot_count] = x;
             slot_w[slot_count] = eng_cw;
@@ -1304,6 +1306,19 @@ static void UI_MENU_DrawChevron(bool left, uint8_t center_x, uint8_t center_y, u
     }
 }
 
+/* 二级菜单左栏中文两行标题（与接收/发射亚音等同一套坐标） */
+static void UI_MENU_DrawLevel2CnTwoLines(const char *line1, const char *line2)
+{
+    const uint8_t left_end = (uint8_t)(8u * 6u - 1u);
+    const uint8_t l2_y1_lo = 10u;
+    const uint8_t l2_y1_hi = 21u;
+    const uint8_t l2_y2_lo = 24u;
+    const uint8_t l2_y2_hi = 35u;
+
+    UI_PrintStringSmallAtPixel(line1, 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
+    UI_PrintStringSmallAtPixel(line2, 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+}
+
 /* Level 2 (browse): [ left: menu name centered in pane, index n/m below ] | vertical line only | [ right: values ] */
 static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
 {
@@ -1347,23 +1362,23 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
 #endif
         if (UI_MENU_GetCurrentMenuId() == MENU_R_DCS)
         {
-            UI_PrintStringSmallAtPixel("接收", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("数字亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_MENU_DrawLevel2CnTwoLines("接收", "数字亚音");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_R_CTCS)
         {
-            UI_PrintStringSmallAtPixel("接收", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("模拟亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_MENU_DrawLevel2CnTwoLines("接收", "模拟亚音");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_T_DCS)
         {
-            UI_PrintStringSmallAtPixel("发射", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("数字亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_MENU_DrawLevel2CnTwoLines("发射", "数字亚音");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_T_CTCS)
         {
-            UI_PrintStringSmallAtPixel("发射", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("模拟亚音", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_MENU_DrawLevel2CnTwoLines("发射", "模拟亚音");
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_YAN_ID_RX)
+        {
+            UI_MENU_DrawLevel2CnTwoLines("接收", "Yan ID");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_1)
         {
@@ -1407,8 +1422,7 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_RP_STE)
         {
-            UI_PrintStringSmallAtPixel("过中继", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("尾音消除", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
+            UI_MENU_DrawLevel2CnTwoLines("过中继", "尾音消除");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_TDR)
         {
@@ -2217,7 +2231,7 @@ void UI_DisplayMenu(void)
                 unsigned int sub_val_x2 = menu_item_x2;
                 if (!icon_layout && gIsInSubMenu)
                     sub_val_x1 += 2u;
-                UI_MENU_DrawMemNameEdit(sub_val_x1, sub_val_x2);
+                UI_MENU_DrawMemNameEdit(sub_val_x1, sub_val_x2, (size_t)CHANNEL_NAME_MAX_BYTES);
                 already_printed = true;
                 break;
             }
@@ -3176,30 +3190,34 @@ void UI_DisplayMenu(void)
             break;
 
         case MENU_MDC_ID:
+        case MENU_YAN_ID:
             if (gIsInSubMenu && edit_index >= 0)
             {
                 unsigned int sub_val_x1 = menu_value_x1;
                 unsigned int sub_val_x2 = menu_item_x2;
+                const size_t edit_len = (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
+                    ? 4u
+                    : (size_t)YAN_ID_LEN;
+#ifdef ENABLE_CHINESE
+                if (!icon_layout && gIsInSubMenu)
+                    sub_val_x1 += 2u;
+                UI_MENU_DrawMemNameEdit(sub_val_x1, sub_val_x2, edit_len);
+#else
                 UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 28u, 35u, 0u);
-                if (edit_index < 4)
-                {
-                    uint8_t char_width = 6;
-                    uint8_t char_spacing = char_width + 1;
-                    uint8_t text_start = (uint8_t)sub_val_x1;
-                    if (sub_val_x2 > sub_val_x1)
-                        text_start += (uint8_t)((((sub_val_x2 - sub_val_x1) - 4 * char_spacing) + 1u) / 2u);
-                    {
-                        const uint8_t underline_x = (uint8_t)(text_start + (edit_index * char_spacing) + 1u);
-                        const uint8_t underline_fb_row = (uint8_t)(35u / 8u);
-                        if (underline_fb_row < FRAME_LINES)
-                            for (uint8_t c = 0; c < char_width; c++)
-                                gFrameBuffer[underline_fb_row][underline_x + c] |= 0x01u;
-                    }
-                }
+#endif
                 already_printed = true;
                 break;
             }
-            sprintf(String, "%04X", gMDC1200_ID);
+            if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
+                sprintf(String, "%04X", gMDC1200_ID);
+            else if (gEeprom.yan_id[0])
+                strncpy(String, gEeprom.yan_id, sizeof(String) - 1);
+            else
+                strcpy(String, "--");
+            break;
+
+        case MENU_YAN_ID_RX:
+            strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
             break;
 
         case MENU_SET_NAV:

@@ -41,6 +41,7 @@
 #include "app/chFrScanner.h"
 #include "app/dtmf.h"
 #include "app/mdc1200.h"
+#include "app/yan_id_rf.h"
 #ifdef ENABLE_AM_FIX
     #include "am_fix.h"
 #endif
@@ -1956,6 +1957,82 @@ void UI_DisplayMDC1200RxPopup(void)
     ST7565_BlitFullScreen();
 }
 
+/* mangosteen Yan ID popup: phone icon left, callsign right — one landscape row. */
+void UI_DisplayYanIdRxPopup(void)
+{
+    const int16_t box_w = 90;
+    const int16_t box_h = 20;
+    const int16_t x1 = (LCD_WIDTH - box_w) / 2;
+    const int16_t y1 = ((FRAME_LINES * 8) - box_h) / 2;
+    const int16_t x2 = x1 + box_w - 1;
+    const int16_t y2 = y1 + box_h - 1;
+    const uint8_t gap = 4;
+#ifdef ENABLE_SMALL_BOLD
+    const uint8_t pitch = (uint8_t)(ARRAY_SIZE(gFontSmallBold[0]) + 1u);
+#else
+    const uint8_t pitch = (uint8_t)(ARRAY_SIZE(gFontSmall[0]) + 1u);
+#endif
+    uint8_t text_w;
+    uint8_t content_w;
+    uint8_t icon_x;
+    uint8_t text_x;
+    uint8_t line0;
+    uint8_t line1;
+    uint8_t width;
+    uint8_t page;
+    uint8_t x;
+
+    if (gScreenToDisplay != DISPLAY_MAIN)
+        return;
+    if (gYanId_RX[0] == 0 || gYanId_RX_timeout == 0)
+        return;
+
+    text_w = (uint8_t)(strlen(gYanId_RX) * pitch);
+    content_w = (uint8_t)(BITMAP_CALL_PHONE_WIDTH + gap + text_w);
+    icon_x = (uint8_t)(x1 + ((uint8_t)box_w - content_w) / 2u);
+    text_x = (uint8_t)(icon_x + BITMAP_CALL_PHONE_WIDTH + gap);
+
+    line0 = (uint8_t)((uint16_t)y1 >> 3);
+    line1 = (uint8_t)(((uint16_t)y2 + 1u) >> 3);
+    width = (uint8_t)(x2 - x1 + 2);
+    for (uint8_t line = line0; line <= line1 && line < FRAME_LINES; line++)
+        memset(gFrameBuffer[line] + x1, 0, width);
+
+    for (page = 0; page < BITMAP_CALL_PHONE_PAGES; page++) {
+        memcpy(gFrameBuffer[2 + page] + icon_x,
+               &BITMAP_CALL_PHONE[(uint16_t)page * BITMAP_CALL_PHONE_WIDTH],
+               BITMAP_CALL_PHONE_WIDTH);
+    }
+    /* Blit at line 2 (y=16), then ↓8px → y=24 (centered in box at y=22..41). */
+    for (x = icon_x; x < icon_x + BITMAP_CALL_PHONE_WIDTH; x++) {
+        uint32_t v = (uint32_t)gFrameBuffer[2][x]
+                   | ((uint32_t)gFrameBuffer[3][x] << 8)
+                   | ((uint32_t)gFrameBuffer[4][x] << 16);
+        v <<= 8;
+        gFrameBuffer[2][x] = (uint8_t)v;
+        gFrameBuffer[3][x] = (uint8_t)(v >> 8);
+        gFrameBuffer[4][x] = (uint8_t)(v >> 16);
+    }
+
+#ifdef ENABLE_SMALL_BOLD
+    UI_PrintStringSmallBold(gYanId_RX, text_x, 0, 3);
+#else
+    UI_PrintStringSmallNormal(gYanId_RX, text_x, 0, 3);
+#endif
+    /* Callsign with icon: line 3 → ↓4px so the pair stays centered in the box. */
+    for (x = text_x; x < text_x + text_w && x < LCD_WIDTH; x++) {
+        uint16_t v = (uint16_t)gFrameBuffer[3][x] | ((uint16_t)gFrameBuffer[4][x] << 8);
+        v <<= 4;
+        gFrameBuffer[3][x] = (uint8_t)v;
+        gFrameBuffer[4][x] = (uint8_t)(v >> 8);
+    }
+    UI_DrawRectangleBuffer(gFrameBuffer, x1, y1, x2, y2, true);
+    UI_DrawLineBuffer(gFrameBuffer, x2 + 1, y1 + 1, x2 + 1, y2 + 1, true);
+    UI_DrawLineBuffer(gFrameBuffer, x1 + 1, y2 + 1, x2 + 1, y2 + 1, true);
+
+    ST7565_BlitFullScreen();
+}
+
 #ifdef ENABLE_FEAT_F4HWN
 /* 供 UI_DisplayMainOnlyStatusBar / 菜单顶栏 5 格信号条：与 DisplayRSSIBar(F4HWN) 同一映射 */
 static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
@@ -3798,6 +3875,9 @@ display_main_after_vfo_loop:
 
     if (mdc1200_rx_ready_tick_500ms > 0 && gEeprom.ROGER == ROGER_MODE_MDC)
         UI_DisplayMDC1200RxPopup();
+
+    if (gYanId_RX_timeout > 0 && gYanId_RX[0] != 0 && YAN_RF_ReceiveEnabled())
+        UI_DisplayYanIdRxPopup();
 
 #ifdef ENABLE_FEAT_F4HWN
     ST7565_BlitMainPerMode();

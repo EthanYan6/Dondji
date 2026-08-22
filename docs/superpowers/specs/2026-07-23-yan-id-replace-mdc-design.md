@@ -1,7 +1,7 @@
 # Replace MDC with Yan ID (mangosteen-compatible)
 
 **Date:** 2026-07-23  
-**Status:** Approved  
+**Status:** Superseded by `2026-08-22-yan-id-alongside-mdc-design.md` (keep MDC; add Yan ID + 接收 Yan ID)  
 **Approach:** Minimal GGM2 FSK Yan ID module; functionally replace MDC TX/RX/UI; keep `mdc1200` sources unbuilt
 
 ## Goal

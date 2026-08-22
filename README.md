@@ -86,7 +86,7 @@ https://ethanyan6.github.io/Dondji/
 - 📝 Full **GB2312** font in SPI Flash (6766 chars) + T9 pinyin channel naming
 - 🌐 Browser web flash: firmware, font, calibration, config, writefreq, boot logo
 - 📶 Spectrum (`F+5`): Simple / Professional + waterfall
-- 🧰 Toolbox (`F+7`): electronic wooden fish + CW practice
+- CW trainer (`F+7`)
 - 📡 MDC1200 Roger / unit ID (TX + RX popup)
 - 📖 Built-in ZH/EN help manual
 - 📻 Common Fusion extras: dedicated FM radio screen, custom boot logo / boot sound, RX/TX timer, etc.

@@ -37,6 +37,7 @@
 #include "app/main.h"
 #include "app/menu.h"
 #include "app/mdc1200.h"
+#include "app/yan_id_rf.h"
 #include "app/scanner.h"
 #if defined(ENABLE_UART) || defined(ENABLE_USB)
     #include "app/uart.h"
@@ -830,6 +831,10 @@ static void CheckRadioInterrupts(void)
                 BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
             }
         }
+
+        /* mangosteen: FSK IRQ while sidecar armed — do not gate on voice RX state */
+        if (YAN_RF_ReceiveEnabled())
+            YAN_RF_OnRadioInterrupt(interrupts.__raw);
     }
 }
 
@@ -1404,6 +1409,8 @@ void APP_TimeSlice10ms(void)
     if (gCurrentFunction != FUNCTION_POWER_SAVE || !gRxIdleMode)
         CheckRadioInterrupts();
 
+    YAN_RF_Tick10ms();
+
     bool gUpdateDisplayCurrent = gUpdateDisplay;
     bool gUpdateStatusCurrent  = gUpdateStatus;
 
@@ -1656,6 +1663,8 @@ void APP_TimeSlice500ms(void)
         if (mdc1200_rx_ready_tick_500ms == 0)
             gUpdateDisplay = true;
     }
+
+    YAN_RF_Tick500ms();
 
     // Skipped authentic device check
 

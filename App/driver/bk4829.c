@@ -24,8 +24,8 @@
 
 #include "audio.h"
 #include "app/mdc1200.h"
-
-#include "driver/bk4819.h"
+#include "app/yan_id_rf.h"
+#include "audio.h"
 #include "driver/gpio.h"
 #include "driver/system.h"
 #include "driver/systick.h"
@@ -1834,6 +1834,8 @@ void BK4819_PlayRoger(void)
             size = MDC1200_encode_single_packet(packet, MDC1200_OP_CODE_PTT_ID, 0x80, gMDC1200_ID);
             BK4819_PlayMDC1200(packet, size, false);
         }
+    } else if (gEeprom.ROGER == ROGER_MODE_YAN_ID) {
+        (void)YAN_RF_Send();
     }
 }
 

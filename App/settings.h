@@ -147,9 +147,13 @@ typedef enum ALARM_Mode_t ALARM_Mode_t;
 enum ROGER_Mode_t {
     ROGER_MODE_OFF = 0,
     ROGER_MODE_ROGER,
-    ROGER_MODE_MDC
+    ROGER_MODE_MDC,
+    ROGER_MODE_YAN_ID
 };
 typedef enum ROGER_Mode_t ROGER_Mode_t;
+
+#define YAN_ID_LEN  6
+#define YAN_ID_NAME "Yan ID"
 
 enum CHANNEL_DisplayMode_t {
     MDF_FREQUENCY = 0,
@@ -237,6 +241,8 @@ typedef struct {
 #endif
     POWER_OnDisplayMode_t POWER_ON_DISPLAY_MODE;
     ROGER_Mode_t          ROGER;
+    char                  yan_id[YAN_ID_LEN + 1];
+    bool                  yan_id_rx;
     uint8_t               REPEATER_TAIL_TONE_ELIMINATION;
     uint8_t               KEY_1_SHORT_PRESS_ACTION;
     uint8_t               KEY_1_LONG_PRESS_ACTION;

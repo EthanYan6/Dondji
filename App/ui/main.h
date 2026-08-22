@@ -74,6 +74,7 @@ void UI_DisplayAudioScope(void);
  */
 void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn);
 void UI_DisplayMDC1200RxPopup(void);
+void UI_DisplayYanIdRxPopup(void);
 #endif
 void UI_MAIN_TimeSlice500ms(void);
 void UI_DisplayMain(void);

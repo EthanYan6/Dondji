@@ -71,6 +71,9 @@ const char *UI_MENU_GetMenuTitle(const t_menu_item *item)
     case MENU_VOICE:        return "\xe8\xaf\xad\xe9\x9f\xb3";
 #endif
     case MENU_ROGER:        return "\xe5\x8f\x91\xe5\xb0\x84\xe5\xb0\xbe\xe9\x9f\xb3";
+    case MENU_MDC_ID:       return "MDC ID";
+    case MENU_YAN_ID:       return "Yan ID";
+    case MENU_YAN_ID_RX:    return "\xe6\x8e\xa5\xe6\x94\xb6 Yan ID"; /* 接收 Yan ID */
     case MENU_STE:          return "\xe5\xb0\xbe\xe9\x9f\xb3\xe6\xb6\x88\xe9\x99\xa4";
     case MENU_RP_STE:       return "过中继尾音消除";
     case MENU_1_CALL:       return "按键即呼";
