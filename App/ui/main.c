@@ -2033,6 +2033,15 @@ void UI_DisplayYanIdRxPopup(void)
     ST7565_BlitFullScreen();
 }
 
+static void UI_DisplayMainRxIdPopups(void)
+{
+    if (mdc1200_rx_ready_tick_500ms > 0 && gEeprom.ROGER == ROGER_MODE_MDC)
+        UI_DisplayMDC1200RxPopup();
+
+    if (gYanId_RX_timeout > 0 && gYanId_RX[0] != 0 && YAN_RF_ReceiveEnabled())
+        UI_DisplayYanIdRxPopup();
+}
+
 #ifdef ENABLE_FEAT_F4HWN
 /* 供 UI_DisplayMainOnlyStatusBar / 菜单顶栏 5 格信号条：与 DisplayRSSIBar(F4HWN) 同一映射 */
 static void F4HWN_UpdateGvfoRssiBarLevelForStatusBar(void)
@@ -2710,7 +2719,8 @@ void UI_DisplayMain(void)
         if (keyboardLocked) {
             UI_DisplayUnlockKeyboard(-10);  // 统一使用 -10
         }
-        
+
+        UI_DisplayMainRxIdPopups();
         ST7565_BlitFullScreen();
         return;
     }
@@ -3873,11 +3883,7 @@ display_main_after_vfo_loop:
     //#endif
 #endif
 
-    if (mdc1200_rx_ready_tick_500ms > 0 && gEeprom.ROGER == ROGER_MODE_MDC)
-        UI_DisplayMDC1200RxPopup();
-
-    if (gYanId_RX_timeout > 0 && gYanId_RX[0] != 0 && YAN_RF_ReceiveEnabled())
-        UI_DisplayYanIdRxPopup();
+    UI_DisplayMainRxIdPopups();
 
 #ifdef ENABLE_FEAT_F4HWN
     ST7565_BlitMainPerMode();
