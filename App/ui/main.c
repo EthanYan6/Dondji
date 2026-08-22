@@ -1967,6 +1967,7 @@ void UI_DisplayYanIdRxPopup(void)
     const int16_t x2 = x1 + box_w - 1;
     const int16_t y2 = y1 + box_h - 1;
     const uint8_t gap = 4;
+    const uint8_t icon_y = (uint8_t)(y1 + (box_h - BITMAP_CALL_PHONE_HEIGHT) / 2);
 #ifdef ENABLE_SMALL_BOLD
     const uint8_t pitch = (uint8_t)(ARRAY_SIZE(gFontSmallBold[0]) + 1u);
 #else
@@ -1976,11 +1977,11 @@ void UI_DisplayYanIdRxPopup(void)
     uint8_t content_w;
     uint8_t icon_x;
     uint8_t text_x;
-    uint8_t line0;
-    uint8_t line1;
-    uint8_t width;
     uint8_t page;
-    uint8_t x;
+    uint8_t col;
+    uint8_t bit;
+    int16_t x;
+    int16_t y;
 
     if (gScreenToDisplay != DISPLAY_MAIN)
         return;
@@ -1992,26 +1993,22 @@ void UI_DisplayYanIdRxPopup(void)
     icon_x = (uint8_t)(x1 + ((uint8_t)box_w - content_w) / 2u);
     text_x = (uint8_t)(icon_x + BITMAP_CALL_PHONE_WIDTH + gap);
 
-    line0 = (uint8_t)((uint16_t)y1 >> 3);
-    line1 = (uint8_t)(((uint16_t)y2 + 1u) >> 3);
-    width = (uint8_t)(x2 - x1 + 2);
-    for (uint8_t line = line0; line <= line1 && line < FRAME_LINES; line++)
-        memset(gFrameBuffer[line] + x1, 0, width);
+    for (y = y1; y <= y2; y++) {
+        for (x = x1; x <= x2; x++)
+            UI_DrawPixelBuffer(gFrameBuffer, (uint8_t)x, (uint8_t)y, false);
+    }
 
     for (page = 0; page < BITMAP_CALL_PHONE_PAGES; page++) {
-        memcpy(gFrameBuffer[2 + page] + icon_x,
-               &BITMAP_CALL_PHONE[(uint16_t)page * BITMAP_CALL_PHONE_WIDTH],
-               BITMAP_CALL_PHONE_WIDTH);
-    }
-    /* Blit at line 2 (y=16), then ↓8px → y=24 (centered in box at y=22..41). */
-    for (x = icon_x; x < icon_x + BITMAP_CALL_PHONE_WIDTH; x++) {
-        uint32_t v = (uint32_t)gFrameBuffer[2][x]
-                   | ((uint32_t)gFrameBuffer[3][x] << 8)
-                   | ((uint32_t)gFrameBuffer[4][x] << 16);
-        v <<= 8;
-        gFrameBuffer[2][x] = (uint8_t)v;
-        gFrameBuffer[3][x] = (uint8_t)(v >> 8);
-        gFrameBuffer[4][x] = (uint8_t)(v >> 16);
+        for (col = 0; col < BITMAP_CALL_PHONE_WIDTH; col++) {
+            const uint8_t bits = BITMAP_CALL_PHONE[(uint16_t)page * BITMAP_CALL_PHONE_WIDTH + col];
+            for (bit = 0; bit < 8u; bit++) {
+                if (bits & (uint8_t)(1u << bit))
+                    UI_DrawPixelBuffer(gFrameBuffer,
+                                       (uint8_t)(icon_x + col),
+                                       (uint8_t)(icon_y + page * 8u + bit),
+                                       true);
+            }
+        }
     }
 
 #ifdef ENABLE_SMALL_BOLD
@@ -2019,8 +2016,8 @@ void UI_DisplayYanIdRxPopup(void)
 #else
     UI_PrintStringSmallNormal(gYanId_RX, text_x, 0, 3);
 #endif
-    /* Callsign with icon: line 3 → ↓4px so the pair stays centered in the box. */
-    for (x = text_x; x < text_x + text_w && x < LCD_WIDTH; x++) {
+    /* 8px glyphs on line 3 (y=24) sit at icon top; ↓4px centers them in the 16px icon. */
+    for (x = text_x; x < (int16_t)(text_x + text_w) && x < LCD_WIDTH; x++) {
         uint16_t v = (uint16_t)gFrameBuffer[3][x] | ((uint16_t)gFrameBuffer[4][x] << 8);
         v <<= 4;
         gFrameBuffer[3][x] = (uint8_t)v;
