@@ -209,6 +209,10 @@ body.writefreq-full .subtitle-chips { display: none; }
 .subtitle-chip--dagojo .subtitle-chip-label { color: #7dd3fc; }
 .subtitle-chip--mangosteen .subtitle-icon { color: #a855f7; }
 .subtitle-chip--mangosteen .subtitle-chip-label { color: #c084fc; }
+.subtitle-chip--syrup .subtitle-icon { color: #f59e0b; }
+.subtitle-chip--syrup .subtitle-chip-label { color: #fbbf24; }
+.subtitle-chip--gamefw .subtitle-icon { color: #22d3ee; }
+.subtitle-chip--gamefw .subtitle-chip-label { color: #67e8f9; }
 a.subtitle-chip {
   text-decoration: none;
   color: inherit;
