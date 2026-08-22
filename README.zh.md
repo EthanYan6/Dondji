@@ -25,34 +25,39 @@ https://ethanyan6.github.io/Dondji/
 
 ## 商业合作声明
 
-叮咚鸡（Dondji）源码采用 Apache License 2.0 开源协议。
+叮咚鸡（Dondji）源码采用 **Apache License 2.0** 开源协议。
 
-源码开放使用。
+源码开放使用，包括在遵守 Apache License 2.0 条款的前提下用于商业产品。
 
-但是以下内容属于项目品牌资产：
+但是，以下内容属于 Dondji 项目的品牌及官方身份资产：
 
-- 叮咚鸡（Dondji）名称；
-- Logo；
-- 官方网站；
-- 官方刷机入口；
-- 官方身份；
-- 官方合作关系。
+* 叮咚鸡（Dondji）名称；
+* Dondji Logo；
+* 官方网站；
+* 官方刷机入口；
+* 官方身份；
+* 官方认证；
+* 官方合作关系。
 
-任何商业产品如需：
+如商业主体希望获得以下品牌或官方合作权益：
 
-- 固件预装；
-- 联名合作；
-- 品牌授权；
-- 官方认证；
+* Dondji 品牌授权；
+* Dondji 联名合作；
+* 官方认证；
+* 官方合作关系；
+* 官方品牌宣传或支持；
 
 请联系：
 
 **BD1AHN**
 
+> 商业使用 Dondji 源代码与获得 Dondji 品牌或官方合作授权属于不同事项。
+
 详细说明：
 
-- 商业使用说明：[COMMERCIAL_USE.md](COMMERCIAL_USE.md)
-- 品牌政策：[TRADEMARK.md](TRADEMARK.md)
+* 商业使用说明：[COMMERCIAL_USE.md](https://github.com/EthanYan6/Dondji/blob/motorola_r7/COMMERCIAL_USE.md)
+* 品牌政策：[TRADEMARK.md](https://github.com/EthanYan6/Dondji/blob/motorola_r7/TRADEMARK.md)
+
 
 ---
 

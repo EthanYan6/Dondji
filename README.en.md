@@ -23,36 +23,40 @@ https://ethanyan6.github.io/Dondji/
 
 ---
 
-## Commercial Cooperation
+## Commercial Cooperation Statement
 
-Dondji source code is licensed under Apache License 2.0.
+The source code of **Dondji** is released under the **Apache License 2.0**.
 
-The source is open for use.
+The source code is freely available for use, including use in commercial products, subject to the terms of the Apache License 2.0.
 
-However, the following are project brand assets:
+However, the following are considered brand and official identity assets of the Dondji project:
 
-- The Dondji / 叮咚鸡 name;
-- Logo;
-- Official website;
-- Official flash portal;
-- Official identity;
-- Official partnership claims.
+* The **Dondji** name;
+* The Dondji logo;
+* The official website;
+* The official firmware flashing portal;
+* Official project identity;
+* Official certification;
+* Official cooperation or partnership.
 
-For any commercial product that needs:
+If a commercial entity wishes to obtain any of the following brand or official cooperation rights:
 
-- Firmware pre-install;
-- Co-branding;
-- Brand licensing;
-- Official certification;
+* Dondji brand authorization;
+* Dondji co-branded products or partnerships;
+* Official certification;
+* Official cooperation or partnership;
+* Official brand promotion or support;
 
 please contact:
 
 **BD1AHN**
 
-Details:
+> Commercial use of Dondji source code and authorization to use the Dondji brand or claim an official relationship are separate matters.
 
-- Commercial Use: [COMMERCIAL_USE.md](COMMERCIAL_USE.md)
-- Trademark Policy: [TRADEMARK.md](TRADEMARK.md)
+For more information:
+
+* Commercial Use Policy: [COMMERCIAL_USE.md](https://github.com/EthanYan6/Dondji/blob/motorola_r7/COMMERCIAL_USE.md)
+* Trademark & Brand Policy: [TRADEMARK.md](https://github.com/EthanYan6/Dondji/blob/motorola_r7/TRADEMARK.md)
 
 ---
 
