@@ -2134,10 +2134,16 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         }
     }
     else if (gPttWasReleased) {
-        if (bKeyHeld)
-            bFlag = true;
-        if (!bKeyPressed) {
-            bFlag           = true;
+        /* Only consume the PTT key release that follows a physical PTT release.
+           Previously any key release was swallowed, breaking side-key shortcuts. */
+        if (Key == KEY_PTT) {
+            if (bKeyHeld)
+                bFlag = true;
+            if (!bKeyPressed) {
+                bFlag           = true;
+                gPttWasReleased = false;
+            }
+        } else if (!bKeyPressed) {
             gPttWasReleased = false;
         }
     }

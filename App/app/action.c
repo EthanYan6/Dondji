@@ -20,6 +20,7 @@
 #include "app/action.h"
 #include "app/app.h"
 #include "app/chFrScanner.h"
+#include "app/generic.h"
 #include "app/common.h"
 #include "app/dtmf.h"
 #ifdef ENABLE_FLASHLIGHT
@@ -59,6 +60,10 @@ inline static void ACTION_1750() { ACTION_AlarmOr1750(true); };
 #endif
 
 inline static void ACTION_ScanRestart() { ACTION_Scan(true); };
+
+#ifdef ENABLE_FEAT_F4HWN
+static void ACTION_Update(void);
+#endif
 
 void (*action_opt_table[])(void) = {
     [ACTION_OPT_NONE] = &FUNCTION_NOP,
@@ -359,6 +364,15 @@ void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
     if (bKeyHeld && !bKeyPressed) // button released after hold
     {
+#ifdef ENABLE_FEAT_F4HWN
+        if (func == ACTION_OPT_PTT) {
+            if (gCurrentFunction == FUNCTION_TRANSMIT) {
+                GENERIC_Key_PTT(false);
+                gPttIsPressed = false;
+                ACTION_Update();
+            }
+        }
+#endif
         return;
     }
 
@@ -531,7 +545,7 @@ void ACTION_BlminTmpOff(void)
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN
-void ACTION_Update(void)
+static void ACTION_Update(void)
 {
     gSaveRxMode          = false;
     gFlagReconfigureVfos = true;
@@ -623,7 +637,13 @@ void ACTION_RxA(void)
 
 void ACTION_Ptt(void)
 {
-    gSetting_set_ptt_session = !gSetting_set_ptt_session;
+    if (gCurrentFunction == FUNCTION_TRANSMIT) {
+        GENERIC_Key_PTT(false);
+        gPttIsPressed = false;
+    } else {
+        gPttIsPressed = true;
+        GENERIC_Key_PTT(true);
+    }
 
     ACTION_Update();
 }
