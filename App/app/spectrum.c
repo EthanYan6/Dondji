@@ -128,6 +128,7 @@ uint16_t rssiHistory[128];
 #define WF_FLOOR_MIN_LEVEL       2U
 static uint8_t waterfallHistory[128][WATERFALL_HISTORY_DEPTH / 2];
 static uint8_t waterfallIndex = 0;
+static uint16_t lastWfScanI = 0;
 static uint16_t cachedStepsCount = 128;  /* Cache for DrawWaterfall */
 static uint16_t scanReg30 = 0;
 static uint8_t renderTimer = 0;
@@ -672,6 +673,7 @@ static void InitScan()
 
     // GetStepsCount() must be called first to set effectiveScanStep
     scanInfo.measurementsCount = GetStepsCount();
+    cachedStepsCount = scanInfo.measurementsCount;
     scanInfo.scanStep = GetEffectiveScanStep();
     BK4819_PickRXFilterPathBasedOnFrequency(scanInfo.f);
     scanReg30 = BK4819_ReadRegister(BK4819_REG_30) & ~(1u << 9);
@@ -688,6 +690,9 @@ static void ResetBlacklist()
     memset(blacklistFreqs, 0, sizeof(blacklistFreqs));
     blacklistFreqsIdx = 0;
 #endif
+    memset(waterfallHistory, 0, sizeof(waterfallHistory));
+    waterfallIndex = 0;
+    lastWfScanI = 0;
 }
 
 static void RelaunchScan()
@@ -702,8 +707,6 @@ static void RelaunchScan()
     overLevelPasses = 0;
     lockRssi = 0;
     preventKeypress = true;
-    memset(waterfallHistory, 0, sizeof(waterfallHistory));
-    waterfallIndex = 0;
 #ifdef ENABLE_FEAT_F4HWN_SPECTRUM
     SaveSettings();
 #endif
@@ -926,6 +929,7 @@ static void ToggleModulation()
     RADIO_SetModulation(settings.modulationType);
 
     RelaunchScan();
+    ResetBlacklist();
     redrawScreen = true;
 }
 
@@ -1078,6 +1082,18 @@ static bool IsBlacklisted(uint16_t idx)
 
 // Draw things
 
+uint8_t Rssi2PX(uint16_t rssi, uint8_t pxMin, uint8_t pxMax);
+
+static uint8_t RssiToWfLevel(uint16_t rssi)
+{
+    if ((uint16_t)(rssi + 1) <= 1u)
+        return 0;
+    uint8_t level = Rssi2PX(rssi, 0, 15);
+    if (level == 1)
+        level = WF_FLOOR_MIN_LEVEL;
+    return level;
+}
+
 static void SetWaterfallLevel(uint8_t x, uint8_t y, uint8_t level)
 {
     if (x >= 128 || y >= WATERFALL_HISTORY_DEPTH) return;
@@ -1096,48 +1112,31 @@ static uint8_t GetWaterfallLevel(uint8_t x, uint8_t y)
     return (waterfallHistory[x][row] >> 4) & 0x0F;
 }
 
+static void PaintWaterfallLive(uint8_t slot)
+{
+    if (scanInfo.i < lastWfScanI)
+    {
+        waterfallIndex = (waterfallIndex + 1) % WATERFALL_HISTORY_DEPTH;
+        for (uint8_t x = 0; x < 128; x++)
+            SetWaterfallLevel(x, waterfallIndex, 0);
+    }
+    lastWfScanI = scanInfo.i;
+    SetWaterfallLevel(slot, waterfallIndex, RssiToWfLevel(rssiHistory[slot]));
+}
+
 static void UpdateWaterfall(void)
 {
     waterfallIndex = (waterfallIndex + 1) % WATERFALL_HISTORY_DEPTH;
 
     uint16_t stepsCount = GetStepsCount();
-    /* Cache stepsCount for DrawWaterfall to use */
     cachedStepsCount = stepsCount;
     uint8_t bars = (stepsCount > 128) ? 128 : stepsCount;
 
-    uint16_t minRssi = 0xFFFF, maxRssi = 0;
-    uint16_t validSamples = 0;
     for (uint8_t x = 0; x < bars; x++)
-    {
-        uint16_t rssi = rssiHistory[x];
-        if (rssi != RSSI_MAX_VALUE && rssi != 0)
-        {
-            if (rssi < minRssi) minRssi = rssi;
-            if (rssi > maxRssi) maxRssi = rssi;
-            validSamples++;
-        }
-    }
-
-    uint16_t range = (maxRssi > minRssi) ? (maxRssi - minRssi) : 1;
-
-    for (uint8_t x = 0; x < bars; x++)
-    {
-        uint16_t rssi = rssiHistory[x];
-        uint8_t level = 0;
-        if (rssi != RSSI_MAX_VALUE && rssi != 0 && validSamples > 0)
-        {
-            uint8_t dither = (x ^ waterfallIndex) & 0x01;
-            level = (uint8_t)((((uint32_t)(rssi - minRssi) * 15 + dither) / range));
-            if (level == 0 && (rssi & 0x01)) level = 1;
-            if (level == 1) level = WF_FLOOR_MIN_LEVEL;
-        }
-        SetWaterfallLevel(x, waterfallIndex, level);
-    }
+        SetWaterfallLevel(x, waterfallIndex, RssiToWfLevel(rssiHistory[x]));
 
     for (uint8_t x = bars; x < 128; x++)
-    {
         SetWaterfallLevel(x, waterfallIndex, 0);
-    }
 }
 
 static void DrawWaterfall(void)
@@ -2288,6 +2287,7 @@ static void Scan()
         SetFScan(scanInfo.f);
         Measure();
         UpdateScanInfo();
+        PaintWaterfallLive(slot);
     }
 }
 
@@ -2311,8 +2311,6 @@ static void UpdateScan()
     if (! (scanInfo.measurementsCount >> 7)) // if (scanInfo.measurementsCount < 128)
         memset(&rssiHistory[scanInfo.measurementsCount], 0,
                sizeof(rssiHistory) - scanInfo.measurementsCount * sizeof(rssiHistory[0]));
-
-    UpdateWaterfall();
 
     /* Follow the current sweep so a leftover high RSSI floor cannot clip
        the whole trace against a sticky dbMax. 3/9 holds auto-scale off. */
