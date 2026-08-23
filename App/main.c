@@ -177,11 +177,13 @@ void Main(void)
         gMenuListCount++;
     }
 
-    // wait for user to release all butts before moving on
-    if (GPIO_IsPttPressed() ||
-         KEYBOARD_Poll() != KEY_INVALID ||
-         BootMode != BOOT_MODE_NORMAL)
-    {   // keys are pressed
+    // Only PTT+SIDE1 (unlock) or PTT+SIDE2 (wrong key) show a boot prompt
+    if (BootMode == BOOT_MODE_F_LOCK
+#ifndef ENABLE_AIRCOPY
+        || BootMode == BOOT_MODE_SIDE2_ERROR
+#endif
+       )
+    {
         #ifndef ENABLE_AIRCOPY
             if (BootMode == BOOT_MODE_SIDE2_ERROR) {
                 UI_DisplaySideKeyError();
