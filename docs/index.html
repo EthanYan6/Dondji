@@ -973,7 +973,7 @@
     function loadDonationData() {
       if (donationDataLoaded) return;
       
-      fetch('data/donations.csv')
+      fetch('data/donations.csv', { cache: 'no-store' })
         .then(function(response) {
           if (!response.ok) throw new Error('无法加载打赏数据');
           return response.text();
