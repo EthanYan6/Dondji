@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Dondji Firmware
  *
  * Copyright (c) 2026 BD1AHN
@@ -42,6 +42,7 @@
     #include "py32f0xx.h"
 #endif
 #include "app/dtmf.h"
+#include "app/action.h"
 #include "app/generic.h"
 #include "app/menu.h"
 #include "app/mdc1200.h"
@@ -1329,15 +1330,6 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
         case MENU_SET_PWR:
             *pMax = ARRAY_SIZE(gSubMenu_SET_PWR) - 1;
             break;
-        case MENU_SET_PTT:
-            //*pMin = 0;
-            *pMax = ARRAY_SIZE(gSubMenu_SET_PTT) - 1;
-            break;
-        case MENU_SET_TOT:
-        case MENU_SET_EOT:
-            //*pMin = 0;
-            *pMax = ARRAY_SIZE(gSubMenu_SET_TOT) - 1;
-            break;
         #ifdef ENABLE_FEAT_F4HWN_CTR
         case MENU_SET_CTR:
             *pMin = 1;
@@ -1582,6 +1574,7 @@ void MENU_AcceptSetting(void)
             gEeprom.CROSS_BAND_RX_TX = (gEeprom.TX_VFO + 1) * ((gSubMenuSelection & 2) > 0);
 
             #ifdef ENABLE_FEAT_F4HWN
+                ACTION_ClearSide1PttIfMainOnly();
                 gDW = gEeprom.DUAL_WATCH;
                 gCB = gEeprom.CROSS_BAND_RX_TX;
                 gSaveRxMode = true;
@@ -1899,13 +1892,34 @@ void MENU_AcceptSetting(void)
         case MENU_F2LONG:
         case MENU_MLONG:
             {
+                const int menuId = UI_MENU_GetCurrentMenuId();
+                const uint8_t selected = gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].id;
                 uint8_t * fun[]= {
                     &gEeprom.KEY_1_SHORT_PRESS_ACTION,
                     &gEeprom.KEY_1_LONG_PRESS_ACTION,
                     &gEeprom.KEY_2_SHORT_PRESS_ACTION,
                     &gEeprom.KEY_2_LONG_PRESS_ACTION,
                     &gEeprom.KEY_M_LONG_PRESS_ACTION};
-                *fun[UI_MENU_GetCurrentMenuId()-MENU_F1SHRT] = gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].id;
+
+                if (menuId == MENU_F1SHRT || menuId == MENU_F1LONG) {
+                    uint8_t *const k1s = &gEeprom.KEY_1_SHORT_PRESS_ACTION;
+                    uint8_t *const k1l = &gEeprom.KEY_1_LONG_PRESS_ACTION;
+                    if (selected == ACTION_OPT_PTT) {
+                        if (!ACTION_IsMainOnlyMode()) {
+                            *k1s = ACTION_OPT_PTT;
+                            *k1l = ACTION_OPT_PTT;
+                            gSetting_set_ptt = 0;
+                            gSetting_set_ptt_session = 0;
+                        }
+                    } else if (*k1s == ACTION_OPT_PTT || *k1l == ACTION_OPT_PTT) {
+                        *k1s = ACTION_OPT_NONE;
+                        *k1l = ACTION_OPT_NONE;
+                    } else {
+                        *fun[menuId - MENU_F1SHRT] = selected;
+                    }
+                } else if (selected != ACTION_OPT_PTT) {
+                    *fun[menuId - MENU_F1SHRT] = selected;
+                }
             }
             break;
 

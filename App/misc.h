@@ -203,6 +203,8 @@ extern enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
     extern uint8_t            gDW;
     extern uint8_t            gCB;
     extern bool               gSaveRxMode;
+    /* Dual PTT side-key TX VFO, 0xFF = idle. Display main stays 1 - this while active. */
+    extern uint8_t            gDualPttTxVfo;
     extern uint8_t            crc[15];
     extern uint8_t            lErrorsDuringAirCopy;
     extern uint8_t            gAircopyStep;
@@ -323,7 +325,6 @@ extern volatile bool         gTxTimeoutReached;
 #ifdef ENABLE_FEAT_F4HWN
     extern volatile uint16_t gTxTimerCountdownAlert_500ms;
     extern volatile bool     gTxTimeoutReachedAlert;
-    extern volatile uint16_t gTxTimeoutToneAlert;
     #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
         extern volatile uint16_t gRxTimerCountdown_500ms;
     #endif
@@ -461,7 +462,6 @@ extern volatile uint8_t      boot_counter_10ms;
     extern uint8_t               gBacklightTimeOriginal;
     extern uint8_t               gBacklightBrightnessOld;
     extern uint8_t               gSquelchLevelOriginal;
-    extern uint8_t               gPttOnePushCounter;
     extern uint32_t              gBlinkCounter;
 
     extern uint16_t gVfoSaveCountdown_10ms;

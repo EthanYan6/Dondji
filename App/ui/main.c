@@ -444,7 +444,7 @@ static void DualVfoDrawAbRxTxOnlyPx(unsigned int vfoIdx, uint8_t y, unsigned int
         if (rxBesideAb)
             DualVfoU8g2_DrawSmallText("RX", rxX, labelY, true);
     }
-    else if (txHere)
+    else if (txHere && gDualPttTxVfo == 0xFF)
         DualVfoU8g2_DrawSmallText("TX", txX, labelY, true);
 }
 
@@ -689,6 +689,11 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
         (bool)(FUNCTION_IsRx() && gEeprom.RX_VFO == vfoIdx && VfoState[vfoIdx] == VFO_STATE_NORMAL);
     const bool txHere =
         (bool)(gCurrentFunction == FUNCTION_TRANSMIT && activeTxVFO == vfoIdx);
+    /* Dual-PTT side TX: invert name/freq for BAR/OFF; POPUP keeps layout clean (popup only). */
+    const bool dualPttSideTx =
+        (bool)(gDualPttTxVfo != 0xFF && (unsigned int)gDualPttTxVfo == vfoIdx);
+    const bool dualPttInvert =
+        dualPttSideTx && gSetting_mic_bar_display != MIC_BAR_DISPLAY_POPUP;
 
     {
         uint32_t frequency = gEeprom.VfoInfo[vfoIdx].pRX->Frequency;
@@ -705,7 +710,7 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
             {
                 DualVfoFmtChId(vfoIdx, chId, sizeof(chId));
                 uint8_t xch = besideX0;
-                if (txHere)
+                if (txHere && !dualPttSideTx)
                     xch = (uint8_t)(xch + 9u);
                 DualVfoU8g2_DrawSmallText(chId, xch, DV_Y_BOT_BESIDE_AB, true);
             }
@@ -726,10 +731,10 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
                         DualVfoFillRectBlack(2u, DV_Y_BOT_HDR, 60u, (uint8_t)(DV_Y_BOT_HDR + 6u));
                         DualVfoU8g2_DrawSmallText(fs, 2u, (uint8_t)(DV_Y_BOT_HDR + 1u), false);
                     }
-                    /* 中文信道名 → 频率位置（接收时反色） */
+                    /* 中文信道名 → 频率位置（接收或双 PTT 副信道发射时反色） */
                     {
                         const uint8_t cn_y = (uint8_t)(DV_Y_BOT_FREQ_LINE + 6u);
-                        if (rxHere) {
+                        if (rxHere || dualPttInvert) {
                             const uint8_t cn_y_rx = (uint8_t)(cn_y - 9u);
                             UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127,
                                                                 cn_y_rx, (uint8_t)(cn_y_rx + 11u));
@@ -742,7 +747,8 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
             }
 #endif
             if (!cnSwap)
-                DualVfoDrawSubFreqSmallest(DV_Y_BOT_FREQ_LINE, frequency, rxHere || txHere);
+                DualVfoDrawSubFreqSmallest(DV_Y_BOT_FREQ_LINE, frequency,
+                                           rxHere || (txHere && !dualPttSideTx) || dualPttInvert);
         }
     }
 }
@@ -1036,7 +1042,9 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
 
 static bool UI_DisplayMain_DualVfoTwoPanel(void)
 {
-    const unsigned int tx  = gEeprom.TX_VFO;
+    /* Display main (top) stays put while dual-PTT side-key is transmitting. */
+    const unsigned int tx  = (gDualPttTxVfo != 0xFF) ? (unsigned int)(1u - gDualPttTxVfo)
+                                                     : gEeprom.TX_VFO;
     const unsigned int oth = (unsigned int)(1u - tx);
 
     if (FUNCTION_IsRx())
@@ -1189,6 +1197,39 @@ void UI_DisplayAudioBar(void)
     if (gLowBattery && !gLowBatteryConfirmed) {
         return;
     }
+
+#ifdef ENABLE_FEAT_F4HWN
+    /* Dual-VFO: only while dual-PTT side-key is transmitting; draw on top detail row */
+    if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+        if (gDualPttTxVfo == 0xFF)
+            return;
+        if (gCurrentFunction != FUNCTION_TRANSMIT || gScreenToDisplay != DISPLAY_MAIN)
+            return;
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+        if (gAlarmState != ALARM_STATE_OFF)
+            return;
+#endif
+        {
+            static uint8_t barsOld = 0;
+            const uint8_t thresold = 18;
+            const uint8_t barsList[] = {
+                0, 0, 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 21, 25, 25, 25
+            };
+            unsigned voiceLevel = BK4819_GetVoiceAmplitudeOut();
+            voiceLevel = (voiceLevel >= thresold) ? (voiceLevel - thresold) : 0;
+            uint8_t logLevel = log2_approx(MIN(voiceLevel * 16, 32768u) + 1);
+            uint8_t bars = barsList[logLevel];
+            barsOld = (barsOld - bars > 1) ? (barsOld - 1) : bars;
+
+            const uint8_t line = (uint8_t)(DV_Y_TOP_DET / 8u);
+            uint8_t *p_line = gFrameBuffer[line];
+            memset(p_line + 2, 0, LCD_WIDTH - 2);
+            DrawLevelBar(2, line, barsOld, 25);
+        }
+        ST7565_BlitMainPerMode();
+        return;
+    }
+#endif
 
     /* Mic bar only on Main Only; hide on dual-VFO main screen（与 03ca225 之前一致） */
     if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF || gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
@@ -1345,6 +1386,7 @@ void UI_DisplayAudioScope(void)
 #endif
 #ifdef ENABLE_FEAT_F4HWN
         && !gSetting_set_ptt_session
+        && gDualPttTxVfo == 0xFF
 #endif
         ) {
         return;
@@ -2432,55 +2474,6 @@ void UI_MAIN_TimeSlice500ms(void)
 #ifdef ENABLE_FEAT_F4HWN_RX_TX_TIMER
             // 发射时每 500ms 触发主屏刷新，使 TX 倒计时实时更新
             gUpdateDisplay = true;
-#endif
-#ifdef ENABLE_FEAT_F4HWN // Blink Green Led for white...
-            if(gSetting_set_eot > 0 && RxBlinkLed == 2)
-        {
-            if(RxBlinkLedCounter <= 8)
-            {
-                if(RxBlinkLedCounter % 2 == 0)
-                {
-                    if(gSetting_set_eot > 1 )
-                    {
-                        BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-                    }
-                }
-                else
-                {
-                    if(gSetting_set_eot > 1 )
-                    {
-                        BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, true);
-                    }
-
-                    if(gSetting_set_eot == 1 || gSetting_set_eot == 3)
-                    {
-                        switch(RxBlinkLedCounter)
-                        {
-                            case 1:
-                            AUDIO_PlayBeep(BEEP_400HZ_30MS);
-                            break;
-
-                            case 3:
-                            AUDIO_PlayBeep(BEEP_400HZ_30MS);
-                            break;
-
-                            case 5:
-                            AUDIO_PlayBeep(BEEP_500HZ_30MS);
-                            break;
-
-                            case 7:
-                            AUDIO_PlayBeep(BEEP_600HZ_30MS);
-                            break;
-                        }
-                    }
-                }
-                RxBlinkLedCounter += 1;
-            }
-            else
-            {
-                RxBlinkLed = 0;
-            }
-        }
 #endif
         }
 #ifdef ENABLE_FEAT_F4HWN

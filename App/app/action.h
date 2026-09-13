@@ -18,6 +18,7 @@
 #define APP_ACTION_H
 
 #include "driver/keyboard.h"
+#include "settings.h"
 
 void ACTION_Power(void);
 void ACTION_Monitor(void);
@@ -39,6 +40,17 @@ void ACTION_SwitchDemodul(void);
     void ACTION_RxMode(void);
     void ACTION_MainOnly(void);
     void ACTION_Ptt(void);
+    void ACTION_SyncDualPttKeyActions(void);
+    void ACTION_ClearSide1PttIfMainOnly(void);
+    void ACTION_HandleSide1Ptt(bool bKeyPressed, bool bKeyHeld);
+    void ACTION_DualPttStop(void);
+    #define ACTION_IsMainOnlyMode() \
+        (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && \
+         gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
+    #define ACTION_DualPttEnabled() \
+        (!ACTION_IsMainOnlyMode() && \
+         (gEeprom.KEY_1_SHORT_PRESS_ACTION == ACTION_OPT_PTT || \
+          gEeprom.KEY_1_LONG_PRESS_ACTION  == ACTION_OPT_PTT))
     void ACTION_Wn(void);
     void ACTION_BackLightOnDemand(void);
     void ACTION_BackLight(void);

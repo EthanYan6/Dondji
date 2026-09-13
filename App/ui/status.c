@@ -468,17 +468,10 @@ void UI_DisplayStatus()
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN
-    // PTT indicator
+    // PTT indicator (Set PTT is forced CLASSIC)
     if(!gAirCopyBootMode) {
-        if (gSetting_set_ptt_session) {
-            memcpy(line + x, gFontPttOnePush, sizeof(gFontPttOnePush));
-            x1 = x + sizeof(gFontPttOnePush) + 1;
-        }
-        else
-        {
-            memcpy(line + x, gFontPttClassic, sizeof(gFontPttClassic));
-            x1 = x + sizeof(gFontPttClassic) + 1;       
-        }
+        memcpy(line + x, gFontPttClassic, sizeof(gFontPttClassic));
+        x1 = x + sizeof(gFontPttClassic) + 1;
     }
     x += sizeof(gFontPttClassic) + 3;
 #endif

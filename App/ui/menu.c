@@ -469,13 +469,10 @@ const t_menu_item MenuList[] =
 #endif
 #ifdef ENABLE_FEAT_F4HWN
     {"SetPwr",      MENU_SET_PWR       },
-    {"SetPTT",      MENU_SET_PTT       },
-    {"SetTOT",      MENU_SET_TOT       },
-    {"SetEOT",      MENU_SET_EOT       },
+    // SetPTT/SetTOT/SetEOT/SetInv are forced off on load/save — omit dead menu entries
 #ifdef ENABLE_FEAT_F4HWN_CTR
     {"SetCtr",      MENU_SET_CTR       },
 #endif
-    {"SetInv",      MENU_SET_INV       },
 #ifdef ENABLE_FEAT_F4HWN_AUDIO    
     {"SetRxA",      MENU_SET_AUD       },
 #endif
@@ -746,20 +743,6 @@ const char gSubMenu_SCRAMBLER[][7] =
         "1",
         "2",
         "5"
-    };
-
-    const char gSubMenu_SET_PTT[][8] =
-    {
-        "CLASSIC",
-        "ONEPUSH"
-    };
-
-    const char gSubMenu_SET_TOT[][7] =  // Use by SET_EOT too
-    {
-        "OFF",
-        "SOUND",
-        "VISUAL",
-        "ALL"
     };
 
     const char gSubMenu_SET_LCK[][9] =
@@ -3257,15 +3240,6 @@ void UI_DisplayMenu(void)
                     SUBV(gSubMenu_TXP[gSubMenuSelection + 1], gSubMenu_TXP_CN[gSubMenuSelection + 1]),
                     SUBV(gSubMenu_SET_PWR[gSubMenuSelection], gSubMenu_SET_PWR_CN[gSubMenuSelection]));
             break;
-    
-        case MENU_SET_PTT:
-            strcpy(String, SUBV(gSubMenu_SET_PTT[gSubMenuSelection], gSubMenu_SET_PTT_CN[gSubMenuSelection]));
-            break;
-
-        case MENU_SET_TOT:
-        case MENU_SET_EOT:
-            strcpy(String, SUBV(gSubMenu_SET_TOT[gSubMenuSelection], gSubMenu_SET_TOT_CN[gSubMenuSelection]));
-            break;
 
 #ifdef ENABLE_FEAT_F4HWN_CTR
         case MENU_SET_CTR:
@@ -3274,15 +3248,6 @@ void UI_DisplayMenu(void)
             ST7565_ContrastAndInv();
             break;
 #endif
-
-        case MENU_SET_INV:
-            #ifdef ENABLE_FEAT_F4HWN_INV
-                strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
-                ST7565_ContrastAndInv();
-            #else
-                strcpy(String, gSubMenu_NA);
-            #endif
-            break;
 
         case MENU_TX_LOCK:
             if(TX_freq_check(gEeprom.VfoInfo[gEeprom.TX_VFO].pTX->Frequency) == 0)

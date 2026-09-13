@@ -955,46 +955,7 @@ void APP_Update(void)
 #ifdef ENABLE_FEAT_F4HWN
     if (gCurrentFunction == FUNCTION_TRANSMIT && (gTxTimeoutReachedAlert || SerialConfigInProgress()))
     {
-        if(gSetting_set_tot >= 2)
-        {
-            if (gEeprom.BACKLIGHT_TIME == 0) {
-                if (gBlinkCounter == 0 || gBlinkCounter == 250)
-                {
-                    GPIO_TogglePin(GPIO_PIN_FLASHLIGHT);
-                }
-            }
-            else
-            {
-                if (gBlinkCounter == 0)
-                {
-                    //BACKLIGHT_TurnOn();
-                    BACKLIGHT_SetBrightness(gEeprom.BACKLIGHT_MAX);
-                }
-                else if(gBlinkCounter == 15000)
-                {
-                    //BACKLIGHT_TurnOff();
-                    BACKLIGHT_SetBrightness(gEeprom.BACKLIGHT_MIN);
-                }
-            }
-        }
-
         gBlinkCounter++;
-
-        if(
-            (gSetting_set_tot == 3 && gEeprom.BACKLIGHT_TIME != 0 && gBlinkCounter > 74000) || 
-            (gSetting_set_tot == 3 && gEeprom.BACKLIGHT_TIME == 0 && gBlinkCounter > 79000) || 
-            (gSetting_set_tot != 3 && gBlinkCounter > 76000)
-            ) // try to calibrate 10 times
-        {
-            gBlinkCounter = 0;
-
-            if(gSetting_set_tot == 1 || gSetting_set_tot == 3)
-            {
-                BK4819_DisableScramble();
-                BK4819_PlaySingleTone(gTxTimeoutToneAlert, 30, 1, true);
-                gTxTimeoutToneAlert += 100;
-            }
-        }
     }
 #endif
 
@@ -1005,32 +966,10 @@ void APP_Update(void)
 #ifdef ENABLE_FEAT_F4HWN
         if(gBacklightCountdown_500ms > 0 || gEeprom.BACKLIGHT_TIME == 61)
         {
-            //BACKLIGHT_TurnOn();
             BACKLIGHT_SetBrightness(gEeprom.BACKLIGHT_MAX);
         }
 
         gTxTimeoutReachedAlert = false;
-        gTxTimeoutToneAlert = 800;
-
-        if (gSetting_set_ptt_session) // Improve OnePush if TOT
-        {
-            if(gPttOnePushCounter == 1)
-            {
-                gPttOnePushCounter = 3;
-            }
-            else if(gPttOnePushCounter == 2)
-            {
-                ProcessKey(KEY_PTT, false, false);
-                gPttIsPressed = false;
-                gPttOnePushCounter = 0;
-                gPttWasReleased = true;
-                //if (gKeyReading1 != KEY_INVALID)
-                //  gPttWasReleased = true;
-            }
-            #if defined(ENABLE_FEAT_F4HWN_CTR) || defined(ENABLE_FEAT_F4HWN_INV)
-            ST7565_ContrastAndInv();
-            #endif
-        }
 #endif
 
         APP_EndTransmission();
@@ -1249,52 +1188,19 @@ void CheckKeys(void)
     const bool isPressed = !GPIO_CheckBit(&GPIOC->DATA, GPIOC_PIN_PTT) && !serialConfigInProgress;
 #endif
 
-#ifdef ENABLE_FEAT_F4HWN
-    if (gSetting_set_ptt_session)
-    {
-        if ((isPressed && (gPttOnePushCounter == 0 || gPttOnePushCounter == 2)) ||
-            (!isPressed && (gPttOnePushCounter == 1 || gPttOnePushCounter == 3)) ||
-            serialConfigInProgress) 
-        {
-            if (++gPttDebounceCounter >= 3 || (serialConfigInProgress && gPttOnePushCounter > 0))
-            {
-                gPttDebounceCounter = 0;
-                
-                if (gPttOnePushCounter == 0)
-                {   // start transmitting
-                    boot_counter_10ms   = 0;
-                    gPttIsPressed       = true;
-                    gPttOnePushCounter = 1;
-                    ProcessKey(KEY_PTT, true, false);
-                } 
-                else if (gPttOnePushCounter == 3 || serialConfigInProgress)
-                {   // stop transmitting
-                    StopTransmitting();
-                    gPttOnePushCounter = 0;
-                } 
-                else
-                    gPttOnePushCounter++;
-            }
-        } 
-        else
-            gPttDebounceCounter = 0;
-
-        //gDebug = gPttOnePushCounter;
-    } 
-    else 
-#endif
     {
         if (gPttIsPressed)
         {
             if (!isPressed)
             {   // PTT released or serial comms config in progress
                 if (++gPttDebounceCounter >= 3 || serialConfigInProgress)   // 30ms
-                {   // stop transmitting
+                {
+                    // stop transmitting
                     gPttDebounceCounter = 0;
                     StopTransmitting();
                 }
-            } 
-            else 
+            }
+            else
                 gPttDebounceCounter = 0;
         }
         else if (isPressed)
@@ -1303,6 +1209,9 @@ void CheckKeys(void)
             {   // start transmitting
                 boot_counter_10ms   = 0;
                 gPttDebounceCounter = 0;
+#ifdef ENABLE_FEAT_F4HWN
+                ACTION_DualPttStop();
+#endif
                 gPttIsPressed       = true;
                 ProcessKey(KEY_PTT, true, false);
             }
@@ -1427,6 +1336,10 @@ void APP_TimeSlice10ms(void)
     activeMicBarUserTransmit = gPttIsPressed || gVOX_NoiseDetected;
 #else
     activeMicBarUserTransmit = gPttIsPressed;
+#endif
+#ifdef ENABLE_FEAT_F4HWN
+    if (gDualPttTxVfo != 0xFF)
+        activeMicBarUserTransmit = true;
 #endif
 
     if (gSetting_mic_bar_display != MIC_BAR_DISPLAY_OFF &&
@@ -2113,6 +2026,15 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
             return;
         }
     }
+
+#ifdef ENABLE_FEAT_F4HWN
+    if (Key == KEY_SIDE1 && ACTION_DualPttEnabled() &&
+        !(gScreenToDisplay == DISPLAY_MAIN && gDTMF_InputMode))
+    {
+        ACTION_HandleSide1Ptt(bKeyPressed, bKeyHeld);
+        goto Skip;
+    }
+#endif
 
     if (Key <= KEY_9 || Key == KEY_F) {
         //if (gScanStateDir != SCAN_OFF || gCssBackgroundScan) { // FREQ/CTCSS/DCS scanning
