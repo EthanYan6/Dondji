@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Dondji Firmware
  *
  * Copyright (c) 2026 BD1AHN

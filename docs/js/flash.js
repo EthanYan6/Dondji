@@ -4384,32 +4384,13 @@ function writefreqImportSheet(rowsAoA) {
   /** 与 Flash 槽 0…1023 对齐：界面固定显示 CH1–CH1024 */
   writefreqTableBaseChannel = 1;
   writefreqEnsureModelInit();
-  let resetIdx = 0;
-  for (; resetIdx < WRITE_FREQ_MR_MAX; resetIdx++) {
-    writefreqRowsData[resetIdx] = writefreqEmptyRowFields();
-  }
   const dataRowCount = rowsAoA.length - 1;
-  if (idxCh >= 0 && dataRowCount > 0) {
-    const firstDataRow = rowsAoA[1];
-    const chFirstCell = firstDataRow && firstDataRow[idxCh];
-    const chFirst = Number.parseInt(String(chFirstCell).trim(), 10);
-    if (!Number.isFinite(chFirst)) {
-      log(window.t ? window.t('logFirstRowInvalid') : '首行数据信道号无效', 'error');
-      return;
-    }
-    if (chFirst !== 1) {
-      log(
-        '首行信道号须为 1（导入从 MR CH1 算起），当前为 ' +
-          chFirst +
-          '，已取消导入',
-        'error'
-      );
-      return;
-    }
-  }
   const cellStrFactory = function cellStrFactory(rowArr) {
     return function cellStr(idx) {
       if (idx < 0) {
+        return '';
+      }
+      if (!rowArr) {
         return '';
       }
       const raw = rowArr[idx];
@@ -4419,17 +4400,39 @@ function writefreqImportSheet(rowsAoA) {
       return String(raw);
     };
   };
+  /**
+   * 先完整校验并组装，成功后再清空写入。
+   * 避免中途失败时内存表已清空/半写、界面未刷新，翻页 flush 再把空页写回。
+   */
+  const pendingSlots = new Array(WRITE_FREQ_MR_MAX);
   let di = 0;
+  let firstDataSeen = false;
   for (; di < dataRowCount; di++) {
     const src = rowsAoA[di + 1];
     const cellStr = cellStrFactory(src);
     let destSlot = di;
     if (idxCh >= 0) {
-      const chCellRaw = cellStr(idxCh);
-      const chNumParsed = Number.parseInt(String(chCellRaw).trim(), 10);
+      const chCellRaw = cellStr(idxCh).trim();
+      // Excel used-range 常带末尾/中间空行：信道号为空则跳过，不当作错误
+      if (chCellRaw === '') {
+        continue;
+      }
+      const chNumParsed = Number.parseInt(chCellRaw, 10);
       if (!Number.isFinite(chNumParsed)) {
         log(window.t ? window.t('logRowChannelInvalid', {row: di + 1}) : '第 ' + (di + 1) + ' 行数据：信道号无效', 'error');
         return;
+      }
+      if (!firstDataSeen) {
+        if (chNumParsed !== 1) {
+          log(
+            '首行信道号须为 1（导入从 MR CH1 算起），当前为 ' +
+              chNumParsed +
+              '，已取消导入',
+            'error'
+          );
+          return;
+        }
+        firstDataSeen = true;
       }
       if (chNumParsed < 1 || chNumParsed > WRITE_FREQ_MR_MAX) {
         log(
@@ -4506,11 +4509,19 @@ function writefreqImportSheet(rowsAoA) {
         merged.offsetText = (offAbs / 1e6).toFixed(6);
       }
     }
-    writefreqRowsData[destSlot] = merged;
+    pendingSlots[destSlot] = merged;
+  }
+  if (idxCh >= 0 && dataRowCount > 0 && !firstDataSeen) {
+    log(window.t ? window.t('logFirstRowInvalid') : '首行数据信道号无效', 'error');
+    return;
+  }
+  let resetIdx = 0;
+  for (; resetIdx < WRITE_FREQ_MR_MAX; resetIdx++) {
+    writefreqRowsData[resetIdx] = pendingSlots[resetIdx] || writefreqEmptyRowFields();
   }
   writefreqPageIndex = 0;
   writefreqRebuildRows();
-  const importedRows = Math.min(dataRowCount, WRITE_FREQ_MR_MAX);
+  const importedRows = writefreqCountFilledRows();
   log(
     '已清空内存表格并导入 ' +
       importedRows +
