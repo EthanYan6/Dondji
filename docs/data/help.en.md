@@ -320,7 +320,53 @@ In config backup, MDC ID is at SPI `0x00A172` (2 bytes); see Chapter 2 address t
 
 ---
 
-## 1.9 Usage Notes
+## 1.9 Dual PTT
+
+When **not MAIN ONLY** (dual-watch / cross-band dual-row home), side key 1 can act as a second PTT: hardware PTT keys the **top main** channel; hold side key 1 to key the **bottom** channel.
+
+### How to enable
+
+1. Make sure receive mode is **not** MAIN ONLY (pick dual watch or cross band so the home screen shows two rows).
+2. **MENU** → **Side key 1 short** or **Side key 1 long**.
+3. Choose **PTT** and confirm.
+4. The other slot is set to **PTT** automatically; **Set PTT** is forced to **CLASSIC** (hold-to-talk).
+
+To turn dual PTT off, bind another action (or switch back to MAIN ONLY).
+
+### TX rules
+
+| Action | Behavior |
+|--------|----------|
+| Hold hardware PTT | TX on the **top** main channel |
+| Hold side key 1 | TX on the **bottom** channel (whole key is PTT; original short/long actions do not run) |
+| Hold both | **Hardware PTT wins** (main channel) |
+| After unkey | Main stays on the same row — **rows do not swap** |
+
+### Relation to MAIN ONLY
+
+- Dual PTT only works when **not MAIN ONLY**.
+- Entering MAIN ONLY **clears** a PTT bound on side key 1 back to **NONE**.
+- PTT may still appear in the list under MAIN ONLY, but **saving will not stick**; leave MAIN ONLY first.
+
+### Home screen while side-key TX
+
+Depends on the mic / TX animation setting:
+
+| Mode | Side-key TX on bottom channel |
+|------|--------------------------------|
+| **Off** | Bottom channel name / frequency inverted |
+| **Bar** | Same invert, plus a level bar / waveform on the main-channel top strip |
+| **Popup** | Only the TX popup; no extra TX mark on the row |
+
+### Notes
+
+- Do not confuse this with **Set PTT** (CLASSIC / ONEPUSH): that only changes whether the **hardware** PTT is hold-to-talk or toggle; it does **not** enable dual PTT.
+- **PTT** is listed only under side key 1 short/long — not side key 2 or MENU long.
+- While dual PTT is on, side key 1 cannot navigate the menu (use ↑/↓ or side key 2).
+
+---
+
+## 1.10 Usage Notes
 
 - During TX/RX the voltage meter may jump with current — normal (see FAQ #13).
 - Use this site or verified tools for programming and calibration; address layout is not compatible with other firmware.
