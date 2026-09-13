@@ -1834,8 +1834,10 @@ const WRITE_FREQ_MR_MAX = 1024;
 const WRITE_FREQ_EXPORT_FILE_PREFIX = 'Dondji';
 /** 表格第 1 行对应的 MR 信道号（与 WRITE_FREQ_MR_MAX 一致，当前为 1–1024）；默认 1；Excel 导入表头须含「信道号」列 */
 let writefreqTableBaseChannel = 1;
-/** 内存中 N 条信道数据；界面仅渲染一页 WRITE_FREQ_PAGE_SIZE 行 */
-const WRITE_FREQ_PAGE_SIZE = 10;
+/** 内存中 N 条信道数据；界面仅渲染一页 writefreqPageSize 行 */
+const WRITE_FREQ_PAGE_SIZE_DEFAULT = 10;
+const WRITE_FREQ_PAGE_SIZE_MAX = 200;
+let writefreqPageSize = WRITE_FREQ_PAGE_SIZE_DEFAULT;
 let writefreqPageIndex = 0;
 let writefreqRowsData = null;
 /** SortableJS 实例（写频表格行拖拽） */
@@ -3062,7 +3064,7 @@ function writefreqEnsureModelInit() {
 
 function writefreqGetPageCount() {
   const total = WRITE_FREQ_MR_MAX;
-  const pageSize = WRITE_FREQ_PAGE_SIZE;
+  const pageSize = writefreqPageSize;
   const fullPages = Math.floor((total + pageSize - 1) / pageSize);
   return fullPages;
 }
@@ -3311,7 +3313,7 @@ function writefreqUpdatePaginationUI() {
   const filledVal = filledCount;
   const curVal = cur;
   const pagesVal = totalPages;
-  const sizeVal = WRITE_FREQ_PAGE_SIZE;
+  const sizeVal = writefreqPageSize;
   
   if (infoEl) {
     const totalLine = window.t 
@@ -3341,11 +3343,14 @@ function writefreqShowCurrentPage() {
   }
   const base = writefreqGetBaseChannel();
   const page = writefreqPageIndex;
-  const startSlot = page * WRITE_FREQ_PAGE_SIZE;
+  const startSlot = page * writefreqPageSize;
   const rowList = tbody.querySelectorAll('tr');
   let slot = 0;
-  for (; slot < WRITE_FREQ_PAGE_SIZE; slot++) {
+  for (; slot < writefreqPageSize; slot++) {
     const tr = rowList[slot];
+    if (!tr) {
+      break;
+    }
     const chIdx = startSlot + slot;
     if (chIdx >= WRITE_FREQ_MR_MAX) {
       tr.style.display = 'none';
@@ -3416,7 +3421,7 @@ function writefreqInitSortable() {
       if (oldIdx === undefined || newIdx === undefined) {
         return;
       }
-      const pageStart = writefreqPageIndex * WRITE_FREQ_PAGE_SIZE;
+      const pageStart = writefreqPageIndex * writefreqPageSize;
       const fromGlobal = pageStart + oldIdx;
       const toGlobal = pageStart + newIdx;
       if (fromGlobal < 0 || fromGlobal >= WRITE_FREQ_MR_MAX) {
@@ -3445,6 +3450,41 @@ function writefreqPageDelta(delta) {
   }
   writefreqPageIndex = next;
   writefreqShowCurrentPage();
+}
+
+/** 切换每页行数：先回写当前页，再按原首信道重算页码并重建表格 */
+function writefreqSetPageSize(rawSize) {
+  writefreqEnsureModelInit();
+  const parsed = Number.parseInt(String(rawSize).trim(), 10);
+  let nextSize = Number.isFinite(parsed)
+    ? parsed
+    : WRITE_FREQ_PAGE_SIZE_DEFAULT;
+  if (nextSize < 1) {
+    nextSize = WRITE_FREQ_PAGE_SIZE_DEFAULT;
+  }
+  if (nextSize > WRITE_FREQ_PAGE_SIZE_MAX) {
+    nextSize = WRITE_FREQ_PAGE_SIZE_MAX;
+  }
+  const prevSize = writefreqPageSize;
+  if (nextSize === prevSize) {
+    return;
+  }
+  writefreqFlushDomToModel();
+  const firstSlot = writefreqPageIndex * prevSize;
+  writefreqPageSize = nextSize;
+  const totalPages = writefreqGetPageCount();
+  writefreqPageIndex = Math.floor(firstSlot / nextSize);
+  if (writefreqPageIndex > totalPages - 1) {
+    writefreqPageIndex = Math.max(0, totalPages - 1);
+  }
+  if (writefreqPageIndex < 0) {
+    writefreqPageIndex = 0;
+  }
+  const sizeSel = $('writefreqPageSize');
+  if (sizeSel && String(nextSize) !== sizeSel.value) {
+    sizeSel.value = String(nextSize);
+  }
+  writefreqRebuildRows();
 }
 
 function writefreqGetBaseChannel() {
@@ -3480,7 +3520,7 @@ function writefreqRebuildRows() {
   });
   
   let r = 0;
-  for (; r < WRITE_FREQ_PAGE_SIZE; r++) {
+  for (; r < writefreqPageSize; r++) {
     const tr = document.createElement('tr');
     const tdDrag = document.createElement('td');
     tdDrag.className = 'wf-drag-handle';
@@ -4601,6 +4641,7 @@ if (writefreqImportBtnEl && writefreqImportFileEl) {
 
 const writefreqPagePrevEl = $('writefreqPagePrev');
 const writefreqPageNextEl = $('writefreqPageNext');
+const writefreqPageSizeEl = $('writefreqPageSize');
 if (writefreqPagePrevEl) {
   writefreqPagePrevEl.addEventListener('click', () => {
     writefreqPageDelta(-1);
@@ -4609,6 +4650,12 @@ if (writefreqPagePrevEl) {
 if (writefreqPageNextEl) {
   writefreqPageNextEl.addEventListener('click', () => {
     writefreqPageDelta(1);
+  });
+}
+if (writefreqPageSizeEl) {
+  writefreqPageSizeEl.value = String(writefreqPageSize);
+  writefreqPageSizeEl.addEventListener('change', () => {
+    writefreqSetPageSize(writefreqPageSizeEl.value);
   });
 }
 

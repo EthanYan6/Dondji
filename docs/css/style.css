@@ -838,6 +838,22 @@ button.btn-with-icon {
   min-width: 200px;
   text-align: center;
 }
+.writefreq-page-size-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.writefreq-page-size-label select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.95em;
+}
 #writefreq-content { width: 100%; max-width: none; box-sizing: border-box; }
 .writefreq-table { width: 100%; border-collapse: collapse; font-size: 0.82em; min-width: 1200px; }
 .writefreq-table th, .writefreq-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; }

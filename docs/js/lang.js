@@ -219,6 +219,8 @@
       'clearRow': '清空本行',
       'prevPage': '上一页',
       'nextPage': '下一页',
+      'freqRowsPerPage': '每页行数',
+      'freqRowsPerPageTitle': '每页最多 200 行',
       'freqPageInfoText': '共 {total} 条 · 已填写 {filled} 条 · 第 {cur} / {pages} 页 · 每页 {size} 信道',
     
     // Log messages
@@ -652,6 +654,8 @@
       'clearRow': 'Clear row',
       'prevPage': 'Previous',
       'nextPage': 'Next',
+      'freqRowsPerPage': 'Rows per page',
+      'freqRowsPerPageTitle': 'Up to 200 rows per page',
       'freqPageInfoText': 'Total {total} · Filled {filled} · Page {cur} / {pages} · {size} channels per page',
     
     // Log messages

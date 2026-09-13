@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260822b">
+  <link rel="stylesheet" href="css/style.min.css?v=20260823a">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script>
   <script>
     (function () {
@@ -550,6 +550,16 @@
         <button type="button" class="btn-inline btn-secondary" id="writefreqPagePrev" data-i18n="prevPage">上一页</button>
         <span class="writefreq-page-info" id="writefreqPageInfo" aria-live="polite" data-i18n="freqPageInfo">共 1024 条 · 已填写 0 条 · 第 1 / 103 页 · 每页 10 信道</span>
         <button type="button" class="btn-inline btn-secondary" id="writefreqPageNext" data-i18n="nextPage">下一页</button>
+        <label class="writefreq-page-size-label" for="writefreqPageSize">
+          <span data-i18n="freqRowsPerPage">每页行数</span>
+          <select id="writefreqPageSize" data-i18n-title="freqRowsPerPageTitle" title="每页最多 200 行">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
       </div>
       <p id="writefreqValidation" class="writefreq-validation" style="display:none;"></p>
     </div>
@@ -912,7 +922,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/lang.min.js?v=20260822b"></script>
+  <script src="js/lang.min.js?v=20260823a"></script>
   <script src="js/flash.min.js?v=20260823a"></script>
   <script src="js/k1-init-freq-download.js?v=20260816a"></script>
   <script>
