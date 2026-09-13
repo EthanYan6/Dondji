@@ -564,9 +564,10 @@ void ACTION_DualPttStop(void)
     if (gCurrentFunction == FUNCTION_TRANSMIT)
         GENERIC_Key_PTT(false);
 
-    /* Restore display/main VFO (the other channel). */
+    /* Keep RX on side (RF already there); pin display main on top. */
     gEeprom.TX_VFO = (uint8_t)(1u - side);
-    RADIO_SelectVfos();
+    gTxVfo = &gEeprom.VfoInfo[gEeprom.TX_VFO];
+    gCurrentVfo = gRxVfo;
     gUpdateDisplay = true;
 }
 
