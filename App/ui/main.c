@@ -647,7 +647,7 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
                     DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, x0,
                                                      (uint8_t)(DV_Y_TOP_CH + 3u));
                 }
-                if (rxHere)
+                if (rxHere || txHere)
                     UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127, 9, 20);
                 else
                     UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
@@ -734,7 +734,7 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
                     /* 中文信道名 → 频率位置（接收或双 PTT 副信道发射时反色） */
                     {
                         const uint8_t cn_y = (uint8_t)(DV_Y_BOT_FREQ_LINE + 6u);
-                        if (rxHere || dualPttInvert) {
+                        if (rxHere || dualPttInvert || (txHere && !dualPttSideTx)) {
                             const uint8_t cn_y_rx = (uint8_t)(cn_y - 9u);
                             UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127,
                                                                 cn_y_rx, (uint8_t)(cn_y_rx + 11u));

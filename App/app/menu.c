@@ -2015,6 +2015,24 @@ static void MENU_ClampSelection(int8_t Direction)
         else
         if (Selection > Max) Selection = Max;
         gSubMenuSelection = NUMBER_AddWithWraparound(Selection, Direction, Min, Max);
+
+#ifdef ENABLE_FEAT_F4HWN
+        {
+            const int menuId = UI_MENU_GetCurrentMenuId();
+            if (menuId >= MENU_F1SHRT && menuId <= MENU_MLONG) {
+                const bool f1 = (menuId <= MENU_F1LONG);
+                int sel = (int)gSubMenuSelection;
+                int n = (int)gSubMenu_SIDEFUNCTIONS_size;
+                /* PTT only on side key 1, and only when not MAIN ONLY */
+                while (n-- > 0 && gSubMenu_SIDEFUNCTIONS[sel].id == ACTION_OPT_PTT &&
+                       !(f1 && !ACTION_IsMainOnlyMode()))
+                {
+                    sel = (int)NUMBER_AddWithWraparound(sel, Direction, Min, Max);
+                }
+                gSubMenuSelection = sel;
+            }
+        }
+#endif
     }
 }
 
