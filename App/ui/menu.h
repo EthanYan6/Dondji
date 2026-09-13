@@ -312,5 +312,6 @@ void UI_DisplayMenu(void);
 const char *UI_MENU_GetMenuTitle(const t_menu_item *item);
 int UI_MENU_GetCurrentMenuId();
 uint8_t UI_MENU_GetMenuIdx(uint8_t id);
+void MENU_Hex4(char *d, uint16_t v);
 
 #endif

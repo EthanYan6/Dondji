@@ -1949,7 +1949,7 @@ void UI_DisplayMDC1200RxPopup(void)
                            (int16_t)popup_y1, true);
 
     strcpy(line1, "MDC ID");
-    sprintf(line2, "%04X", mdc1200_unit_id);
+    MENU_Hex4(line2, mdc1200_unit_id);
 
     UI_PrintStringSmallNormal(line1, inner_left, inner_right, popup_y0 / 8 + 1);
     UI_PrintStringSmallNormal(line2, inner_left, inner_right, popup_y0 / 8 + 2);

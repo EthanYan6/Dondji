@@ -89,6 +89,17 @@ const uint8_t gMemNameSymbolCharsetCount = (uint8_t)(sizeof(gMemNameSymbolCharse
 
 #define MDC_ID_EDIT_LEN  4
 
+void MENU_Hex4(char *d, uint16_t v)
+{
+    int i;
+    for (i = 3; i >= 0; i--, v >>= 4)
+    {
+        const uint8_t n = (uint8_t)(v & 0xF);
+        d[i] = (char)(n < 10 ? '0' + n : 'A' + n - 10);
+    }
+    d[4] = 0;
+}
+
 /* Shared text-ID editors: Yan ID (A–Z/0–9) and MDC ID (digits only). */
 static int MENU_TextIdEditLimit(uint8_t menu_id)
 {
@@ -116,7 +127,7 @@ static void MENU_BeginTextIdEdit(uint8_t menu_id)
 
     if (menu_id == MENU_MDC_ID)
     {
-        sprintf(edit, "%04X", gMDC1200_ID);
+        MENU_Hex4(edit, gMDC1200_ID);
         gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
     }
     else
@@ -146,10 +157,12 @@ static void MENU_SaveTextIdEdit(uint8_t menu_id)
             id <<= 4;
             if (c >= '0' && c <= '9')
                 id |= (uint16_t)(c - '0');
-            else if (c >= 'A' && c <= 'F')
-                id |= (uint16_t)(c - 'A' + 10);
-            else if (c >= 'a' && c <= 'f')
-                id |= (uint16_t)(c - 'a' + 10);
+            else
+            {
+                c = (char)(c | 0x20);
+                if (c >= 'a' && c <= 'f')
+                    id |= (uint16_t)(c - 'a' + 10);
+            }
         }
         gMDC1200_ID = id;
         MDC1200_SaveID();
@@ -163,7 +176,7 @@ static void MENU_SaveTextIdEdit(uint8_t menu_id)
         for (i = 0; i < (uint8_t)len && edit[i]; i++)
         {
             char c = edit[i];
-            if (c == ' ' || c == MEM_NAME_EDIT_PAD)
+            if (c == MEM_NAME_EDIT_PAD)
                 continue;
             if (c >= 'a' && c <= 'z')
                 c = (char)(c - 32);
@@ -2953,20 +2966,22 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
                 return;
             }
 
-            if (MENU_IsTextIdEdit((uint8_t)UI_MENU_GetCurrentMenuId()) && edit_index >= 0)
+            /* MDC ID / Yan ID：EXIT 先删本位，再按左移；参考命名信道 */
             {
-                if (edit_index > 0)
+                const uint8_t mid = (uint8_t)UI_MENU_GetCurrentMenuId();
+                if ((mid == MENU_MDC_ID || mid == MENU_YAN_ID) && edit_index >= 0)
                 {
-                    edit_index--;
-                    gRequestDisplayScreen = DISPLAY_MENU;
-                    return;
-                }
-                else
-                {
-                    edit_index = -1;
-                    gIsInSubMenu = false;
-                    gInputBoxIndex = 0;
-                    gFlagRefreshSetting = true;
+                    if (edit[edit_index] > MEM_NAME_EDIT_PAD)
+                        edit[edit_index] = MEM_NAME_EDIT_PAD;
+                    else if (edit_index > 0)
+                        edit_index--;
+                    else
+                    {
+                        edit_index = -1;
+                        gIsInSubMenu = false;
+                        gInputBoxIndex = 0;
+                        gFlagRefreshSetting = true;
+                    }
                     gRequestDisplayScreen = DISPLAY_MENU;
                     return;
                 }

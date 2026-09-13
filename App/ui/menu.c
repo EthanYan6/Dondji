@@ -3209,7 +3209,7 @@ void UI_DisplayMenu(void)
                 break;
             }
             if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
-                sprintf(String, "%04X", gMDC1200_ID);
+                MENU_Hex4(String, gMDC1200_ID);
             else if (gEeprom.yan_id[0])
                 strncpy(String, gEeprom.yan_id, sizeof(String) - 1);
             else
