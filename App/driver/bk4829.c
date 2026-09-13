@@ -34,8 +34,6 @@
 #define PIN_SCL GPIO_MAKE_PIN(GPIOB, LL_GPIO_PIN_8)
 #define PIN_SDA GPIO_MAKE_PIN(GPIOB, LL_GPIO_PIN_9)
 
-static const uint16_t FSK_RogerTable[7] = {0xF1A2, 0x7446, 0x61A4, 0x6544, 0x4E8A, 0xE044, 0xEA84};
-
 static uint16_t gBK4819_GpioOutState;
 
 bool gRxIdleMode;
@@ -1774,53 +1772,44 @@ static void BK4819_PlayRogerNormal(void)
     BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);   // 1 1 0000 1 1 1111 1 1 1 0 (启用AF_DAC)
 }
 
+/* Custom1/2/3 — exact Syrup timings. uint16 triplets: (Hz, on_ms, off_ms). */
+static const uint16_t gRogerSeq_Custom[] = {
+    1975, 80, 10,  2100, 100, 10,  3140, 80, 10,  2800, 100, 10,
+    430, 350, 350,  430, 350, 350,  430, 350, 0,
+    1650, 40, 0,  1100, 50, 0,  750, 65, 0
+};
 
-void BK4819_PlayRogerMDC(void)
+static const uint8_t gRogerSeqOff[3] = {0, 12, 21};
+static const uint8_t gRogerSeqLen[3] = {4, 3, 3};
+
+static void BK4819_PlayRogerSequence(const uint16_t *p, uint8_t n)
 {
-    struct reg_value {
-        BK4819_REGISTER_t reg;
-        uint16_t value;
-    };
+    bool first = true;
 
-    struct reg_value RogerMDC_Configuration [] = {
-        { BK4819_REG_58, 0x37C3 },  // FSK Enable,
-                                        // RX Bandwidth FFSK 1200/1800
-                                        // 0xAA or 0x55 Preamble
-                                        // 11 RX Gain,
-                                        // 101 RX Mode
-                                        // TX FFSK 1200/1800
-        { BK4819_REG_72, 0x3065 },  // Set Tone-2 to 1200Hz
-        { BK4819_REG_70, 0x00E0 },  // Enable Tone-2 and Set Tone2 Gain
-        { BK4819_REG_5D, 0x0D00 },  // Set FSK data length to 13 bytes
-        { BK4819_REG_59, 0x8068 },  // 4 byte sync length, 6 byte preamble, clear TX FIFO
-        { BK4819_REG_59, 0x0068 },  // Same, but clear TX FIFO is now unset (clearing done)
-        { BK4819_REG_5A, 0x5555 },  // First two sync bytes
-        { BK4819_REG_5B, 0x55AA },  // End of sync bytes. Total 4 bytes: 555555aa
-        { BK4819_REG_5C, 0xAA30 },  // Disable CRC
-    };
+    while (n--) {
+        if (first) {
+            first = false;
+            BK4819_TransmitTone(false, p[0]);
+        } else {
+            BK4819_WriteRegister(BK4819_REG_71, scale_freq(p[0]));
+            BK4819_ExitTxMute();
+        }
 
+        SYSTEM_DelayMs(p[1]);
+
+        if (p[2]) {
+            BK4819_EnterTxMute();
+            SYSTEM_DelayMs(p[2]);
+        }
+
+        p += 3;
+    }
+
+    /* Same teardown as PlayRogerNormal — leave TX path ready for DTMF/CSS tail + next PTT */
+    BK4819_EnterTxMute();
     BK4819_SetAF(BK4819_AF_MUTE);
-
-    for (unsigned int i = 0; i < ARRAY_SIZE(RogerMDC_Configuration); i++) {
-        BK4819_WriteRegister(RogerMDC_Configuration[i].reg, RogerMDC_Configuration[i].value);
-    }
-
-    // Send the data from the roger table
-    for (unsigned int i = 0; i < ARRAY_SIZE(FSK_RogerTable); i++) {
-        BK4819_WriteRegister(BK4819_REG_5F, FSK_RogerTable[i]);
-    }
-
-    SYSTEM_DelayMs(20);
-
-    // 4 sync bytes, 6 byte preamble, Enable FSK TX
-    BK4819_WriteRegister(BK4819_REG_59, 0x0868);
-
-    SYSTEM_DelayMs(180);
-
-    // Stop FSK TX, reset Tone-2, disable FSK
-    BK4819_WriteRegister(BK4819_REG_59, 0x0068);
     BK4819_WriteRegister(BK4819_REG_70, 0x0000);
-    BK4819_WriteRegister(BK4819_REG_58, 0x0000);
+    BK4819_WriteRegister(BK4819_REG_30, 0xC3FE);
 }
 
 void BK4819_PlayRoger(void)
@@ -1836,6 +1825,9 @@ void BK4819_PlayRoger(void)
         }
     } else if (gEeprom.ROGER == ROGER_MODE_YAN_ID) {
         (void)YAN_RF_Send();
+    } else if (gEeprom.ROGER >= ROGER_MODE_CUSTOM1) {
+        const uint8_t i = gEeprom.ROGER - ROGER_MODE_CUSTOM1;
+        BK4819_PlayRogerSequence(&gRogerSeq_Custom[gRogerSeqOff[i]], gRogerSeqLen[i]);
     }
 }
 
@@ -2063,11 +2055,6 @@ void BK4819_Enable_AfDac_DiscMode_TxDsp(void)
 {
     BK4819_WriteRegister(BK4819_REG_30, 0x0000);
     BK4819_WriteRegister(BK4819_REG_30, 0x0302);
-}
-
-void BK4819_GetVoxAmp(uint16_t *pResult)
-{
-    *pResult = BK4819_ReadRegister(BK4819_REG_64) & 0x7FFF;
 }
 
 void BK4819_SetScrambleFrequencyControlWord(uint32_t Frequency)

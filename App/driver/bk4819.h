@@ -176,7 +176,6 @@ bool     BK4819_ReadMDC1200RxBuffer(uint8_t *data, unsigned int *size);
 
 void     BK4819_Enable_AfDac_DiscMode_TxDsp(void);
 
-void     BK4819_GetVoxAmp(uint16_t *pResult);
 void     BK4819_SetScrambleFrequencyControlWord(uint32_t Frequency);
 void     BK4819_PlayDTMFEx(bool bLocalLoopback, char Code);
 

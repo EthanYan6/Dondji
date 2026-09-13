@@ -312,7 +312,10 @@ On the main screen, **`F+7`** opens the **CW trainer** directly.
 
 Current firmware still uses **MDC1200** (Yan ID replacement is in the design doc; **not yet implemented**).
 
-1. **MENU** → **Other** → **TX Tail (Roger)**: **Off / ROGER / MDC**.
+1. **MENU** → **Other** → **TX Tail (Roger)**: **Off / ROGER / MDC / Yan ID / Custom1 / Custom2 / Custom3** (same labels in EN/CN UI).
+   - **Custom1**: four-tone chirp (1975→2100→3140→2800 Hz, 10ms gaps)
+   - **Custom2**: three 430 Hz beeps (350 ms on / 350 ms off)
+   - **Custom3**: three-tone drop (1650→1100→750 Hz)
 2. With **MDC** selected, edit the 4-digit hex unit ID in the **MDC ID** menu.
 3. When the other station sends MDC and local Roger is MDC, the main screen can show an **MDC ID** receive alert.
 

@@ -179,6 +179,7 @@ bool YAN_RF_Send(void)
     send_fsk_long_preamble(s_fsk_buf);
     BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
     yan_narrow_lock_end();
+    YAN_RF_DisableRx();
     s_ignore_next_self_rx = true;
     s_ignore_self_ticks = 4; /* ~2 s @ 500 ms */
     s_rearm_delay_ticks = 20; /* 200 ms then re-arm RX */
@@ -210,6 +211,10 @@ void YAN_RF_DisableRx(void)
     s_sidecar_armed = false;
     s_rx_capture_active = false;
     s_rx_words = 0;
+    /* Clear tone/FSK leftovers so next voice PTT is not stuck on tail tone */
+    BK4819_WriteRegister(BK4819_REG_70, 0);
+    BK4819_WriteRegister(BK4819_REG_72, 0);
+    BK4819_WriteRegister(BK4819_REG_58, 0);
     BK4819_WriteRegister(BK4819_REG_59, 0x0068);
 }
 void YAN_RF_OnRadioInterrupt(uint16_t status)

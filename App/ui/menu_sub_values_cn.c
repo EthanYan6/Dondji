@@ -2,6 +2,7 @@
 
 #include "misc.h"
 #include "radio.h"
+#include "ui/menu.h"
 #include "ui/menu_sub_values_cn.h"
 
 #ifdef ENABLE_CHINESE
@@ -73,11 +74,14 @@ const char *const gSubMenu_BOOT_HINT_CN[] = {
     "\xe4\xba\x94\xe4\xba\x94\xe8\x8a\x82\xe7\xba\xaa\xe5\xbf\xb5\xe7\x89\x88",
 };
 
-const char gSubMenu_ROGER_CN[][7] = {
-    "\xe5\x85\xb3",
-    "ROGER",
-    "MDC",
-    "Yan ID",
+const char *const gSubMenu_ROGER_CN[] = {
+    "\xe5\x85\xb3", /* 关 — 与英文串共享其余项 */
+    gSubMenu_ROGER[1],
+    gSubMenu_ROGER[2],
+    gSubMenu_ROGER[3],
+    gSubMenu_ROGER[4],
+    gSubMenu_ROGER[5],
+    gSubMenu_ROGER[6],
 };
 
 const char gSubMenu_RESET_CN[][8] = {

@@ -76,50 +76,6 @@
 #include "../driver/py25q16.h"
 #endif
 
-#ifdef ENABLE_FEAT_F4HWN_QRCODE
-static const uint8_t BITMAP_QR_Dondji_Compressed[165] = {
-    0x00, 0x00, 0xFC, 0x04, 0x74, 0x74, 0x74, 0x04, 0xFC, 0x00, 0x5C, 0x50, 0x30, 0x0C, 0xEC, 0xDC,
-    0xE8, 0xC8, 0x90, 0x5C, 0x74, 0x8C, 0x50, 0x00, 0xFC, 0x04, 0x74, 0x74, 0x74, 0x04, 0xFC, 0x00,
-    0x00, 0x00, 0x00, 0xF5, 0x29, 0xD9, 0xB5, 0x15, 0x9D, 0x55, 0x0C, 0x15, 0x14, 0x43, 0xD8, 0x2B,
-    0x44, 0x7F, 0x6E, 0xCF, 0x20, 0xE1, 0x6C, 0x75, 0xC4, 0x49, 0xD1, 0xE5, 0x79, 0xCD, 0x25, 0x4D,
-    0x00, 0x00, 0x00, 0x00, 0x7A, 0x72, 0x5A, 0x40, 0x2B, 0x24, 0x55, 0x60, 0xA0, 0x8E, 0x69, 0x89,
-    0x0B, 0xF2, 0x13, 0xEF, 0x31, 0x2B, 0x6B, 0x5A, 0xEE, 0x60, 0x75, 0x73, 0xEE, 0x28, 0xE7, 0x59,
-    0xF0, 0x00, 0x00, 0x00, 0x00, 0x7F, 0x41, 0x5D, 0x5D, 0x5D, 0x41, 0x7F, 0x00, 0x4F, 0x35, 0x01,
-    0x69, 0x4D, 0x2F, 0x58, 0x56, 0x5C, 0x30, 0x32, 0x2B, 0x67, 0x64, 0x7D, 0x5C, 0x47, 0x7D, 0x1A,
-    0x3C, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-static void QR_SetPixel(uint8_t x, uint8_t y)
-{
-    if (x >= 128 || y >= 64) return;
-    if (y < 8) {
-        gStatusLine[x] |= (uint8_t)(1u << y);
-    } else {
-        const uint8_t fb_y = (uint8_t)(y - 8u);
-        gFrameBuffer[fb_y >> 3][x] |= (uint8_t)(1u << (fb_y & 7u));
-    }
-}
-
-static void UI_DrawQRCode(uint8_t origin_x, uint8_t origin_y)
-{
-    const uint8_t *bitmap = (const uint8_t *)BITMAP_QR_Dondji_Compressed;
-    const uint8_t size = 33;
-
-    for (uint8_t qy = 0; qy < size; qy++) {
-        for (uint8_t qx = 0; qx < size; qx++) {
-            if (qy < 32 ?
-                ((bitmap[(uint16_t)(qy >> 3) * (uint16_t)size + (uint16_t)qx] >> (qy & 7u)) & 1u) :
-                ((bitmap[132 + (qx >> 3)] >> (qx & 7u)) & 1u)) {
-                QR_SetPixel((uint8_t)(origin_x + qx),
-                            (uint8_t)(origin_y + qy));
-            }
-        }
-    }
-}
-#endif
-
 /* Level-2 browse: +1 — right pane is x≥50, clears left title; +4 stacked everything at bottom. L3 edit: +2. */
 #define MENU_VALUE_ROW_EXTRA() ((uint8_t)(gIsInSubMenu ? 2u : 1u))
 #define MENU_VALUE_ROW(BASE) ((uint8_t)((uint8_t)(BASE) + MENU_VALUE_ROW_EXTRA()))
@@ -628,12 +584,15 @@ const char gSubMenu_PONMSG[][8] =
     "Logo",
 };
 
-const char gSubMenu_ROGER[][7] =
+const char gSubMenu_ROGER[][8] =
 {
     "OFF",
     "ROGER",
     "MDC",
-    "Yan ID"
+    "Yan ID",
+    "Custom1",
+    "Custom2",
+    "Custom3"
 };
 
 const char gSubMenu_RESET[][4] =
@@ -3034,26 +2993,42 @@ void UI_DisplayMenu(void)
                 break;
             }
 
-#ifdef ENABLE_FEAT_F4HWN_QRCODE
             if (page == 4u)
             {
-                uint8_t qr_y = 0u;
+                const uint8_t info_line_up_offset_pixels = 5u;
+                const uint8_t info_line_gap_pixels = 3u;
+                const uint8_t info_line_height_pixels = 8u;
+                uint8_t info_line1_y_start = 0u;
+                uint8_t info_line1_y_end = 0u;
+                uint8_t info_line2_y_start = 0u;
+                uint8_t info_line2_y_end = 0u;
 
-                if (gIsInSubMenu)
+                info_line1_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
+                if (info_line1_y_start >= info_line_up_offset_pixels)
                 {
-                    qr_y = 28u;
+                    info_line1_y_start = (uint8_t)(info_line1_y_start - info_line_up_offset_pixels);
                 }
                 else
                 {
-                    qr_y = 28u;
+                    info_line1_y_start = 0u;
                 }
+                info_line1_y_end = (uint8_t)(info_line1_y_start + info_line_height_pixels - 1u);
+                info_line1_y_start = (uint8_t)(info_line1_y_start + level2_value_down_offset_pixels);
+                info_line1_y_end = (uint8_t)(info_line1_y_end + level2_value_down_offset_pixels);
+                info_line1_y_start = (uint8_t)(info_line1_y_start + level3_value_down_offset_pixels);
+                info_line1_y_end = (uint8_t)(info_line1_y_end + level3_value_down_offset_pixels);
 
-                UI_DrawQRCode(72, qr_y);
+                info_line2_y_start = (uint8_t)(info_line1_y_end + 1u + info_line_gap_pixels);
+                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
 
+                UI_PrintStringSmallAtPixel("https://ethanyan6", menu_value_x1, menu_item_x2,
+                                           info_line1_y_start, info_line1_y_end, 0u);
+                UI_PrintStringSmallAtPixel(".github.io/BD1AHN/", menu_value_x1, menu_item_x2,
+                                           info_line2_y_start, info_line2_y_end, 0u);
+                String[0] = '\0';
                 already_printed = true;
                 break;
             }
-#endif
 #ifdef ENABLE_FEAT_F4HWN
             if (page == 5u)
             {
