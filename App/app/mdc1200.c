@@ -7,7 +7,6 @@
 
 const uint8_t mdc1200_pre_amble[] = {0x00, 0x00, 0x00};
 const uint8_t mdc1200_sync[5] = {0x07, 0x09, 0x2a, 0x44, 0x6f};
-const uint8_t mdc1200_sync_suc_xor[5] = {0xfb, 0x72, 0x40, 0x99, 0xa7};
 
 uint16_t gMDC1200_ID = 0x0000;
 
@@ -282,14 +281,6 @@ bool MDC1200_process_rx_data(
 
     return false;
 }
-
-uint8_t mdc1200_rx_buffer[sizeof(mdc1200_sync_suc_xor) + (MDC1200_FEC_K * 2)];
-unsigned int mdc1200_rx_buffer_index = 0;
-
-uint8_t mdc1200_op;
-uint8_t mdc1200_arg;
-uint16_t mdc1200_unit_id;
-uint8_t mdc1200_rx_ready_tick_500ms;
 
 void MDC1200_init(void) {
     MDC1200_reset_rx();

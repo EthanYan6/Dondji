@@ -676,6 +676,7 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_MDC_ID ||
         menu_id == MENU_YAN_ID ||
         menu_id == MENU_YAN_ID_RX ||
+        menu_id == MENU_MDC_ID_RX ||
         menu_id == MENU_STE ||
         menu_id == MENU_RP_STE ||
         menu_id == MENU_BEEP ||
@@ -762,16 +763,17 @@ static uint8_t MENU_GetIconOrderPriority(uint8_t icon_index, uint8_t menu_id)
         if (menu_id == MENU_MDC_ID) return 2u;
         if (menu_id == MENU_YAN_ID) return 3u;
         if (menu_id == MENU_YAN_ID_RX) return 4u;
-        if (menu_id == MENU_STE) return 5u;
-        if (menu_id == MENU_RP_STE) return 6u;
-        if (menu_id == MENU_BEEP) return 7u;
-        if (menu_id == MENU_MIC) return 8u;
-        if (menu_id == MENU_F1SHRT) return 9u;
-        if (menu_id == MENU_F1LONG) return 10u;
-        if (menu_id == MENU_F2SHRT) return 11u;
-        if (menu_id == MENU_F2LONG) return 12u;
-        if (menu_id == MENU_MLONG) return 13u;
-        if (menu_id == MENU_BOOT_SOUND) return 14u;
+        if (menu_id == MENU_MDC_ID_RX) return 5u;
+        if (menu_id == MENU_STE) return 6u;
+        if (menu_id == MENU_RP_STE) return 7u;
+        if (menu_id == MENU_BEEP) return 8u;
+        if (menu_id == MENU_MIC) return 9u;
+        if (menu_id == MENU_F1SHRT) return 10u;
+        if (menu_id == MENU_F1LONG) return 11u;
+        if (menu_id == MENU_F2SHRT) return 12u;
+        if (menu_id == MENU_F2LONG) return 13u;
+        if (menu_id == MENU_MLONG) return 14u;
+        if (menu_id == MENU_BOOT_SOUND) return 15u;
     }
 
     if (icon_index == 2u)
@@ -1079,6 +1081,10 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             break;
 
         case MENU_YAN_ID_RX:
+            *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
+            break;
+
+        case MENU_MDC_ID_RX:
             *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
             break;
 
@@ -1770,6 +1776,12 @@ void MENU_AcceptSetting(void)
             gFlagReconfigureVfos = true;
             break;
 
+        case MENU_MDC_ID_RX:
+            gEeprom.mdc_id_rx = gSubMenuSelection != 0;
+            gRequestSaveSettings = 1;
+            gFlagReconfigureVfos = true;
+            break;
+
         case MENU_AM:
             gTxVfo->Modulation     = gSubMenuSelection;
             gRequestSaveChannel = 1;
@@ -2332,6 +2344,10 @@ void MENU_ShowCurrentSetting(void)
 
         case MENU_YAN_ID_RX:
             gSubMenuSelection = gEeprom.yan_id_rx ? 1 : 0;
+            break;
+
+        case MENU_MDC_ID_RX:
+            gSubMenuSelection = gEeprom.mdc_id_rx ? 1 : 0;
             break;
 
         case MENU_AM:

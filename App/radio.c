@@ -20,6 +20,7 @@
 #include "am_fix.h"
 #include "app/dtmf.h"
 #include "app/mdc1200.h"
+#include "app/mdc1200_app.h"
 #include "app/yan_id_rf.h"
 #ifdef ENABLE_FMRADIO
     #include "app/fm.h"
@@ -996,9 +997,9 @@ void RADIO_SetupRegisters(bool switchToForeground)
     BK4819_DisableMDC1200Rx();
     YAN_RF_DisableRx();
 
-    if (gEeprom.ROGER == ROGER_MODE_MDC)
+    if (MDC1200_AppRxEnabled())
     {
-        BK4819_EnableMDC1200Rx();
+        MDC1200_AppEnableRx();
         InterruptMask |= BK4819_REG_3F_FSK_RX_SYNC | BK4819_REG_3F_FSK_RX_FINISHED | BK4819_REG_3F_FSK_FIFO_ALMOST_FULL;
     }
     else if (YAN_RF_ReceiveEnabled())

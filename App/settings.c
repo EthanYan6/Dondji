@@ -317,6 +317,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
                 break;
         }
         gEeprom.yan_id_rx = (yan[7] == 1);
+        gEeprom.mdc_id_rx = (yan[6] == 1);
     }
 
     // 0ED0..0ED7
@@ -1042,6 +1043,7 @@ void SETTINGS_SaveSettings(void)
     memset(State, 0, 8);
     for (uint8_t i = 0; i < YAN_ID_LEN && gEeprom.yan_id[i]; i++)
         State[i] = (uint8_t)gEeprom.yan_id[i];
+    State[6] = gEeprom.mdc_id_rx ? 1 : 0;
     State[7] = gEeprom.yan_id_rx ? 1 : 0;
 
     // 0x0ED0

@@ -41,6 +41,7 @@
 #include "app/chFrScanner.h"
 #include "app/dtmf.h"
 #include "app/mdc1200.h"
+#include "app/mdc1200_app.h"
 #include "app/yan_id_rf.h"
 #ifdef ENABLE_AM_FIX
     #include "am_fix.h"
@@ -1952,54 +1953,7 @@ void UI_DisplayMicBarTxPopup(bool main_screen_just_redrawn)
 }
 #endif /* ENABLE_AUDIO_BAR */
 
-#define MDC_POPUP_WIDTH          60
-#define MDC_POPUP_HEIGHT         30
-#define MDC_POPUP_X0             ((LCD_WIDTH - MDC_POPUP_WIDTH) / 2)
-
-void UI_DisplayMDC1200RxPopup(void)
-{
-    unsigned int centered_popup_y;
-    uint8_t popup_y0;
-    uint8_t popup_y1;
-    uint8_t inner_left;
-    uint8_t inner_right;
-    char line1[16];
-    char line2[16];
-    uint8_t y, row;
-
-    if (gScreenToDisplay != DISPLAY_MAIN)
-        return;
-
-    if (mdc1200_rx_ready_tick_500ms == 0)
-        return;
-
-    centered_popup_y = ((unsigned)LCD_HEIGHT - (unsigned)MDC_POPUP_HEIGHT) / 2u;
-    popup_y0 = (uint8_t)centered_popup_y;
-    popup_y1 = (uint8_t)(popup_y0 + MDC_POPUP_HEIGHT - 1);
-
-    inner_left = (uint8_t)(MDC_POPUP_X0 + 2u);
-    inner_right = (uint8_t)(MDC_POPUP_X0 + MDC_POPUP_WIDTH - 3u);
-
-    for (y = popup_y0; y <= popup_y1; y++) {
-        for (row = MDC_POPUP_X0 + 1; row < MDC_POPUP_X0 + MDC_POPUP_WIDTH - 1; row++) {
-            UI_DrawPixelBuffer(gFrameBuffer, row, y, false);
-        }
-    }
-
-    UI_DrawRectangleBuffer(gFrameBuffer, MDC_POPUP_X0, popup_y0,
-                           (int16_t)(MDC_POPUP_X0 + MDC_POPUP_WIDTH - 1),
-                           (int16_t)popup_y1, true);
-
-    strcpy(line1, "MDC ID");
-    MENU_Hex4(line2, mdc1200_unit_id);
-
-    UI_PrintStringSmallNormal(line1, inner_left, inner_right, popup_y0 / 8 + 1);
-    UI_PrintStringSmallNormal(line2, inner_left, inner_right, popup_y0 / 8 + 2);
-
-    ST7565_BlitFullScreen();
-}
-
-/* mangosteen Yan ID popup: phone icon left, callsign right — one landscape row. */
+/* Shared Rx ID popup: phone icon + Yan callsign, or phone icon + MDC hex ID. */
 void UI_DisplayYanIdRxPopup(void)
 {
     const int16_t box_w = 90;
@@ -2015,6 +1969,7 @@ void UI_DisplayYanIdRxPopup(void)
 #else
     const uint8_t pitch = (uint8_t)(ARRAY_SIZE(gFontSmall[0]) + 1u);
 #endif
+    char id_text[8];
     uint8_t text_w;
     uint8_t content_w;
     uint8_t icon_x;
@@ -2027,10 +1982,17 @@ void UI_DisplayYanIdRxPopup(void)
 
     if (gScreenToDisplay != DISPLAY_MAIN)
         return;
-    if (gYanId_RX[0] == 0 || gYanId_RX_timeout == 0)
-        return;
 
-    text_w = (uint8_t)(strlen(gYanId_RX) * pitch);
+    if (gMdcId_RX_timeout > 0 && gMdcId_RX != 0) {
+        MENU_Hex4(id_text, gMdcId_RX);
+    } else if (gYanId_RX[0] != 0 && gYanId_RX_timeout > 0) {
+        memset(id_text, 0, sizeof(id_text));
+        strncpy(id_text, gYanId_RX, sizeof(id_text) - 1);
+    } else {
+        return;
+    }
+
+    text_w = (uint8_t)(strlen(id_text) * pitch);
     content_w = (uint8_t)(BITMAP_CALL_PHONE_WIDTH + gap + text_w);
     icon_x = (uint8_t)(x1 + ((uint8_t)box_w - content_w) / 2u);
     text_x = (uint8_t)(icon_x + BITMAP_CALL_PHONE_WIDTH + gap);
@@ -2054,9 +2016,9 @@ void UI_DisplayYanIdRxPopup(void)
     }
 
 #ifdef ENABLE_SMALL_BOLD
-    UI_PrintStringSmallBold(gYanId_RX, text_x, 0, 3);
+    UI_PrintStringSmallBold(id_text, text_x, 0, 3);
 #else
-    UI_PrintStringSmallNormal(gYanId_RX, text_x, 0, 3);
+    UI_PrintStringSmallNormal(id_text, text_x, 0, 3);
 #endif
     /* 8px glyphs on line 3 (y=24) sit at icon top; ↓4px centers them in the 16px icon. */
     for (x = text_x; x < (int16_t)(text_x + text_w) && x < LCD_WIDTH; x++) {
@@ -2074,10 +2036,8 @@ void UI_DisplayYanIdRxPopup(void)
 
 static void UI_DisplayMainRxIdPopups(void)
 {
-    if (mdc1200_rx_ready_tick_500ms > 0 && gEeprom.ROGER == ROGER_MODE_MDC)
-        UI_DisplayMDC1200RxPopup();
-
-    if (gYanId_RX_timeout > 0 && gYanId_RX[0] != 0 && YAN_RF_ReceiveEnabled())
+    if ((gMdcId_RX_timeout > 0 && gMdcId_RX != 0 && MDC1200_AppRxEnabled()) ||
+        (gYanId_RX_timeout > 0 && gYanId_RX[0] != 0 && YAN_RF_ReceiveEnabled()))
         UI_DisplayYanIdRxPopup();
 }
 

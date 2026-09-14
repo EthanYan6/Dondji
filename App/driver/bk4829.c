@@ -24,6 +24,7 @@
 
 #include "audio.h"
 #include "app/mdc1200.h"
+#include "app/mdc1200_app.h"
 #include "app/yan_id_rf.h"
 #include "audio.h"
 #include "driver/gpio.h"
@@ -1951,6 +1952,7 @@ void BK4819_PlayMDC1200(const uint8_t *data, const unsigned int size, const bool
         BK4819_REG_30_ENABLE_TX_DSP    |
     0);
     BK4819_WriteRegister(BK4819_REG_50, 0x3B20);
+    MDC1200_AppNoteOwnTx();
 }
 
 void BK4819_DisableMDC1200Rx(void)
@@ -1968,87 +1970,15 @@ void BK4819_DisableMDC1200Rx(void)
 
 void BK4819_EnableMDC1200Rx(void)
 {
-    uint16_t fsk_reg59;
-
-    BK4819_WriteRegister(BK4819_REG_70,
-        (0u << 15) |
-        (0u <<  8) |
-        (1u <<  7) |
-        (96u <<  0));
-
+    /* UVK1 V2.0 dual-verified RX modem: FFFF matcher + software decode. */
+    BK4819_WriteRegister(BK4819_REG_70, 0x00E0);
     BK4819_WriteRegister(BK4819_REG_72, scale_freq(1200));
-
-    BK4819_WriteRegister(BK4819_REG_58,
-        (1u << 13) |
-        (7u << 10) |
-        (3u <<  8) |
-        (0u <<  6) |
-        (0u <<  4) |
-        (1u <<  1) |
-        (1u <<  0));
-
-    BK4819_WriteRegister(BK4819_REG_5A, 0xFB72);
-    BK4819_WriteRegister(BK4819_REG_5B, 0x4099);
-
-    BK4819_WriteRegister(BK4819_REG_5C, 0xA730);
-
-    BK4819_WriteRegister(BK4819_REG_5E, (64u << 3) | (1u << 0));
-
-    {
-        uint16_t size = (MDC1200_FEC_K * 2);
-        BK4819_WriteRegister(BK4819_REG_5D, ((size - 1) << 8));
-    }
-
-    fsk_reg59 = (0u << 15) |
-                (0u << 14) |
-                (0u << 13) |
-                (0u << 12) |
-                (0u << 11) |
-                (0u << 10) |
-                (0u <<  9) |
-                (0u <<  8) |
-                (0u <<  4) |
-                (1u <<  3) |
-                (0u <<  0);
-
-    BK4819_WriteRegister(BK4819_REG_02, 0);
-    BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_3F_FSK_RX_FINISHED | BK4819_REG_3F_FSK_FIFO_ALMOST_FULL);
-
-    BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
-    BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
-}
-
-bool BK4819_ReadMDC1200RxBuffer(uint8_t *data, unsigned int *size)
-{
-    uint16_t fifo_count;
-    uint16_t status;
-    unsigned int i;
-    uint16_t fsk_reg59;
-
-    status = BK4819_ReadRegister(BK4819_REG_0C);
-    if (!(status & 1u))
-        return false;
-
-    fifo_count = BK4819_ReadRegister(BK4819_REG_5E) & 0x00FF;
-    if (fifo_count == 0 || fifo_count > 40) {
-        fsk_reg59 = BK4819_ReadRegister(BK4819_REG_59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
-        BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
-        BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
-        return false;
-    }
-
-    *size = fifo_count * 2;
-    for (i = 0; i < fifo_count; i++) {
-        uint16_t word = BK4819_ReadRegister(BK4819_REG_5F);
-        data[i * 2] = (word >> 8) & 0xFF;
-        data[i * 2 + 1] = word & 0xFF;
-    }
-
-    fsk_reg59 = BK4819_ReadRegister(BK4819_REG_59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
-    BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
-    BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
-
-    return true;
+    BK4819_WriteRegister(BK4819_REG_58, 0x3FC3);
+    BK4819_WriteRegister(BK4819_REG_5C, 0x5625);
+    BK4819_WriteRegister(BK4819_REG_5A, 0xFFFF);
+    BK4819_WriteRegister(BK4819_REG_5B, 0xFFFF);
+    BK4819_WriteRegister(BK4819_REG_5E, 0x3204);
+    BK4819_WriteRegister(BK4819_REG_5D, (uint16_t)(((22u * 2u) - 1u) << 8));
 }
 
 void BK4819_Enable_AfDac_DiscMode_TxDsp(void)

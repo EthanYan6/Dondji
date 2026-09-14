@@ -384,6 +384,7 @@ const t_menu_item MenuList[] =
     {"MDC ID",      MENU_MDC_ID        },
     {"Yan ID",      MENU_YAN_ID        },
     {"Yan Rx",      MENU_YAN_ID_RX     },
+    {"MDC Rx",      MENU_MDC_ID_RX     },
     {"STE",         MENU_STE           },
     {"RP STE",      MENU_RP_STE        },
     {"1 Call",      MENU_1_CALL        },
@@ -1321,6 +1322,10 @@ static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
         else if (UI_MENU_GetCurrentMenuId() == MENU_YAN_ID_RX)
         {
             UI_MENU_DrawLevel2CnTwoLines("接收", "Yan ID");
+        }
+        else if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID_RX)
+        {
+            UI_MENU_DrawLevel2CnTwoLines("接收", "MDC ID");
         }
         else if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_1)
         {
@@ -3175,6 +3180,10 @@ void UI_DisplayMenu(void)
             break;
 
         case MENU_YAN_ID_RX:
+            strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
+            break;
+
+        case MENU_MDC_ID_RX:
             strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
             break;
 

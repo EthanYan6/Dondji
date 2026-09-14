@@ -193,6 +193,7 @@ enum
     MENU_MDC_ID,
     MENU_YAN_ID,
     MENU_YAN_ID_RX,
+    MENU_MDC_ID_RX,
     MENU_LANGUAGE
 };
 

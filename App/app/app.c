@@ -37,6 +37,7 @@
 #include "app/main.h"
 #include "app/menu.h"
 #include "app/mdc1200.h"
+#include "app/mdc1200_app.h"
 #include "app/yan_id_rf.h"
 #include "app/scanner.h"
 #if defined(ENABLE_UART) || defined(ENABLE_USB)
@@ -773,68 +774,13 @@ static void CheckRadioInterrupts(void)
         }
 #endif
 
-        if (interrupts.fskRxSync)
+        if (interrupts.fskRxSync || interrupts.fskFifoAlmostFull || interrupts.fskRxFinied)
         {
-            if (gEeprom.ROGER == ROGER_MODE_MDC &&
-                (gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR))
-            {
-                const uint16_t rx_sync_flags = BK4819_ReadRegister(BK4819_REG_0B);
-                const bool rx_sync_neg = (rx_sync_flags & (1u << 7)) ? true : false;
-                
-                mdc1200_rx_buffer_index = 0;
-                for (unsigned int i = 0; i < sizeof(mdc1200_sync_suc_xor); i++)
-                    mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = mdc1200_sync_suc_xor[i] ^ (rx_sync_neg ? 0xFF : 0x00);
-            }
+            if (MDC1200_AppRxEnabled())
+                MDC1200_AppOnRadioInterrupt(interrupts.__raw);
+            if (YAN_RF_ReceiveEnabled())
+                YAN_RF_OnRadioInterrupt(interrupts.__raw);
         }
-
-        if (interrupts.fskFifoAlmostFull)
-        {
-            if (gEeprom.ROGER == ROGER_MODE_MDC &&
-                (gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR))
-            {
-                const uint16_t rx_sync_flags = BK4819_ReadRegister(BK4819_REG_0B);
-                const bool rx_sync_neg = (rx_sync_flags & (1u << 7)) ? true : false;
-                const uint16_t count = BK4819_ReadRegister(BK4819_REG_5E) & (7u << 0);
-                
-                for (int i = 0; i < count; i++) {
-                    const uint16_t word = BK4819_ReadRegister(BK4819_REG_5F) ^ (rx_sync_neg ? 0xFFFF : 0x0000);
-                    
-                    if (mdc1200_rx_buffer_index < sizeof(mdc1200_rx_buffer))
-                        mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = (word >> 0) & 0xff;
-                    
-                    if (mdc1200_rx_buffer_index < sizeof(mdc1200_rx_buffer))
-                        mdc1200_rx_buffer[mdc1200_rx_buffer_index++] = (word >> 8) & 0xff;
-                }
-                
-                if (mdc1200_rx_buffer_index >= sizeof(mdc1200_rx_buffer)) {
-                    if (MDC1200_process_rx_data(
-                            mdc1200_rx_buffer,
-                            mdc1200_rx_buffer_index,
-                            &mdc1200_op,
-                            &mdc1200_arg,
-                            &mdc1200_unit_id)) {
-                        mdc1200_rx_ready_tick_500ms = 10;
-                        gUpdateDisplay = true;
-                    }
-                    mdc1200_rx_buffer_index = 0;
-                }
-            }
-        }
-
-        if (interrupts.fskRxFinied)
-        {
-            if (gEeprom.ROGER == ROGER_MODE_MDC &&
-                (gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR))
-            {
-                const uint16_t fsk_reg59 = BK4819_ReadRegister(BK4819_REG_59) & ~((1u << 15) | (1u << 14) | (1u << 12) | (1u << 11));
-                BK4819_WriteRegister(BK4819_REG_59, (1u << 15) | (1u << 14) | fsk_reg59);
-                BK4819_WriteRegister(BK4819_REG_59, (1u << 12) | fsk_reg59);
-            }
-        }
-
-        /* mangosteen: FSK IRQ while sidecar armed — do not gate on voice RX state */
-        if (YAN_RF_ReceiveEnabled())
-            YAN_RF_OnRadioInterrupt(interrupts.__raw);
     }
 }
 
@@ -1318,6 +1264,7 @@ void APP_TimeSlice10ms(void)
     if (gCurrentFunction != FUNCTION_POWER_SAVE || !gRxIdleMode)
         CheckRadioInterrupts();
 
+    MDC1200_AppTick10ms();
     YAN_RF_Tick10ms();
 
     bool gUpdateDisplayCurrent = gUpdateDisplay;
@@ -1570,13 +1517,7 @@ void APP_TimeSlice500ms(void)
             DTMF_clear_RX();
 #endif
 
-    if (mdc1200_rx_ready_tick_500ms > 0)
-    {
-        mdc1200_rx_ready_tick_500ms--;
-        if (mdc1200_rx_ready_tick_500ms == 0)
-            gUpdateDisplay = true;
-    }
-
+    MDC1200_AppTick500ms();
     YAN_RF_Tick500ms();
 
     // Skipped authentic device check

@@ -21,29 +21,15 @@ enum mdc1200_op_code_e {
 typedef enum mdc1200_op_code_e mdc1200_op_code_t;
 
 extern const uint8_t mdc1200_sync[5];
-extern const uint8_t mdc1200_sync_suc_xor[5];
-
-extern uint8_t mdc1200_op;
-extern uint8_t mdc1200_arg;
-extern uint16_t mdc1200_unit_id;
-
-extern uint8_t mdc1200_rx_buffer[sizeof(mdc1200_sync_suc_xor) + (MDC1200_FEC_K * 2)];
-extern unsigned int mdc1200_rx_buffer_index;
-
-bool MDC1200_process_rx_data(const void *buffer, const unsigned int size, uint8_t *op, uint8_t *arg, uint16_t *unit_id);
-
-extern uint8_t mdc1200_rx_ready_tick_500ms;
-
-unsigned int MDC1200_encode_single_packet(void *data, const uint8_t op, const uint8_t arg, const uint16_t unit_id);
-
-void MDC1200_reset_rx(void);
-
-void MDC1200_init(void);
-
-#define MDC1200_ID_EEPROM_ADDR  0x00A172
 
 extern uint16_t gMDC1200_ID;
 
+#define MDC1200_ID_EEPROM_ADDR  0x00A172
+
+unsigned int MDC1200_encode_single_packet(void *data, const uint8_t op, const uint8_t arg, const uint16_t unit_id);
+bool MDC1200_process_rx_data(const void *buffer, const unsigned int size, uint8_t *op, uint8_t *arg, uint16_t *unit_id);
+void MDC1200_reset_rx(void);
+void MDC1200_init(void);
 void MDC1200_LoadID(void);
 void MDC1200_SaveID(void);
 void MDC1200_SendPTTID(void);
