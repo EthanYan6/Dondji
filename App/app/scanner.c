@@ -41,6 +41,9 @@ bool              gScanUseCssResult;
 STEP_Setting_t    stepSetting;
 uint8_t           scanHitCount;
 
+/* 进扫前 ScreenChannel；Stop 写回后再全量重载，避免频率 VFO 被冲成副信道 */
+static uint16_t s_scr0, s_scr1;
+
 // VHF二次谐波验证相关
 typedef enum
 {
@@ -301,9 +304,11 @@ static void SCANNER_Key_MENU(bool bKeyPressed, bool bKeyHeld)
                 gTxVfo->STEP_SETTING = stepSetting;
             }
             else {
-                RADIO_ConfigureChannel(0, VFO_CONFIGURE_RELOAD);
-                RADIO_ConfigureChannel(1, VFO_CONFIGURE_RELOAD);
-
+                /*
+                 * 单频扫亚音保存：当前 VFO 频率已在 Start 时 InitInfo 保留，
+                 * 直接写入扫到的亚音。不要 RADIO_ConfigureChannel 双端 Flash
+                 * 全量重载——双信道（主频/副信道）下会把频率 VFO 冲成副信道。
+                 */
                 gTxVfo->freq_config_RX.CodeType = gScanCssResultType;
                 gTxVfo->freq_config_RX.Code     = gScanCssResultCode;
                 gTxVfo->freq_config_TX.CodeType = gScanCssResultType;
@@ -322,7 +327,7 @@ static void SCANNER_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 
             gTxVfo->CHANNEL_SAVE = chan;
             gEeprom.ScreenChannel[gEeprom.TX_VFO] = chan;
-#ifdef ENABLE_VOICE 
+#ifdef ENABLE_VOICE
             gAnotherVoiceID = VOICE_ID_CONFIRM;
 #endif
             gRequestDisplayScreen = DISPLAY_SCANNER;
@@ -413,6 +418,9 @@ void SCANNER_Start(bool singleFreq)
     BK4819_StopScan();
     RADIO_SelectVfos();
 
+    s_scr0 = gEeprom.ScreenChannel[0];
+    s_scr1 = gEeprom.ScreenChannel[1];
+
 #ifdef ENABLE_NOAA
     if (IS_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE))
         gRxVfo->CHANNEL_SAVE = FREQ_CHANNEL_FIRST + BAND6_400MHz;
@@ -491,10 +499,15 @@ void SCANNER_Stop(void)
         gEeprom.CROSS_BAND_RX_TX = gBackup_CROSS_BAND_RX_TX;
         gVfoConfigureMode        = VFO_CONFIGURE_RELOAD;
         gFlagResetVfos           = true;
+        /* 用户已保存时 gRequestSaveChannel>0，保留保存后的 ScreenChannel */
+        if (!gRequestSaveChannel) {
+            gEeprom.ScreenChannel[0] = s_scr0;
+            gEeprom.ScreenChannel[1] = s_scr1;
+        }
         gUpdateStatus            = true;
         gCssBackgroundScan       = false;
         gScanUseCssResult        = false;
-        scanFreqVerifyState      = SCAN_FREQ_VERIFY_OFF;  // 清理频率验证状态
+        scanFreqVerifyState      = SCAN_FREQ_VERIFY_OFF;
 #ifdef ENABLE_VOICE
         gAnotherVoiceID          = VOICE_ID_CANCEL;
 #endif
