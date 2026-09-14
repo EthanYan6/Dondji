@@ -214,7 +214,7 @@ bool MDC1200_process_rx_data(
 
             rx.bit = (rx_byte >> bit) & 1u;
 
-            rx.xor_bit = (rx.xor_bit ^ rx.bit ^ 1u) & 1u;
+            rx.xor_bit = (rx.xor_bit ^ rx.bit) & 1u;
 
             rx.shift_reg = (rx.shift_reg << 1) | rx.xor_bit;
             rx.bit_count++;
