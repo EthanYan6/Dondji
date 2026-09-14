@@ -95,13 +95,16 @@ static void mdc_try_accept_rx(void)
     uint16_t id = 0;
     uint8_t op = 0, arg = 0;
 
-    if (s_ignore_next_self_rx) {
+    if (!mdc_frame_decode(&id, &op, &arg))
+        return;
+
+    /* Only drop residual self-RX (own ID, shortly after own TX).
+     * Delayed echo servers that replay our ID must still display. */
+    if (s_ignore_next_self_rx && id == gMDC1200_ID) {
         s_ignore_next_self_rx = false;
         s_ignore_self_ticks = 0;
         return;
     }
-    if (!mdc_frame_decode(&id, &op, &arg))
-        return;
 
     gMdcId_RX = id;
     gMdcId_RX_timeout = 12; /* 6 s @ 500 ms — same window as Yan ID popup */
@@ -125,7 +128,7 @@ void MDC1200_AppNoteOwnTx(void)
 {
     mdc_sidecar_disarm_clean();
     s_ignore_next_self_rx = true;
-    s_ignore_self_ticks = 4;   /* ~2 s @ 500 ms */
+    s_ignore_self_ticks = 1;   /* ~0.5 s — residual self-RX only */
     s_rearm_delay_ticks = 20;  /* 200 ms then re-arm */
 }
 
