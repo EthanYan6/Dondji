@@ -1299,17 +1299,6 @@ void APP_TimeSlice10ms(void)
             if ((gFlashLightBlinkCounter % 2u) == 0u) {
                 UI_DisplayMicBarTxPopup(gUpdateDisplayCurrent);
             }
-        } else if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR) {
-#if defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
-            /* 与移除「发射条」改动前一致：约 20ms 刷新滚动波形（细条左移） */
-            if ((gFlashLightBlinkCounter % 2u) == 0u) {
-                UI_DisplayAudioScope();
-            }
-#else
-            if ((gFlashLightBlinkCounter % 15u) == 0u) {
-                UI_DisplayAudioBar();
-            }
-#endif
         }
     }
 #endif

@@ -308,6 +308,14 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
     }
 
     if (Function == FUNCTION_POWER_SAVE) {
+        /* UVK1 d99ce97: MDC frame ~140 ms dies in sleep; low-bat still sleeps. */
+        if (MDC1200_AppRxEnabled() && !gReducedService) {
+            gCurrentFunction = (PreviousFunction == FUNCTION_POWER_SAVE)
+                               ? FUNCTION_FOREGROUND : PreviousFunction;
+            gBatterySaveCountdown_10ms = battery_save_count_10ms;
+            gSchedulePowerSave         = false;
+            return;
+        }
         FUNCTION_PowerSave();
         return;
     }

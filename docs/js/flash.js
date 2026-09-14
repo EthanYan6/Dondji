@@ -5098,3 +5098,409 @@ flashStepsInitFloatingTooltips();
     }
   });
 })();
+
+// ========== MDC ADDRESS BOOK ==========
+/* SPI 0x011000 dedicated 4KB sector (after calib). Entry: 2B BE ID + 8B name. */
+const MDC_BOOK_SPI_BASE = 0x011000;
+const MDC_BOOK_SPI_SIZE = 0x1000;
+const MDC_BOOK_HEADER_SIZE = 16;
+const MDC_BOOK_ENTRY_SIZE = 10;
+const MDC_BOOK_MAX_ENTRIES = 400;
+const MDC_BOOK_NAME_LEN = 6;
+const MDC_BOOK_CHUNK = 120;
+
+let mdcbookBusy = false;
+let mdcbookRows = [];
+
+function mdcbookT(key, vars) {
+  if (window.t) {
+    try { return window.t(key, vars || {}); } catch (e) { /* fall through */ }
+  }
+  return key;
+}
+
+function mdcbookEmptyRow() {
+  return { id: '', name: '' };
+}
+
+function mdcbookNormalizeId(raw) {
+  const s = String(raw == null ? '' : raw).trim().toUpperCase().replace(/^0X/, '');
+  if (!s) return '';
+  if (!/^[0-9A-F]{1,4}$/.test(s)) return null;
+  return s.padStart(4, '0');
+}
+
+function mdcbookNormalizeName(raw) {
+  let s = String(raw == null ? '' : raw).trim().toUpperCase();
+  s = s.replace(/[^A-Z0-9]/g, '');
+  if (s.length > MDC_BOOK_NAME_LEN) s = s.slice(0, MDC_BOOK_NAME_LEN);
+  return s;
+}
+
+function mdcbookParseHexId(idStr) {
+  const n = parseInt(idStr, 16);
+  if (!Number.isFinite(n) || n < 1 || n > 0xFFFF) return 0;
+  return n;
+}
+
+function mdcbookUpdateCount() {
+  const el = $('mdcbookCount');
+  if (!el) return;
+  let used = 0;
+  for (const r of mdcbookRows) {
+    if (mdcbookParseHexId(r.id) && r.name) used++;
+  }
+  el.textContent = mdcbookT('mdcbookCountFmt', { used: used, max: MDC_BOOK_MAX_ENTRIES });
+}
+
+function mdcbookRender() {
+  const tbody = $('mdcbookTbody');
+  if (!tbody) return;
+  tbody.replaceChildren();
+  mdcbookRows.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.index = String(idx);
+
+    const tdIdx = document.createElement('td');
+    tdIdx.className = 'mdcbook-index';
+    tdIdx.textContent = String(idx + 1);
+    tr.appendChild(tdIdx);
+
+    const tdId = document.createElement('td');
+    const inId = document.createElement('input');
+    inId.className = 'mdcbook-id-input';
+    inId.type = 'text';
+    inId.maxLength = 4;
+    inId.spellcheck = false;
+    inId.autocomplete = 'off';
+    inId.placeholder = '1A2B';
+    inId.value = row.id;
+    inId.addEventListener('input', () => {
+      const v = mdcbookNormalizeId(inId.value);
+      row.id = v === null ? inId.value.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 4) : v;
+      if (row.id !== inId.value) inId.value = row.id;
+      mdcbookUpdateCount();
+    });
+    tdId.appendChild(inId);
+    tr.appendChild(tdId);
+
+    const tdName = document.createElement('td');
+    const inName = document.createElement('input');
+    inName.className = 'mdcbook-name-input';
+    inName.type = 'text';
+    inName.maxLength = MDC_BOOK_NAME_LEN;
+    inName.spellcheck = false;
+    inName.autocomplete = 'off';
+    inName.placeholder = 'BD1AHN';
+    inName.value = row.name;
+    inName.addEventListener('input', () => {
+      row.name = mdcbookNormalizeName(inName.value);
+      if (row.name !== inName.value) inName.value = row.name;
+      mdcbookUpdateCount();
+    });
+    tdName.appendChild(inName);
+    tr.appendChild(tdName);
+
+    const tdDel = document.createElement('td');
+    tdDel.className = 'mdcbook-delete-cell';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mdcbook-row-delete-btn';
+    btn.setAttribute('aria-label', 'clearRow');
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    btn.addEventListener('click', () => {
+      mdcbookRows.splice(idx, 1);
+      mdcbookRender();
+    });
+    tdDel.appendChild(btn);
+    tr.appendChild(tdDel);
+
+    tbody.appendChild(tr);
+  });
+  mdcbookUpdateCount();
+}
+
+function mdcbookCollectValidEntries() {
+  const seen = new Map();
+  const entries = [];
+  const tbody = $('mdcbookTbody');
+  const trs = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+  trs.forEach((tr) => tr.classList.remove('mdcbook-row-invalid'));
+
+  mdcbookRows.forEach((row, idx) => {
+    const id = mdcbookNormalizeId(row.id);
+    const name = mdcbookNormalizeName(row.name);
+    const tr = trs[idx];
+    if (id === null || !id || !name) {
+      if (row.id || row.name) {
+        if (tr) tr.classList.add('mdcbook-row-invalid');
+      }
+      return;
+    }
+    const n = mdcbookParseHexId(id);
+    if (!n) {
+      if (tr) tr.classList.add('mdcbook-row-invalid');
+      return;
+    }
+    if (seen.has(id)) {
+      if (tr) tr.classList.add('mdcbook-row-invalid');
+      return;
+    }
+    seen.set(id, true);
+    entries.push({ id: n, idStr: id, name: name });
+  });
+  return entries;
+}
+
+function mdcbookBuildImage(entries) {
+  const img = new Uint8Array(MDC_BOOK_SPI_SIZE);
+  img.fill(0xFF);
+  img[0] = 0x4D;
+  img[1] = 0x44;
+  img[2] = 0x43;
+  img[3] = 0x41;
+  img[4] = 1;
+  img[5] = 0;
+  const count = Math.min(entries.length, MDC_BOOK_MAX_ENTRIES);
+  img[6] = count & 0xFF;
+  img[7] = (count >> 8) & 0xFF;
+  for (let i = 0; i < count; i++) {
+    const off = MDC_BOOK_HEADER_SIZE + i * MDC_BOOK_ENTRY_SIZE;
+    img[off] = (entries[i].id >> 8) & 0xFF;
+    img[off + 1] = entries[i].id & 0xFF;
+    for (let j = 0; j < MDC_BOOK_NAME_LEN; j++) {
+      img[off + 2 + j] = j < entries[i].name.length ? entries[i].name.charCodeAt(j) : 0;
+    }
+  }
+  return { img: img, count: count };
+}
+
+function mdcbookParseImage(buf) {
+  if (!buf || buf.length < MDC_BOOK_HEADER_SIZE) return [];
+  if (buf[0] !== 0x4D || buf[1] !== 0x44 || buf[2] !== 0x43 || buf[3] !== 0x41) return [];
+  if (buf[4] !== 1) return [];
+  let count = buf[6] | (buf[7] << 8);
+  if (count > MDC_BOOK_MAX_ENTRIES) count = MDC_BOOK_MAX_ENTRIES;
+  const rows = [];
+  for (let i = 0; i < count; i++) {
+    const off = MDC_BOOK_HEADER_SIZE + i * MDC_BOOK_ENTRY_SIZE;
+    if (off + MDC_BOOK_ENTRY_SIZE > buf.length) break;
+    const id = (buf[off] << 8) | buf[off + 1];
+    if (!id) continue;
+    let name = '';
+    for (let j = 0; j < MDC_BOOK_NAME_LEN; j++) {
+      const c = buf[off + 2 + j];
+      if (c === 0 || c === 0xFF) break;
+      const ch = String.fromCharCode(c);
+      if (!/[A-Z0-9]/.test(ch)) break;
+      name += ch;
+    }
+    if (!name) continue;
+    rows.push({ id: id.toString(16).toUpperCase().padStart(4, '0'), name: name });
+  }
+  return rows;
+}
+
+async function mdcbookReadFromDevice() {
+  if (mdcbookBusy) return;
+  mdcbookBusy = true;
+  const readBtn = $('mdcbookReadBtn');
+  const writeBtn = $('mdcbookWriteBtn');
+  if (readBtn) readBtn.disabled = true;
+  if (writeBtn) writeBtn.disabled = true;
+  $('progressContainer').style.display = 'block';
+  updateProgress(0);
+  try {
+    if (!port) await connect();
+    readBuffer = [];
+    await sleep(800);
+    const session = await requestDeviceInfoForCalib();
+    const ts = session.timestamp;
+
+    const hdr = await spiFlashReadChunk(ts, MDC_BOOK_SPI_BASE, MDC_BOOK_HEADER_SIZE);
+    if (!hdr) throw new Error('读取通讯录表头失败');
+    updateProgress(20);
+
+    if (hdr[0] !== 0x4D || hdr[1] !== 0x44 || hdr[2] !== 0x43 || hdr[3] !== 0x41 || hdr[4] !== 1) {
+      mdcbookRows = [];
+      mdcbookRender();
+      log(mdcbookT('mdcbookReadEmpty'), 'info');
+      updateProgress(100);
+      return;
+    }
+    let count = hdr[6] | (hdr[7] << 8);
+    if (count > MDC_BOOK_MAX_ENTRIES) count = MDC_BOOK_MAX_ENTRIES;
+    if (count === 0) {
+      mdcbookRows = [];
+      mdcbookRender();
+      log(mdcbookT('mdcbookReadEmpty'), 'info');
+      updateProgress(100);
+      return;
+    }
+
+    const usedBytes = MDC_BOOK_HEADER_SIZE + count * MDC_BOOK_ENTRY_SIZE;
+    const payload = new Uint8Array(usedBytes);
+    payload.set(hdr, 0);
+    let off = MDC_BOOK_HEADER_SIZE;
+    while (off < usedBytes) {
+      const n = Math.min(MDC_BOOK_CHUNK, usedBytes - off);
+      const chunk = await spiFlashReadChunk(ts, MDC_BOOK_SPI_BASE + off, n);
+      if (!chunk) throw new Error('读取通讯录失败 @ 0x' + (MDC_BOOK_SPI_BASE + off).toString(16));
+      payload.set(chunk, off);
+      off += n;
+      updateProgress(20 + (off / usedBytes) * 80);
+      await sleep(5);
+    }
+
+    mdcbookRows = mdcbookParseImage(payload);
+    mdcbookRender();
+    updateProgress(100);
+    log(mdcbookT('mdcbookReadOk', { n: mdcbookRows.length }), 'success');
+  } catch (e) {
+    log(window.t ? window.t('logError', { msg: e.message }) : '错误: ' + e.message, 'error');
+  } finally {
+    mdcbookBusy = false;
+    if (readBtn) readBtn.disabled = false;
+    if (writeBtn) writeBtn.disabled = false;
+    if (port) await disconnect();
+    setTimeout(() => { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+  }
+}
+
+async function mdcbookWriteToDevice() {
+  if (mdcbookBusy) return;
+  const entries = mdcbookCollectValidEntries();
+  if (!entries.length) {
+    showAppToast(mdcbookT('mdcbookWriteEmpty'), 'warning');
+    return;
+  }
+  const firstDup = entries.findIndex((e, i) => entries.findIndex((x) => x.idStr === e.idStr) !== i);
+  if (firstDup >= 0) {
+    showAppToast(mdcbookT('mdcbookDupId', { id: entries[firstDup].idStr }), 'warning');
+    return;
+  }
+
+  mdcbookBusy = true;
+  const readBtn = $('mdcbookReadBtn');
+  const writeBtn = $('mdcbookWriteBtn');
+  if (readBtn) readBtn.disabled = true;
+  if (writeBtn) writeBtn.disabled = true;
+  $('progressContainer').style.display = 'block';
+  updateProgress(0);
+  try {
+    if (!port) await connect();
+    readBuffer = [];
+    await sleep(800);
+    const session = await requestDeviceInfoForCalib();
+    const ts = session.timestamp;
+
+    const built = mdcbookBuildImage(entries);
+    const usedBytes = MDC_BOOK_HEADER_SIZE + built.count * MDC_BOOK_ENTRY_SIZE;
+    for (let off = 0; off < usedBytes; off += MDC_BOOK_CHUNK) {
+      const n = Math.min(MDC_BOOK_CHUNK, usedBytes - off);
+      const slice = built.img.subarray(off, off + n);
+      const ok = await spiFlashWriteChunk(ts, MDC_BOOK_SPI_BASE + off, slice);
+      if (!ok) throw new Error('写入失败 @ 0x' + (MDC_BOOK_SPI_BASE + off).toString(16));
+      updateProgress(((off + n) / usedBytes) * 100);
+      await sleep(50);
+    }
+
+    updateProgress(100);
+    log(mdcbookT('mdcbookWriteOk', { n: built.count }), 'success');
+  } catch (e) {
+    log(window.t ? window.t('logError', { msg: e.message }) : '错误: ' + e.message, 'error');
+  } finally {
+    mdcbookBusy = false;
+    if (readBtn) readBtn.disabled = false;
+    if (writeBtn) writeBtn.disabled = false;
+    if (port) await disconnect();
+    setTimeout(() => { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+  }
+}
+
+function mdcbookExportCsv() {
+  const entries = mdcbookCollectValidEntries();
+  if (!entries.length) {
+    showAppToast(mdcbookT('mdcbookExportEmpty'), 'warning');
+    return;
+  }
+  const lines = ['MDC_ID,CALLSIGN'];
+  for (const e of entries) lines.push(e.idStr + ',' + e.name);
+  const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Dondji-MDC-Book.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function mdcbookImportCsvText(text) {
+  const rows = [];
+  let skip = 0;
+  const lines = String(text || '').split(/\r?\n/);
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (/^MDC_ID/i.test(t)) continue;
+    const parts = t.split(/[,;\t]/);
+    if (parts.length < 2) { skip++; continue; }
+    const id = mdcbookNormalizeId(parts[0]);
+    const name = mdcbookNormalizeName(parts[1]);
+    if (id === null || !id || !name) { skip++; continue; }
+    if (!mdcbookParseHexId(id)) { skip++; continue; }
+    rows.push({ id: id, name: name });
+  }
+  const seen = new Set();
+  const uniq = [];
+  for (const r of rows) {
+    if (seen.has(r.id)) { skip++; continue; }
+    seen.add(r.id);
+    uniq.push(r);
+  }
+  const capped = uniq.slice(0, MDC_BOOK_MAX_ENTRIES);
+  if (uniq.length > MDC_BOOK_MAX_ENTRIES) skip += uniq.length - MDC_BOOK_MAX_ENTRIES;
+  return { rows: capped, skip: skip };
+}
+
+const mdcbookReadBtnEl = $('mdcbookReadBtn');
+if (mdcbookReadBtnEl) mdcbookReadBtnEl.addEventListener('click', () => { mdcbookReadFromDevice(); });
+const mdcbookWriteBtnEl = $('mdcbookWriteBtn');
+if (mdcbookWriteBtnEl) mdcbookWriteBtnEl.addEventListener('click', () => { mdcbookWriteToDevice(); });
+const mdcbookAddBtnEl = $('mdcbookAddBtn');
+if (mdcbookAddBtnEl) {
+  mdcbookAddBtnEl.addEventListener('click', () => {
+    if (mdcbookRows.length >= MDC_BOOK_MAX_ENTRIES) {
+      showAppToast(mdcbookT('mdcbookMaxRows', { max: MDC_BOOK_MAX_ENTRIES }), 'warning');
+      return;
+    }
+    mdcbookRows.push(mdcbookEmptyRow());
+    mdcbookRender();
+  });
+}
+const mdcbookExportBtnEl = $('mdcbookExportBtn');
+if (mdcbookExportBtnEl) mdcbookExportBtnEl.addEventListener('click', mdcbookExportCsv);
+const mdcbookImportBtnEl = $('mdcbookImportBtn');
+const mdcbookImportFileEl = $('mdcbookImportFile');
+if (mdcbookImportBtnEl && mdcbookImportFileEl) {
+  mdcbookImportBtnEl.addEventListener('click', () => mdcbookImportFileEl.click());
+  mdcbookImportFileEl.addEventListener('change', () => {
+    const file = mdcbookImportFileEl.files && mdcbookImportFileEl.files[0];
+    if (!file) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const res = mdcbookImportCsvText(String(fr.result || ''));
+      mdcbookRows = res.rows;
+      mdcbookRender();
+      let msg = mdcbookT('mdcbookImportOk', { n: res.rows.length });
+      if (res.skip) msg += ' · ' + mdcbookT('mdcbookImportSkip', { n: res.skip });
+      log(msg, res.rows.length ? 'success' : 'warn');
+      mdcbookImportFileEl.value = '';
+    };
+    fr.readAsText(file, 'utf-8');
+  });
+}
+
+mdcbookRender();
+

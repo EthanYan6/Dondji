@@ -26,6 +26,7 @@ target_sources(App INTERFACE
     app/menu.c
     app/mdc1200.c
     app/mdc1200_app.c
+    app/mdc_addrbook.c
     app/yan_id_packet.c
     app/yan_id_rf.c
     app/scanner.c

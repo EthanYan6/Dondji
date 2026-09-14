@@ -340,7 +340,17 @@ void SETTINGS_SaveChannelName(uint16_t channel, const char * name);
 void SETTINGS_SaveChannel(uint16_t Channel, uint8_t VFO, const VFO_Info_t *pVFO, uint8_t Mode);
 
 #if defined(ENABLE_CHINESE) || defined(ENABLE_FEAT_F4HWN)
-/* Legacy CN names @ 0x020000..0x023FFF; CN font follows at 0x024000 (no overlap) */
+/*
+ * Legacy CN names: 0x020000..0x023FFF (16 KB).
+ * Current firmware only migrates once at boot (settings.c) into the unified
+ * name area 0x004000..0x007FFF, then sector-erases the legacy block.
+ * After a successful migration the region is blank (0xFF) and is NEVER read
+ * or written again for channel names. CN font starts at 0x024000 and does
+ * not use this range. The 16 KB is reserved only for that one-shot import
+ * on old radios — safe to reclaim for a new feature in a future flash map
+ * once migration can be dropped (or always, if you only support post-migration
+ * images). Do not place live data here until that decision is made.
+ */
 
 // CN font SPI Flash layout (data written via web tool)
 // NOTE: these must match the output of gen_cn_font.py / cn_font_data.h

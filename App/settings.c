@@ -439,7 +439,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
                 else if (mic_pair == 1u)
                     gSetting_mic_bar_display = MIC_BAR_DISPLAY_POPUP;
                 else if (mic_pair == 2u)
-                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_BAR;
+                    gSetting_mic_bar_display = MIC_BAR_DISPLAY_POPUP; /* BAR retired */
                 else
                     gSetting_mic_bar_display = MIC_BAR_DISPLAY_POPUP;
             }
@@ -1125,7 +1125,7 @@ void SETTINGS_SaveSettings(void)
             if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_POPUP)
                 State[7] |= (1u << 4);
             else if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR)
-                State[7] |= (2u << 4);
+                State[7] |= (1u << 4); /* BAR retired — persist as popup */
         #else
             if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_OFF)
                 State[7] &= ~(1u << 4);
@@ -1545,8 +1545,11 @@ static void SETTINGS_LegacyMigrationReadCnSlot(char *s, uint16_t channel)
 }
 
 /*
- * 一次性迁移：仅当旧区某信道存在「有效非空」中文名时，才写入统一区 (0x004000)。
- * 若无中文名则不写，保留原英文。完成后擦除旧区。
+ * One-shot migration: copy valid non-empty legacy CN names from 0x020000
+ * into the unified name area (0x004000). English names already stored there
+ * are left untouched when no legacy CN name exists. Then erase the legacy
+ * 16 KB. After this runs, nothing in firmware uses 0x020000..0x023FFF again
+ * (see settings.h / help.zh.md — region can be reclaimed later).
  */
 static bool SETTINGS_LegacyCnFlashRegionIsBlank(void)
 {

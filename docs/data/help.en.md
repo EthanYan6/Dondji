@@ -532,7 +532,8 @@ Web programming and firmware often use **SPI physical addresses** directly; lega
 | `0x009000` – `0x0090D5` | VFO frequency data | ~214 B |
 | `0x00A000` – `0x00A175` | Settings / config | ~373 B (512 B backup block) |
 | `0x010000` – `0x0101FF` | Calibration | 512 B |
-| `0x020000` – `0x023FFF` | Legacy Chinese channel names (erasable after migration) | 16 KB |
+| `0x011000` – `0x011FFF` | MDC address book (ID↔callsign) | 4 KB |
+| `0x020000` – `0x023FFF` | Legacy Chinese channel names (**boot one-shot migration only**; erased after migrate, unused by current R/W) | 16 KB |
 | `0x024000` – `0x056236` | Chinese font + Pinyin index | ~200 KB |
 | `0x14C000` – `0x14CFFF` | Voice index table | ~4 KB |
 | `0x14D000` – ~`0x165000` | Voice audio data | ~1.6 MB |
@@ -583,6 +584,7 @@ Config backup starts at `0x00A000`, 512 B total. Fields match 2.5; full list:
 | `0x00A170` | 1 B | UI language |
 | `0x00A172` | 2 B | **MDC1200 unit ID** |
 | `0x00A174` | 1 B | Boot prompt / power-on sound |
+| `0x011000` | 4 KB | **MDC address book** (16B header + 10B/entry: 2B BE ID + 8B name field, max 6 chars used, max 400 entries) |
 
 ### Calibration Data (SPI)
 
@@ -611,7 +613,8 @@ EEPROM `0x1E00` (v4.x) and `0xB000` (v5.0.0+) both map to `0x010000`–`0x0101FF
 
 Pinyin record format: `[syllable length][ASCII pinyin][char count][Unicode×2…]`
 
-Legacy Chinese channel names: `0x020000`–`0x023FFF` (non-overlapping with font).
+Legacy Chinese channel names: `0x020000`–`0x023FFF` (non-overlapping with font).  
+**Current firmware**: at boot, if this block is not blank, valid Chinese names are migrated once into the unified name area `0x004000`, then the legacy block is erased. After migration the region is **never read or written**. All CN/EN channel names live only at `0x004000`. The 16 KB exists only for one-shot import on old radios and **can be reclaimed** in a future flash map (do not place live data here while the migration path remains).
 
 ### Voice Prompts and Boot Logo
 

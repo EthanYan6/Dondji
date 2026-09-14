@@ -1984,7 +1984,12 @@ void UI_DisplayYanIdRxPopup(void)
         return;
 
     if (gMdcId_RX_timeout > 0 && gMdcId_RX != 0) {
-        MENU_Hex4(id_text, gMdcId_RX);
+        if (gMdcCallsign[0]) {
+            memset(id_text, 0, sizeof(id_text));
+            strncpy(id_text, gMdcCallsign, sizeof(id_text) - 1);
+        } else {
+            MENU_Hex4(id_text, gMdcId_RX);
+        }
     } else if (gYanId_RX[0] != 0 && gYanId_RX_timeout > 0) {
         memset(id_text, 0, sizeof(id_text));
         strncpy(id_text, gYanId_RX, sizeof(id_text) - 1);
@@ -3673,17 +3678,6 @@ display_main_after_vfo_loop:
         }
         else
 #endif
-#endif
-#if defined(ENABLE_AUDIO_BAR) && !defined(ENABLE_FEAT_F4HWN_AUDIO_SCOPE)
-        if (gSetting_mic_bar_display == MIC_BAR_DISPLAY_BAR &&
-            gCurrentFunction == FUNCTION_TRANSMIT &&
-            gEeprom.DUAL_WATCH == DUAL_WATCH_OFF &&
-            gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF)
-        {
-            center_line = CENTER_LINE_AUDIO_BAR;
-            UI_DisplayAudioBar();
-        }
-        else
 #endif
 
 #if defined(ENABLE_AM_FIX) && defined(ENABLE_AM_FIX_SHOW_DATA)

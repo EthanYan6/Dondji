@@ -1147,7 +1147,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 
         #ifdef ENABLE_AUDIO_BAR
         case MENU_MIC_BAR:
-            *pMax = 2;
+            *pMax = 1;
             break;
         #endif
 
@@ -1642,7 +1642,10 @@ void MENU_AcceptSetting(void)
 
         #ifdef ENABLE_AUDIO_BAR
             case MENU_MIC_BAR:
-                gSetting_mic_bar_display = gSubMenuSelection;
+                /* menu: 0=OFF, 1=Popup — BAR removed (no AudioScope on main). */
+                gSetting_mic_bar_display = (gSubMenuSelection == 0)
+                    ? MIC_BAR_DISPLAY_OFF
+                    : MIC_BAR_DISPLAY_POPUP;
                 break;
         #endif
 
@@ -1923,10 +1926,12 @@ void MENU_AcceptSetting(void)
                             gSetting_set_ptt = 0;
                             gSetting_set_ptt_session = 0;
                         }
-                    } else if (*k1s == ACTION_OPT_PTT || *k1l == ACTION_OPT_PTT) {
-                        *k1s = ACTION_OPT_NONE;
-                        *k1l = ACTION_OPT_NONE;
                     } else {
+                        /* Leaving dual PTT: both slots were PTT; clear, then apply the new action. */
+                        if (*k1s == ACTION_OPT_PTT || *k1l == ACTION_OPT_PTT) {
+                            *k1s = ACTION_OPT_NONE;
+                            *k1l = ACTION_OPT_NONE;
+                        }
                         *fun[menuId - MENU_F1SHRT] = selected;
                     }
                 } else if (selected != ACTION_OPT_PTT) {
@@ -2244,7 +2249,7 @@ void MENU_ShowCurrentSetting(void)
 
 #ifdef ENABLE_AUDIO_BAR
         case MENU_MIC_BAR:
-            gSubMenuSelection = gSetting_mic_bar_display;
+            gSubMenuSelection = (gSetting_mic_bar_display == MIC_BAR_DISPLAY_OFF) ? 0 : 1;
             break;
 #endif
 

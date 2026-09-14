@@ -336,6 +336,7 @@
       <button class="tab" type="button" data-tab="font" id="tabFont" data-i18n="tabFont">刷字库</button>
       <button class="tab" type="button" data-tab="restore" id="tabRestore" data-i18n="tabRestore">恢复校准</button>
       <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq" data-i18n="tabWritefreq">写频</button>
+      <button class="tab" type="button" data-tab="mdcbook" id="tabMdcbook" data-i18n="tabMdcbook">MDC通讯录</button>
       <button class="tab" type="button" data-tab="logo" id="tabLogo" data-i18n="tabLogo">开机图片</button>
       <button class="tab" type="button" data-tab="backupcfg" id="tabBackupcfg" data-i18n="tabBackupcfg">备份配置</button>
       <button class="tab" type="button" data-tab="restorecfg" id="tabRestorecfg" data-i18n="tabRestorecfg">恢复配置</button>
@@ -562,6 +563,65 @@
         </label>
       </div>
       <p id="writefreqValidation" class="writefreq-validation" style="display:none;"></p>
+    </div>
+
+    <!-- MDC ADDRESS BOOK TAB -->
+    <div class="tab-content" id="mdcbook-content">
+      <section class="section">
+        <p class="mdcbook-lead" data-i18n="mdcbookLead">
+          MDC1200 通讯录：将 MDC ID 与呼号（英文/数字，最长 6 字符，如 BD1AHN）写入电台。固件收到匹配 ID 时，弹窗直接显示呼号；未匹配则仍显示 4 位十六进制 ID。
+        </p>
+        <p class="mdcbook-meta" data-i18n="mdcbookMeta">
+          存储：SPI <code>0x011000</code> 独立 4KB 扇区（校准区之后，与校准 <code>0x010000</code> 不同扇区）。最多 400 条，每条 10 字节（ID 2B + 呼号字段 8B，实际最长 6 字符），含 16 字节表头。不占用游戏固件电子书区 <code>0x1E8000–0x200000</code>，也不与 AUTH / Slot3 / 拼音 / 语音重叠。恢复出厂（OEM 擦除到 0xF000）不会清掉本区。注意：「备份配置」只备份 <code>0x00A000</code> 设置区，<strong>不含本通讯录</strong>；请用本页 CSV 导出/导入。
+        </p>
+      </section>
+
+      <section class="section mdcbook-toolbar">
+        <div class="writefreq-actions-split">
+          <div class="writefreq-actions-left">
+            <button type="button" class="btn-inline btn-with-icon" id="mdcbookReadBtn" title="从设备读取" data-i18n-title="readFromDevice">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+              <span data-i18n="readFromDevice">从设备读取</span>
+            </button>
+            <button type="button" class="btn-inline btn-with-icon" id="mdcbookWriteBtn" title="写入设备" data-i18n-title="writeToDevice">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+              <span data-i18n="writeToDevice">写入设备</span>
+            </button>
+            <button type="button" class="btn-inline btn-secondary btn-with-icon" id="mdcbookAddBtn" title="添加一行" data-i18n-title="mdcbookAddRow">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              <span data-i18n="mdcbookAddRow">添加一行</span>
+            </button>
+          </div>
+          <div class="writefreq-actions-right">
+            <button type="button" class="btn-inline btn-secondary btn-with-icon" id="mdcbookExportBtn" title="导出 CSV" data-i18n-title="mdcbookExport">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg></span>
+              <span data-i18n="mdcbookExport">导出 CSV</span>
+            </button>
+            <button type="button" class="btn-inline btn-secondary btn-with-icon" id="mdcbookImportBtn" title="导入 CSV" data-i18n-title="mdcbookImport">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+              <span data-i18n="mdcbookImport">导入 CSV</span>
+            </button>
+          </div>
+        </div>
+        <input type="file" id="mdcbookImportFile" accept=".csv,.txt" hidden>
+      </section>
+
+      <section class="section">
+        <p class="mdcbook-count" id="mdcbookCount" aria-live="polite"></p>
+        <div class="wide-scroll mdcbook-table-scroll">
+          <table class="mdcbook-table" id="mdcbookTable">
+            <thead>
+              <tr>
+                <th data-i18n="mdcbookColIndex">#</th>
+                <th data-i18n="mdcbookColId">MDC ID<br><span class="th-sub" data-i18n="mdcbookColIdSub">十六进制 0001–FFFF</span></th>
+                <th data-i18n="mdcbookColName">呼号<br><span class="th-sub" data-i18n="mdcbookColNameSub">A–Z / 0–9，最长 6</span></th>
+                <th class="mdcbook-delete-th" scope="col" aria-label="删除本行" data-i18n-aria="clearRow"></th>
+              </tr>
+            </thead>
+            <tbody id="mdcbookTbody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
     <!-- BOOT LOGO TAB -->
@@ -922,8 +982,8 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/lang.min.js?v=20260823a"></script>
-  <script src="js/flash.min.js?v=20260823a"></script>
+  <script src="js/lang.min.js?v=20260824a"></script>
+  <script src="js/flash.min.js?v=20260824a"></script>
   <script src="js/k1-init-freq-download.js?v=20260816a"></script>
   <script>
   (function() {

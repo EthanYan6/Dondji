@@ -8,8 +8,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "app/mdc_addrbook.h"
+
 extern uint16_t gMdcId_RX;
 extern uint8_t  gMdcId_RX_timeout;
+extern char     gMdcCallsign[MDC_ADDRBOOK_NAME_LEN + 1];
 
 bool MDC1200_AppRxEnabled(void);
 void MDC1200_AppEnableRx(void);

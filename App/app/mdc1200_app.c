@@ -11,6 +11,7 @@
  */
 #include "app/mdc1200.h"
 #include "app/mdc1200_app.h"
+#include "app/mdc_addrbook.h"
 #include "app/yan_id_rf.h"
 #include "driver/bk4819.h"
 #include "driver/bk4819-regs.h"
@@ -28,6 +29,7 @@
 
 uint16_t gMdcId_RX;
 uint8_t  gMdcId_RX_timeout;
+char     gMdcCallsign[MDC_ADDRBOOK_NAME_LEN + 1];
 
 static uint16_t s_fsk_buf[MDC_RX_WORDS];
 static uint8_t  s_rx_words;
@@ -103,15 +105,25 @@ static void mdc_try_accept_rx(void)
 
     gMdcId_RX = id;
     gMdcId_RX_timeout = 12; /* 6 s @ 500 ms — same window as Yan ID popup */
+    gMdcCallsign[0] = 0;
+    MDC_AddrBookLookup(id, gMdcCallsign);
     gUpdateDisplay = true;
 }
 
-void MDC1200_AppNoteOwnTx(void)
+static void mdc_sidecar_disarm_clean(void)
 {
     s_sidecar_armed = false;
     s_rx_capture_active = false;
     s_rx_words = 0;
     BK4819_WriteRegister(BK4819_REG_59, 0x0068);
+    /* UVK1 d99ce97: REG_58/70 residue hijacks voice TX modulation. */
+    BK4819_WriteRegister(BK4819_REG_70, 0);
+    BK4819_WriteRegister(BK4819_REG_58, 0);
+}
+
+void MDC1200_AppNoteOwnTx(void)
+{
+    mdc_sidecar_disarm_clean();
     s_ignore_next_self_rx = true;
     s_ignore_self_ticks = 4;   /* ~2 s @ 500 ms */
     s_rearm_delay_ticks = 20;  /* 200 ms then re-arm */
@@ -150,6 +162,12 @@ void MDC1200_AppDisableRx(void)
     BK4819_WriteRegister(BK4819_REG_72, 0);
     BK4819_WriteRegister(BK4819_REG_58, 0);
     BK4819_WriteRegister(BK4819_REG_59, 0x0068);
+    /* UVK1 d99ce97: drop FSK IRQ mask so noise cannot re-trigger poll. */
+    {
+        const uint16_t r3f = BK4819_ReadRegister(BK4819_REG_3F);
+        if (r3f & MDC_RX_FSK_IRQ_MASK)
+            BK4819_WriteRegister(BK4819_REG_3F, (uint16_t)(r3f & ~MDC_RX_FSK_IRQ_MASK));
+    }
 }
 
 void MDC1200_AppOnRadioInterrupt(uint16_t status)
@@ -235,6 +253,7 @@ void MDC1200_AppTick500ms(void)
     if (gMdcId_RX_timeout > 0) {
         if (--gMdcId_RX_timeout == 0) {
             gMdcId_RX = 0;
+            gMdcCallsign[0] = 0;
             gUpdateDisplay = true;
         }
     }

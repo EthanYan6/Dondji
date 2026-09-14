@@ -516,7 +516,6 @@ const char gSubMenu_OFF_ON[][4] =
 const char gSubMenu_MIC_BAR_STYLE[][10] =
 {
     "OFF",
-    "Bar",
     "Popup",
 };
 #endif

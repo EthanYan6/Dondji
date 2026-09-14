@@ -855,6 +855,41 @@ button.btn-with-icon {
   font-size: 0.95em;
 }
 #writefreq-content { width: 100%; max-width: none; box-sizing: border-box; }
+#mdcbook-content { width: 100%; max-width: 720px; }
+.mdcbook-lead { font-size: 0.88em; color: var(--text-muted); margin-bottom: 10px; line-height: 1.55; }
+.mdcbook-meta { font-size: 0.82em; color: var(--text-subtle); margin-bottom: 12px; line-height: 1.55; }
+.mdcbook-meta code { background: var(--bg-muted); padding: 1px 5px; border-radius: 3px; font-size: 0.95em; }
+.mdcbook-toolbar { margin-bottom: 12px; }
+.mdcbook-count { font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px; }
+.mdcbook-table-scroll { width: 100%; overflow-x: auto; }
+.mdcbook-table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 360px; }
+.mdcbook-table th, .mdcbook-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; }
+.mdcbook-table th { background: var(--bg-elevated); color: var(--text-muted); font-weight: 600; }
+.mdcbook-table .th-sub { font-weight: 400; font-size: 0.85em; color: var(--text-subtle); }
+.mdcbook-table input {
+  width: 100%; min-width: 0; background: var(--bg-input);
+  border: 1px solid var(--border-strong); color: var(--text-primary);
+  border-radius: 4px; padding: 6px 8px; font-size: 0.95em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.mdcbook-table input.mdcbook-id-input { max-width: 110px; text-transform: uppercase; }
+.mdcbook-table input.mdcbook-name-input { max-width: 160px; text-transform: uppercase; }
+.mdcbook-table td.mdcbook-index { color: var(--text-muted); text-align: center; width: 48px; }
+.mdcbook-table thead th.mdcbook-delete-th,
+.mdcbook-table tbody td.mdcbook-delete-cell {
+  width: 48px; min-width: 48px; max-width: 48px;
+  text-align: center; vertical-align: middle;
+  padding-left: 4px; padding-right: 4px;
+}
+.mdcbook-table .mdcbook-row-delete-btn {
+  background: transparent; border: 1px solid transparent; color: var(--text-muted);
+  border-radius: 4px; padding: 4px; cursor: pointer; line-height: 0;
+}
+.mdcbook-table .mdcbook-row-delete-btn:hover { color: #f85149; border-color: var(--border-default); background: var(--bg-muted); }
+.mdcbook-table .mdcbook-row-delete-btn svg { width: 16px; height: 16px; display: block; }
+.mdcbook-row-invalid input.mdcbook-id-input,
+.mdcbook-row-invalid input.mdcbook-name-input { border-color: #f85149; }
+
 .writefreq-table { width: 100%; border-collapse: collapse; font-size: 0.82em; min-width: 1200px; }
 .writefreq-table th, .writefreq-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; }
 .writefreq-table th { background: var(--bg-elevated); color: var(--text-muted); font-weight: 600; }
