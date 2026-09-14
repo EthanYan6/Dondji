@@ -358,6 +358,15 @@ void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
         return;
     }
 
+#ifdef ENABLE_FEAT_F4HWN
+    /* Side-key 1 PTT stays assigned but is inactive while MAIN ONLY. */
+    if (Key == KEY_SIDE1 && func == ACTION_OPT_PTT && ACTION_IsMainOnlyMode()) {
+        if (!(bKeyHeld && !bKeyPressed))
+            gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+        return;
+    }
+#endif
+
     // held or released beyond this point
 
     if(!(bKeyHeld && !bKeyPressed)) // don't beep on released after hold
@@ -578,11 +587,9 @@ void ACTION_ClearSide1PttIfMainOnly(void)
 {
     if (!ACTION_IsMainOnlyMode())
         return;
+    /* Keep KEY_1 PTT assignment so dual-watch return still has side PTT.
+     * Presses are gated by ACTION_DualPttEnabled / ACTION_Handle. */
     ACTION_DualPttStop();
-    if (gEeprom.KEY_1_SHORT_PRESS_ACTION == ACTION_OPT_PTT)
-        gEeprom.KEY_1_SHORT_PRESS_ACTION = ACTION_OPT_NONE;
-    if (gEeprom.KEY_1_LONG_PRESS_ACTION == ACTION_OPT_PTT)
-        gEeprom.KEY_1_LONG_PRESS_ACTION = ACTION_OPT_NONE;
 }
 
 void ACTION_SyncDualPttKeyActions(void)
