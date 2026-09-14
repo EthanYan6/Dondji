@@ -359,8 +359,8 @@ void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     }
 
 #ifdef ENABLE_FEAT_F4HWN
-    /* Side-key 1 PTT stays assigned but is inactive while MAIN ONLY. */
-    if (Key == KEY_SIDE1 && func == ACTION_OPT_PTT && ACTION_IsMainOnlyMode()) {
+    /* Side-key dual PTT stays assigned but is inactive while MAIN ONLY. */
+    if ((Key == KEY_SIDE1 || Key == KEY_SIDE2) && func == ACTION_OPT_PTT && ACTION_IsMainOnlyMode()) {
         if (!(bKeyHeld && !bKeyPressed))
             gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
         return;
@@ -587,24 +587,37 @@ void ACTION_ClearSide1PttIfMainOnly(void)
 {
     if (!ACTION_IsMainOnlyMode())
         return;
-    /* Keep KEY_1 PTT assignment so dual-watch return still has side PTT.
+    /* Keep side-key PTT assignment so dual-watch return still has side PTT.
      * Presses are gated by ACTION_DualPttEnabled / ACTION_Handle. */
     ACTION_DualPttStop();
 }
 
 void ACTION_SyncDualPttKeyActions(void)
 {
-    if (gEeprom.KEY_2_SHORT_PRESS_ACTION == ACTION_OPT_PTT)
-        gEeprom.KEY_2_SHORT_PRESS_ACTION = ACTION_OPT_NONE;
-    if (gEeprom.KEY_2_LONG_PRESS_ACTION == ACTION_OPT_PTT)
-        gEeprom.KEY_2_LONG_PRESS_ACTION = ACTION_OPT_NONE;
+    /* MENU long never dual-PTT */
     if (gEeprom.KEY_M_LONG_PRESS_ACTION == ACTION_OPT_PTT)
         gEeprom.KEY_M_LONG_PRESS_ACTION = ACTION_OPT_NONE;
+
     ACTION_ClearSide1PttIfMainOnly();
 
-    if (ACTION_DualPttEnabled()) {
+    const bool k1 = (gEeprom.KEY_1_SHORT_PRESS_ACTION == ACTION_OPT_PTT ||
+                     gEeprom.KEY_1_LONG_PRESS_ACTION  == ACTION_OPT_PTT);
+    const bool k2 = (gEeprom.KEY_2_SHORT_PRESS_ACTION == ACTION_OPT_PTT ||
+                     gEeprom.KEY_2_LONG_PRESS_ACTION  == ACTION_OPT_PTT);
+
+    /* Prefer side key 1 if both keys somehow carry PTT. */
+    if (k1) {
         gEeprom.KEY_1_SHORT_PRESS_ACTION = ACTION_OPT_PTT;
         gEeprom.KEY_1_LONG_PRESS_ACTION  = ACTION_OPT_PTT;
+        if (gEeprom.KEY_2_SHORT_PRESS_ACTION == ACTION_OPT_PTT)
+            gEeprom.KEY_2_SHORT_PRESS_ACTION = ACTION_OPT_NONE;
+        if (gEeprom.KEY_2_LONG_PRESS_ACTION == ACTION_OPT_PTT)
+            gEeprom.KEY_2_LONG_PRESS_ACTION = ACTION_OPT_NONE;
+        gSetting_set_ptt = 0;
+        gSetting_set_ptt_session = 0;
+    } else if (k2) {
+        gEeprom.KEY_2_SHORT_PRESS_ACTION = ACTION_OPT_PTT;
+        gEeprom.KEY_2_LONG_PRESS_ACTION  = ACTION_OPT_PTT;
         gSetting_set_ptt = 0;
         gSetting_set_ptt_session = 0;
     }

@@ -50,7 +50,15 @@ void ACTION_SwitchDemodul(void);
     #define ACTION_DualPttEnabled() \
         (!ACTION_IsMainOnlyMode() && \
          (gEeprom.KEY_1_SHORT_PRESS_ACTION == ACTION_OPT_PTT || \
-          gEeprom.KEY_1_LONG_PRESS_ACTION  == ACTION_OPT_PTT))
+          gEeprom.KEY_1_LONG_PRESS_ACTION  == ACTION_OPT_PTT || \
+          gEeprom.KEY_2_SHORT_PRESS_ACTION == ACTION_OPT_PTT || \
+          gEeprom.KEY_2_LONG_PRESS_ACTION  == ACTION_OPT_PTT))
+    /* Side key that owns dual-PTT (whole key TX on bottom channel): 1 or 2; 0 if none. */
+    #define ACTION_DualPttSideKey() \
+        ((gEeprom.KEY_1_SHORT_PRESS_ACTION == ACTION_OPT_PTT || \
+          gEeprom.KEY_1_LONG_PRESS_ACTION  == ACTION_OPT_PTT) ? 1u : \
+         (gEeprom.KEY_2_SHORT_PRESS_ACTION == ACTION_OPT_PTT || \
+          gEeprom.KEY_2_LONG_PRESS_ACTION  == ACTION_OPT_PTT) ? 2u : 0u)
     void ACTION_Wn(void);
     void ACTION_BackLightOnDemand(void);
     void ACTION_BackLight(void);

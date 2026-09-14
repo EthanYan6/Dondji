@@ -325,14 +325,15 @@ In config backup, MDC ID is at SPI `0x00A172` (2 bytes); see Chapter 2 address t
 
 ## 1.9 Dual PTT
 
-When **not MAIN ONLY** (dual-watch / cross-band dual-row home), side key 1 can act as a second PTT: hardware PTT keys the **top main** channel; hold side key 1 to key the **bottom** channel.
+When **not MAIN ONLY** (dual-watch / cross-band dual-row home), **side key 1 or side key 2** can act as a second PTT: hardware PTT keys the **top main** channel; hold the side key bound to PTT to key the **bottom** channel.
 
 ### How to enable
 
 1. Make sure receive mode is **not** MAIN ONLY (pick dual watch or cross band so the home screen shows two rows).
-2. **MENU** → **Side key 1 short** or **Side key 1 long**.
+2. **MENU** → **Side key 1 short/long**, or **Side key 2 short/long**.
 3. Choose **PTT** and confirm.
-4. The other slot is set to **PTT** automatically; **Set PTT** is forced to **CLASSIC** (hold-to-talk).
+4. The other slot on that same key is set to **PTT** automatically; **Set PTT** is forced to **CLASSIC** (hold-to-talk).
+5. Only **one** side key can own dual PTT: binding PTT on side key 2 clears PTT from side key 1 (and vice versa).
 
 To turn dual PTT off, bind another action (or switch back to MAIN ONLY).
 
@@ -341,14 +342,14 @@ To turn dual PTT off, bind another action (or switch back to MAIN ONLY).
 | Action | Behavior |
 |--------|----------|
 | Hold hardware PTT | TX on the **top** main channel |
-| Hold side key 1 | TX on the **bottom** channel (whole key is PTT; original short/long actions do not run) |
+| Hold the PTT-bound side key 1 or 2 | TX on the **bottom** channel (whole key is PTT; original short/long actions do not run) |
 | Hold both | **Hardware PTT wins** (main channel) |
 | After unkey | Main stays on the same row — **rows do not swap** |
 
 ### Relation to MAIN ONLY
 
 - Dual PTT only works when **not MAIN ONLY**.
-- Entering MAIN ONLY **clears** a PTT bound on side key 1 back to **NONE**.
+- Entering MAIN ONLY keeps the side-key PTT assignment, but presses **do not TX**; leaving MAIN ONLY restores it.
 - PTT may still appear in the list under MAIN ONLY, but **saving will not stick**; leave MAIN ONLY first.
 
 ### Home screen while side-key TX
@@ -364,8 +365,8 @@ Depends on the mic / TX animation setting:
 ### Notes
 
 - Do not confuse this with **Set PTT** (CLASSIC / ONEPUSH): that only changes whether the **hardware** PTT is hold-to-talk or toggle; it does **not** enable dual PTT.
-- **PTT** is listed only under side key 1 short/long — not side key 2 or MENU long.
-- While dual PTT is on, side key 1 cannot navigate the menu (use ↑/↓ or side key 2).
+- **PTT** is listed only under side key 1 / side key 2 short and long — not MENU long.
+- While dual PTT is on, the PTT-bound side key cannot navigate the menu (use ↑/↓ or the other side key).
 
 ---
 

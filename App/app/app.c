@@ -1958,11 +1958,16 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     }
 
 #ifdef ENABLE_FEAT_F4HWN
-    if (Key == KEY_SIDE1 && ACTION_DualPttEnabled() &&
+    if (ACTION_DualPttEnabled() &&
         !(gScreenToDisplay == DISPLAY_MAIN && gDTMF_InputMode))
     {
-        ACTION_HandleSide1Ptt(bKeyPressed, bKeyHeld);
-        goto Skip;
+        const unsigned int pttKey = ACTION_DualPttSideKey();
+        if ((pttKey == 1u && Key == KEY_SIDE1) ||
+            (pttKey == 2u && Key == KEY_SIDE2))
+        {
+            ACTION_HandleSide1Ptt(bKeyPressed, bKeyHeld);
+            goto Skip;
+        }
     }
 #endif
 

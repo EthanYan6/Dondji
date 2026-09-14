@@ -1916,21 +1916,35 @@ void MENU_AcceptSetting(void)
                     &gEeprom.KEY_2_LONG_PRESS_ACTION,
                     &gEeprom.KEY_M_LONG_PRESS_ACTION};
 
-                if (menuId == MENU_F1SHRT || menuId == MENU_F1LONG) {
+                if (menuId == MENU_F1SHRT || menuId == MENU_F1LONG ||
+                    menuId == MENU_F2SHRT || menuId == MENU_F2LONG) {
                     uint8_t *const k1s = &gEeprom.KEY_1_SHORT_PRESS_ACTION;
                     uint8_t *const k1l = &gEeprom.KEY_1_LONG_PRESS_ACTION;
+                    uint8_t *const k2s = &gEeprom.KEY_2_SHORT_PRESS_ACTION;
+                    uint8_t *const k2l = &gEeprom.KEY_2_LONG_PRESS_ACTION;
+                    const bool onKey1 = (menuId == MENU_F1SHRT || menuId == MENU_F1LONG);
+                    uint8_t *const curS = onKey1 ? k1s : k2s;
+                    uint8_t *const curL = onKey1 ? k1l : k2l;
+                    uint8_t *const othS = onKey1 ? k2s : k1s;
+                    uint8_t *const othL = onKey1 ? k2l : k1l;
+
                     if (selected == ACTION_OPT_PTT) {
                         if (!ACTION_IsMainOnlyMode()) {
-                            *k1s = ACTION_OPT_PTT;
-                            *k1l = ACTION_OPT_PTT;
+                            *curS = ACTION_OPT_PTT;
+                            *curL = ACTION_OPT_PTT;
+                            /* Only one side key can own dual PTT */
+                            if (*othS == ACTION_OPT_PTT)
+                                *othS = ACTION_OPT_NONE;
+                            if (*othL == ACTION_OPT_PTT)
+                                *othL = ACTION_OPT_NONE;
                             gSetting_set_ptt = 0;
                             gSetting_set_ptt_session = 0;
                         }
                     } else {
-                        /* Leaving dual PTT: both slots were PTT; clear, then apply the new action. */
-                        if (*k1s == ACTION_OPT_PTT || *k1l == ACTION_OPT_PTT) {
-                            *k1s = ACTION_OPT_NONE;
-                            *k1l = ACTION_OPT_NONE;
+                        /* Leaving dual PTT on this key: clear both slots, then apply the new action. */
+                        if (*curS == ACTION_OPT_PTT || *curL == ACTION_OPT_PTT) {
+                            *curS = ACTION_OPT_NONE;
+                            *curL = ACTION_OPT_NONE;
                         }
                         *fun[menuId - MENU_F1SHRT] = selected;
                     }
@@ -2037,12 +2051,13 @@ static void MENU_ClampSelection(int8_t Direction)
         {
             const int menuId = UI_MENU_GetCurrentMenuId();
             if (menuId >= MENU_F1SHRT && menuId <= MENU_MLONG) {
-                const bool f1 = (menuId <= MENU_F1LONG);
+                const bool sideKey = (menuId == MENU_F1SHRT || menuId == MENU_F1LONG ||
+                                      menuId == MENU_F2SHRT || menuId == MENU_F2LONG);
                 int sel = (int)gSubMenuSelection;
                 int n = (int)gSubMenu_SIDEFUNCTIONS_size;
-                /* PTT only on side key 1, and only when not MAIN ONLY */
+                /* PTT only on side keys 1/2, and only when not MAIN ONLY */
                 while (n-- > 0 && gSubMenu_SIDEFUNCTIONS[sel].id == ACTION_OPT_PTT &&
-                       !(f1 && !ACTION_IsMainOnlyMode()))
+                       !(sideKey && !ACTION_IsMainOnlyMode()))
                 {
                     sel = (int)NUMBER_AddWithWraparound(sel, Direction, Min, Max);
                 }
