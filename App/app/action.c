@@ -685,12 +685,29 @@ void ACTION_RxA(void)
 }
 #endif
 
+/* Side-key PTT must obey the same lock as hardware PTT when lock range includes PTT. */
+static bool ACTION_SidePttLocked(void)
+{
+    return gEeprom.KEY_LOCK && gSetting_set_lck && gCurrentFunction != FUNCTION_TRANSMIT;
+}
+
+static void ACTION_SidePttLockFeedback(void)
+{
+    AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL);
+    gKeypadLocked  = 4;
+    gUpdateDisplay = true;
+}
+
 void ACTION_Ptt(void)
 {
     if (gCurrentFunction == FUNCTION_TRANSMIT) {
         GENERIC_Key_PTT(false);
         gPttIsPressed = false;
     } else {
+        if (ACTION_SidePttLocked()) {
+            ACTION_SidePttLockFeedback();
+            return;
+        }
         gPttIsPressed = true;
         GENERIC_Key_PTT(true);
     }
@@ -706,6 +723,11 @@ void ACTION_HandleSide1Ptt(bool bKeyPressed, bool bKeyHeld)
         return;
 
     if (bKeyPressed) {
+        if (ACTION_SidePttLocked()) {
+            ACTION_SidePttLockFeedback();
+            return;
+        }
+
         if (GPIO_IsPttPressed() || gDualPttTxVfo != 0xFF)
             return;
 
