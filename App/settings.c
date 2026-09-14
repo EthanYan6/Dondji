@@ -282,7 +282,8 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     {
         uint8_t bootSound = 1; // default: ON
         PY25Q16_ReadBuffer(0x00A174, &bootSound, 1);
-        gSetting_boot_sound = (bootSound < 2) ? bootSound : 1;
+        gSetting_boot_sound = (bootSound & 1u) ? 1u : 0u;
+        gSetting_breath_led = (bootSound >> 1) & 1u;
     }
     #ifdef ENABLE_RSSI_BAR
         for (uint8_t i = 0; i < 7; i++) {
@@ -1213,8 +1214,8 @@ void SETTINGS_SaveSettings(void)
         PY25Q16_WriteBuffer(0x00A170, langHint, sizeof(langHint));
     }
     {
-        uint8_t bootSound = (gSetting_boot_sound < 2) ? gSetting_boot_sound : 1;
-        PY25Q16_WriteBuffer(0x00A174, &bootSound, 1);
+        uint8_t v = (uint8_t)((gSetting_boot_sound & 1u) | ((gSetting_breath_led & 1u) << 1));
+        PY25Q16_WriteBuffer(0x00A174, &v, 1);
     }
 }
 

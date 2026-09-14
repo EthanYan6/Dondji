@@ -695,6 +695,7 @@ static bool MENU_IsMenuInIconGroup(uint8_t menu_number_1based, uint8_t menu_id, 
         menu_id == MENU_TDR ||
         menu_id == MENU_PONMSG ||
         menu_id == MENU_BOOT_HINT ||
+        menu_id == MENU_BREATH ||
         menu_id == MENU_ABR ||
         menu_id == MENU_ABR_MIN ||
         menu_id == MENU_ABR_MAX ||
@@ -1098,6 +1099,7 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             break;
 
         case MENU_BOOT_SOUND:
+        case MENU_BREATH:
             *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
             break;
 
@@ -1762,6 +1764,10 @@ void MENU_AcceptSetting(void)
             gSetting_boot_sound = (uint8_t)gSubMenuSelection;
             break;
 
+        case MENU_BREATH:
+            gSetting_breath_led = (uint8_t)gSubMenuSelection;
+            break;
+
         case MENU_ROGER:
             gEeprom.ROGER = gSubMenuSelection;
             gFlagReconfigureVfos = true;
@@ -2356,6 +2362,10 @@ void MENU_ShowCurrentSetting(void)
 
         case MENU_BOOT_SOUND:
             gSubMenuSelection = gSetting_boot_sound;
+            return;
+
+        case MENU_BREATH:
+            gSubMenuSelection = gSetting_breath_led;
             return;
 
         case MENU_ROGER:

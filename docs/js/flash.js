@@ -5123,11 +5123,17 @@ function mdcbookEmptyRow() {
   return { id: '', name: '' };
 }
 
+// Filter hex only — do NOT padStart here; padding on every keystroke
+// fills maxLength and makes the field impossible to type into.
 function mdcbookNormalizeId(raw) {
   const s = String(raw == null ? '' : raw).trim().toUpperCase().replace(/^0X/, '');
   if (!s) return '';
   if (!/^[0-9A-F]{1,4}$/.test(s)) return null;
-  return s.padStart(4, '0');
+  return s;
+}
+
+function mdcbookPadId(idStr) {
+  return idStr ? idStr.padStart(4, '0') : '';
 }
 
 function mdcbookNormalizeName(raw) {
@@ -5181,6 +5187,13 @@ function mdcbookRender() {
       if (row.id !== inId.value) inId.value = row.id;
       mdcbookUpdateCount();
     });
+    inId.addEventListener('blur', () => {
+      const v = mdcbookNormalizeId(inId.value);
+      if (!v) return;
+      row.id = mdcbookPadId(v);
+      if (row.id !== inId.value) inId.value = row.id;
+      mdcbookUpdateCount();
+    });
     tdId.appendChild(inId);
     tr.appendChild(tdId);
 
@@ -5228,7 +5241,8 @@ function mdcbookCollectValidEntries() {
   trs.forEach((tr) => tr.classList.remove('mdcbook-row-invalid'));
 
   mdcbookRows.forEach((row, idx) => {
-    const id = mdcbookNormalizeId(row.id);
+    const idRaw = mdcbookNormalizeId(row.id);
+    const id = idRaw === null ? null : mdcbookPadId(idRaw);
     const name = mdcbookNormalizeName(row.name);
     const tr = trs[idx];
     if (id === null || !id || !name) {
@@ -5446,7 +5460,8 @@ function mdcbookImportCsvText(text) {
     if (/^MDC_ID/i.test(t)) continue;
     const parts = t.split(/[,;\t]/);
     if (parts.length < 2) { skip++; continue; }
-    const id = mdcbookNormalizeId(parts[0]);
+    const idRaw = mdcbookNormalizeId(parts[0]);
+    const id = idRaw === null ? null : mdcbookPadId(idRaw);
     const name = mdcbookNormalizeName(parts[1]);
     if (id === null || !id || !name) { skip++; continue; }
     if (!mdcbookParseHexId(id)) { skip++; continue; }

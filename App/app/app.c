@@ -1420,6 +1420,10 @@ void APP_TimeSlice10ms(void)
     }
 #endif
 
+#ifdef ENABLE_FLASHLIGHT
+    Flashlight_BreathTick();
+#endif
+
     CheckKeys();
 }
 

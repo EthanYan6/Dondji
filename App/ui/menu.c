@@ -372,6 +372,7 @@ const t_menu_item MenuList[] =
     {"POnMsg",      MENU_PONMSG        },
     {"BootHnt",     MENU_BOOT_HINT     },
     {"BootSnd",     MENU_BOOT_SOUND    },
+    {"Airplt",      MENU_BREATH}, /* 飞机灯 */
     {"BLTime",      MENU_ABR           }, // was "ABR"
     {"BLMin",       MENU_ABR_MIN       },
     {"BLMax",       MENU_ABR_MAX       },
@@ -2523,6 +2524,7 @@ void UI_DisplayMenu(void)
             break;
 
         case MENU_BOOT_SOUND:
+        case MENU_BREATH:
             strcpy(String, SUBV(gSubMenu_OFF_ON[gSubMenuSelection], gSubMenu_OFF_ON_CN[gSubMenuSelection]));
             break;
 

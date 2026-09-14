@@ -159,6 +159,7 @@ enum BacklightOnRxTx_t gSetting_backlight_on_tx_rx;
 #endif
 uint8_t           gSetting_boot_hint;
 uint8_t           gSetting_boot_sound;
+uint8_t           gSetting_breath_led;
 bool              gSetting_live_DTMF_decoder;
 uint8_t           gSetting_battery_text;
 

@@ -19,6 +19,7 @@
     void FlashlightTimeSlice(void);
 #endif
 void ACTION_FlashLight(void);
+void Flashlight_BreathTick(void);
 
 #endif
 
