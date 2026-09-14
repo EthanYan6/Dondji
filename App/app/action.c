@@ -568,6 +568,9 @@ void ACTION_DualPttStop(void)
     gEeprom.TX_VFO = (uint8_t)(1u - side);
     gTxVfo = &gEeprom.VfoInfo[gEeprom.TX_VFO];
     gCurrentVfo = gRxVfo;
+    /* Clear so the next main PTT does not inherit the side RX VFO
+     * during the dual-watch hold after side-key TX. */
+    gRxVfoIsActive = false;
     gUpdateDisplay = true;
 }
 
