@@ -319,6 +319,7 @@ extern bool                  gDualWatchActive;
 extern volatile uint8_t      gSerialConfigCountDown_500ms;
 
 extern volatile bool         gNextTimeslice_500ms;
+extern volatile uint8_t      gBreathBeat500ms;      /* 飞机灯：ISR 实时 500ms 节拍，与休眠红灯同源 */
 
 extern volatile uint16_t     gTxTimerCountdown_500ms;
 extern volatile bool         gTxTimeoutReached;

@@ -13,12 +13,22 @@ static inline void Flashlight_TurnOff(){ GPIO_ResetOutputPin(GPIO_PIN_FLASHLIGHT
 static inline void Flashlight_Toggle(){ GPIO_TogglePin(GPIO_PIN_FLASHLIGHT); }
 
 static bool flash_on;
+static bool s_breath_led_on; /* 飞机灯 ON 相位；双守轮询勿灭此灯 */
 
 /* 飞机灯：无信号时红+绿同闪成黄色，节奏与休眠红灯一致（500ms 一拍，4 拍中亮 1 拍） */
 static void AirplaneLight_Set(bool on)
 {
     BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, on);
     BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, on);
+}
+
+bool Flashlight_BreathLedsOn(void)
+{
+    return s_breath_led_on
+        && gSetting_breath_led
+        && gCurrentFunction != FUNCTION_TRANSMIT
+        && !g_SquelchLost
+        && !flash_on;
 }
 
 static void AirplaneLight_Clear(bool led_on_by_us)
@@ -34,23 +44,22 @@ static void AirplaneLight_Clear(bool led_on_by_us)
 
 void Flashlight_BreathTick(void)
 {
-    static uint8_t tick;
     static uint8_t counter;
     static uint8_t key_cooldown;
-    static bool led_on_by_us;
+    static uint8_t last_beat;
 
     if (!gSetting_breath_led) {
-        AirplaneLight_Clear(led_on_by_us);
-        led_on_by_us = false;
+        AirplaneLight_Clear(s_breath_led_on);
+        s_breath_led_on = false;
         return;
     }
 
     if (gKeyReading0 != KEY_INVALID || gKeyReading1 != KEY_INVALID) {
         key_cooldown = 100; /* 松手后再停 1s */
-        AirplaneLight_Clear(led_on_by_us);
-        led_on_by_us = false;
-        tick = 0;
+        AirplaneLight_Clear(s_breath_led_on);
+        s_breath_led_on = false;
         counter = 0;
+        last_beat = gBreathBeat500ms;
         return;
     }
     if (key_cooldown > 0) {
@@ -61,29 +70,28 @@ void Flashlight_BreathTick(void)
 #ifdef ENABLE_FEAT_F4HWN_SLEEP
     /* 休眠红灯由 APP_TimeSlice500ms 控制，这里只收尾绿灯，不动红灯 */
     if (gWakeUp) {
-        if (led_on_by_us)
+        if (s_breath_led_on)
             BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-        led_on_by_us = false;
-        tick = 0;
+        s_breath_led_on = false;
         counter = 0;
         return;
     }
 #endif
 
     if (gCurrentFunction == FUNCTION_TRANSMIT || g_SquelchLost || flash_on) {
-        AirplaneLight_Clear(led_on_by_us);
-        led_on_by_us = false;
-        tick = 0;
+        AirplaneLight_Clear(s_breath_led_on);
+        s_breath_led_on = false;
         counter = 0;
         return;
     }
 
-    if (++tick < 50u) /* 10ms tick × 50 = 500ms，对齐休眠红灯 */
-        return;
-    tick = 0;
-    counter = (uint8_t)((counter + 1u) & 3u);
-    led_on_by_us = (counter == 0);
-    AirplaneLight_Set(led_on_by_us);
+    /* 用 ISR 实时 500ms 节拍（与休眠红灯同源），避免单守/双守主循环负载不同导致频率漂移 */
+    if (gBreathBeat500ms != last_beat) {
+        last_beat = gBreathBeat500ms;
+        counter = (uint8_t)((counter + 1u) & 3u);
+        s_breath_led_on = (counter == 0);
+        AirplaneLight_Set(s_breath_led_on);
+    }
 }
 
 #if !defined(ENABLE_FEAT_F4HWN) || defined(ENABLE_FEAT_F4HWN_RESCUE_OPS)

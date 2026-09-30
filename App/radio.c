@@ -19,6 +19,7 @@
 
 #include "am_fix.h"
 #include "app/dtmf.h"
+#include "app/flashlight.h"
 #include "app/mdc1200.h"
 #include "app/mdc1200_app.h"
 #include "app/yan_id_rf.h"
@@ -823,7 +824,15 @@ void RADIO_SetupRegisters(bool switchToForeground)
 
     gEnableSpeaker = false;
 
-    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
+#ifdef ENABLE_FLASHLIGHT
+    /* 飞机灯 ON 相位时勿灭红/绿，否则双守每 100ms 轮询会把灯掐断成虚接闪烁 */
+    const bool breath_owns_leds = Flashlight_BreathLedsOn();
+#else
+    const bool breath_owns_leds = false;
+#endif
+
+    if (!breath_owns_leds)
+        BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
 
     if (gRxVfo->Modulation == MODULATION_AM)
         BK4819_SetFilterBandwidth(RADIO_GetAMFilterBandwidth(gRxVfo), true);
@@ -847,7 +856,8 @@ void RADIO_SetupRegisters(bool switchToForeground)
         }
     }
 
-    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
+    if (!breath_owns_leds)
+        BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
 
     BK4819_SetupPowerAmplifier(0, 0);
 
