@@ -220,6 +220,52 @@ static void DualVfoHeaderRight(unsigned int vfoIdx, char *out, size_t outLen)
 /* 最小字宽约 4px；S 表左侧清空到该列，与频率区错开 */
 #define DUAL_VFO_FREQ_COL 62u
 
+/* 双守信道名：字段左扩 1 个汉字（12px）；放得下右对齐；超宽向左滚动，两端各停 2s */
+#define DV_NAME_HAN_PX              12u
+#define DV_NAME_SCROLL_TICKS_PER_PX 3u   /* 1px / 30ms */
+#define DV_NAME_PAUSE_TICKS         200u /* 2s @ 10ms */
+#define DV_NAME_CJK_L               ((uint8_t)(DUAL_VFO_FREQ_COL - DV_NAME_HAN_PX))
+#define DV_NAME_CJK_R               127u
+
+static uint16_t s_DualVfoNameSeed[2];
+static char     s_DualVfoNameText[2][20];
+
+static uint16_t DualVfoNameScrollSeed(uint8_t slot, const char *text)
+{
+    if (slot >= 2u)
+        slot = 0u;
+    if (strncmp(s_DualVfoNameText[slot], text, sizeof(s_DualVfoNameText[0])) != 0) {
+        strncpy(s_DualVfoNameText[slot], text, sizeof(s_DualVfoNameText[0]) - 1u);
+        s_DualVfoNameText[slot][sizeof(s_DualVfoNameText[0]) - 1u] = '\0';
+        s_DualVfoNameSeed[slot]  = gFlashLightBlinkCounter;
+    }
+    return s_DualVfoNameSeed[slot];
+}
+
+/* 放得下：右对齐。超宽：从最初向左滚到右端完整可见 → 停 2s → 回最初再停 2s */
+static int16_t DualVfoNameDrawX(int16_t name_w, int16_t field_l, int16_t field_r, uint16_t seed)
+{
+    const int16_t field_w = (int16_t)(field_r - field_l + 1);
+    if (name_w <= field_w)
+        return (int16_t)(field_r - name_w + 1);
+
+    {
+        const int16_t  max_off   = (int16_t)(name_w - field_w);
+        const uint16_t scroll_t  = (uint16_t)((uint16_t)max_off * DV_NAME_SCROLL_TICKS_PER_PX);
+        const uint16_t cycle     = (uint16_t)(scroll_t + 2u * DV_NAME_PAUSE_TICKS);
+        const uint16_t t         = (uint16_t)((uint16_t)(gFlashLightBlinkCounter - seed) % cycle);
+        int16_t        off;
+
+        if (t < scroll_t)
+            off = (int16_t)(t / DV_NAME_SCROLL_TICKS_PER_PX);
+        else if (t < (uint16_t)(scroll_t + DV_NAME_PAUSE_TICKS))
+            off = max_off;
+        else
+            off = 0;
+        return (int16_t)(field_l - off);
+    }
+}
+
 /*
  * 双 VFO 像素布局；主信道 A/B 宽 7px、高 6px；下面板 A/B 再各 +2px；A/B 下 1px 再画信道号；右侧 2x 频率。
  */
@@ -648,10 +694,19 @@ static void DualVfoDrawTopChannel(unsigned int vfoIdx)
                     DualVfoDrawTxOffsetSmallCentered(vfoIdx, DV_TXOFS_GAP_L_MAIN, x0,
                                                      (uint8_t)(DV_Y_TOP_CH + 3u));
                 }
-                if (rxHere || txHere)
-                    UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127, 9, 20);
-                else
-                    UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127, 17, 28, 0);
+                {
+                    const size_t  nw     = UI_SmallStringPixelWidth(cn);
+                    const bool    over   = (int16_t)nw > (int16_t)(DV_NAME_CJK_R - DV_NAME_CJK_L + 1);
+                    const int16_t draw_x =
+                        DualVfoNameDrawX((int16_t)nw, DV_NAME_CJK_L, DV_NAME_CJK_R,
+                                         DualVfoNameScrollSeed(0u, cn));
+                    if (rxHere || txHere)
+                        UI_PrintStringSmallAtPixelClip(cn, draw_x, DV_NAME_CJK_L, DV_NAME_CJK_R, 9, 20, true);
+                    else
+                        UI_PrintStringSmallAtPixelClip(cn, draw_x, DV_NAME_CJK_L, DV_NAME_CJK_R, 17, 28, false);
+                    if (over && (gFlashLightBlinkCounter % DV_NAME_SCROLL_TICKS_PER_PX) == 0u)
+                        gUpdateDisplay = true;
+                }
                 DualVfoFillRectBlack(2u, DV_Y_TOP_HDR, 60u, (uint8_t)(DV_Y_TOP_HDR + 6u));
                 DualVfoU8g2_DrawSmallText(fs, 2u, (uint8_t)(DV_Y_TOP_HDR + 1u), false);
             }
@@ -734,15 +789,22 @@ static void DualVfoDrawBottomChannel(unsigned int vfoIdx)
                     }
                     /* 中文信道名 → 频率位置（接收或双 PTT 副信道发射时反色） */
                     {
-                        const uint8_t cn_y = (uint8_t)(DV_Y_BOT_FREQ_LINE + 6u);
+                        const uint8_t cn_y   = (uint8_t)(DV_Y_BOT_FREQ_LINE + 6u);
+                        const size_t  nw     = UI_SmallStringPixelWidth(cn);
+                        const bool    over   = (int16_t)nw > (int16_t)(DV_NAME_CJK_R - DV_NAME_CJK_L + 1);
+                        const int16_t draw_x =
+                            DualVfoNameDrawX((int16_t)nw, DV_NAME_CJK_L, DV_NAME_CJK_R,
+                                             DualVfoNameScrollSeed(1u, cn));
                         if (rxHere || dualPttInvert || (txHere && !dualPttSideTx)) {
                             const uint8_t cn_y_rx = (uint8_t)(cn_y - 9u);
-                            UI_PrintStringSmallAtPixelCnInverse(cn, DUAL_VFO_FREQ_COL, 127,
-                                                                cn_y_rx, (uint8_t)(cn_y_rx + 11u));
+                            UI_PrintStringSmallAtPixelClip(cn, draw_x, DV_NAME_CJK_L, DV_NAME_CJK_R,
+                                                           cn_y_rx, (uint8_t)(cn_y_rx + 11u), true);
                         } else {
-                            UI_PrintStringSmallAtPixel(cn, DUAL_VFO_FREQ_COL, 127,
-                                                       cn_y, (uint8_t)(cn_y + 11u), 0);
+                            UI_PrintStringSmallAtPixelClip(cn, draw_x, DV_NAME_CJK_L, DV_NAME_CJK_R,
+                                                           cn_y, (uint8_t)(cn_y + 11u), false);
                         }
+                        if (over && (gFlashLightBlinkCounter % DV_NAME_SCROLL_TICKS_PER_PX) == 0u)
+                            gUpdateDisplay = true;
                     }
                 }
             }
@@ -838,47 +900,21 @@ static void DualVfoDrawBottomStatusBar(uint8_t left_limit_x, uint8_t right_limit
         }
     }
 
-    const bool has_active_rx_channel = s_dual_vfo_has_rx_channel_history;
-    const uint8_t active_channel = s_dual_vfo_last_speaking_channel;
+    /* 最下方一行：LAST A / LAST B；未接收过则不显示 */
+    const unsigned status_anchor_x = 54u;
+    DualVfoClearRectPx((uint8_t)status_anchor_x, DV_STATUS_BAR_LINE1_Y,
+                       (uint8_t)(status_anchor_x + 40u), (uint8_t)(DV_STATUS_BAR_LINE2_Y + 6u));
 
-    char line_1_text[16];
-    char line_2_text[16];
-    char arrow_text[4];
-    if (active_channel == 0u)
-    {
-        strcpy(line_1_text, "LAST A");
-        strcpy(line_2_text, "B");
-        strcpy(arrow_text, "<<");
-    }
-    else
-    {
-        strcpy(line_1_text, "LAST A");
-        strcpy(line_2_text, "B");
-        strcpy(arrow_text, "<<");
-    }
+    if (!s_dual_vfo_has_rx_channel_history)
+        return;
 
-    const uint8_t line_1_prefix_width = DualVfoU8g2_GetSmallTextWidth("LAST ");
-    const uint8_t channel_letter_width = DualVfoU8g2_GetSmallTextWidth("A");
-    const uint8_t arrow_gap_width = DualVfoU8g2_GetSmallTextWidth(" ");
-
-    const unsigned int status_anchor_x = 54u;
-    const unsigned int line_1_x_u = status_anchor_x;
-    const unsigned int line_2_x_u = line_1_x_u + (unsigned int)line_1_prefix_width;
-    const unsigned int arrow_x_u = line_2_x_u + (unsigned int)channel_letter_width + (unsigned int)arrow_gap_width;
-    const uint8_t line_1_x = (uint8_t)line_1_x_u;
-    const uint8_t line_2_x = (uint8_t)line_2_x_u;
-    const uint8_t arrow_x = (uint8_t)arrow_x_u;
-
-    DualVfoClearRectPx((uint8_t)status_anchor_x, DV_STATUS_BAR_LINE1_Y, (uint8_t)(status_anchor_x + 34u), (uint8_t)(DV_STATUS_BAR_LINE2_Y + 6u));
-    DualVfoU8g2_DrawSmallText(line_1_text, line_1_x, DV_STATUS_BAR_LINE1_Y, true);
-    DualVfoU8g2_DrawSmallText(line_2_text, line_2_x, DV_STATUS_BAR_LINE2_Y, true);
-    if (has_active_rx_channel && active_channel == 0u)
     {
-        DualVfoU8g2_DrawSmallText(arrow_text, arrow_x, DV_STATUS_BAR_LINE1_Y, true);
-    }
-    else if (has_active_rx_channel)
-    {
-        DualVfoU8g2_DrawSmallText(arrow_text, arrow_x, DV_STATUS_BAR_LINE2_Y, true);
+        char text[12];
+        if (s_dual_vfo_last_speaking_channel == 0u)
+            strcpy(text, "LAST A");
+        else
+            strcpy(text, "LAST B");
+        DualVfoU8g2_DrawSmallText(text, (uint8_t)status_anchor_x, DV_STATUS_BAR_LINE2_Y, true);
     }
 }
 
@@ -996,12 +1032,23 @@ static void DualVfoDrawBottomSMeterAndBattery(void)
             unsigned clearFrom = (unsigned)pct_draw_x;
             if (drawRx && (unsigned)rx_draw_x < clearFrom)
                 clearFrom = (unsigned)rx_draw_x;
+            {
+                /* 锁图标槽位也纳入清除，解锁后不残留 */
+                const unsigned lockX = (unsigned)batX - 2u - (unsigned)sizeof(gFontKeyLock);
+                if (lockX < clearFrom)
+                    clearFrom = lockX;
+            }
             for (unsigned c = clearFrom; c < LCD_WIDTH; c++)
             {
                 rowFb[c] = 0;
                 rowFbNext[c] = 0;
             }
             memcpy(rowFb + batX, bat, batW);
+            if (gEeprom.KEY_LOCK)
+            {
+                const uint8_t lockX = (uint8_t)(batX - 2u - (uint8_t)sizeof(gFontKeyLock));
+                memcpy(rowFb + lockX, gFontKeyLock, sizeof(gFontKeyLock));
+            }
             if (drawRx)
                 DualVfoU8g2_DrawSmallText(rxLab, (uint8_t)rx_draw_x, DV_Y_RXMODE, true);
             if (draw_side_text)

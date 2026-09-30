@@ -71,6 +71,9 @@ void UI_PrintStringSmallAtPixelKeyLockUnlockHint(const char *pString, uint8_t x_
 void UI_PrintStringSmallChannelNameBand(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_top);
 void UI_PrintStringSmallAtPixelInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
 void UI_PrintStringSmallAtPixelCnInverse(const char *pString, uint8_t x_start, uint8_t x_end, uint8_t y_pixel_start, uint8_t y_pixel_end);
+/** 双守信道名：从 x_draw 起画（可为负），列裁剪 [clip_l, clip_r]；inverse 先填黑再画白 */
+void UI_PrintStringSmallAtPixelClip(const char *pString, int16_t x_draw, uint8_t clip_l, uint8_t clip_r,
+                                    uint8_t y_pixel_start, uint8_t y_pixel_end, bool inverse);
 #endif
 
 #endif

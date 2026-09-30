@@ -23,6 +23,7 @@ void COMMON_KeypadLockToggle()
         gEeprom.KEY_LOCK = !gEeprom.KEY_LOCK;
 
         gRequestSaveSettings = true;
+        gUpdateDisplay = true;
     }
 }
 

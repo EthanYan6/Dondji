@@ -1113,4 +1113,118 @@ void UI_PrintStringSmallAtPixelCnInverse(const char *pString, uint8_t x_start, u
     }
 }
 
+/* 双守信道名：从 x_draw 起画（可为负，用于滚动），列裁剪到 [clip_l, clip_r]；inverse 时先填黑再画白 */
+void UI_PrintStringSmallAtPixelClip(const char *pString, int16_t x_draw, uint8_t clip_l, uint8_t clip_r,
+                                    uint8_t y_pixel_start, uint8_t y_pixel_end, bool inverse)
+{
+    const uint8_t eng_char_width = 6;
+    const uint8_t eng_char_height = 7;
+    const uint8_t chn_char_width = 12;
+
+    if (pString == NULL || clip_l > clip_r)
+        return;
+
+    /* 滚动前先清字段，避免残影；inverse 填黑画白，正字清白画黑 */
+    {
+        const bool fill_black = inverse;
+        for (uint8_t yy = y_pixel_start; yy <= y_pixel_end; yy++)
+            for (uint8_t xx = clip_l; xx <= clip_r && xx < LCD_WIDTH; xx++)
+                PutPixel(xx, yy, fill_black);
+    }
+
+    {
+        int16_t x = x_draw;
+        size_t  i = 0;
+        while (pString[i]) {
+            if (IsChineseChar(&pString[i])) {
+                uint16_t unicode = Utf8ToUnicode(&pString[i]);
+                if (inverse) {
+                    int16_t spi_idx = SETTINGS_CNCharToIndex(unicode);
+                    if (spi_idx >= 0) {
+                        uint16_t spi_bitmap[12];
+                        SETTINGS_ReadCNFontBitmap((uint16_t)spi_idx, spi_bitmap);
+                        const uint16_t y_range = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
+                        const uint8_t  chn_top = (y_range >= 12u)
+                            ? (uint8_t)(y_pixel_start + (uint8_t)((y_range - 12u) / 2u))
+                            : y_pixel_start;
+                        for (uint8_t row = 0; row < 12; row++) {
+                            uint16_t row_data = spi_bitmap[row];
+                            uint8_t  y = (uint8_t)(chn_top + row);
+                            for (uint8_t col = 0; col < 12; col++) {
+                                const int16_t px = (int16_t)(x + col);
+                                if (px < (int16_t)clip_l || px > (int16_t)clip_r || px >= (int16_t)LCD_WIDTH)
+                                    continue;
+                                if (row_data & (0x8000 >> col))
+                                    PutPixel((uint8_t)px, y, false);
+                            }
+                        }
+                    }
+                } else {
+                    /* 正字：与 DrawChineseChar 相同字形，仅列裁剪 */
+                    int16_t spi_idx = SETTINGS_CNCharToIndex(unicode);
+                    if (spi_idx >= 0) {
+                        uint16_t spi_bitmap[12];
+                        SETTINGS_ReadCNFontBitmap((uint16_t)spi_idx, spi_bitmap);
+                        const uint16_t y_range = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
+                        const uint8_t  chn_top = (y_range >= 12u)
+                            ? (uint8_t)(y_pixel_start + (uint8_t)((y_range - 12u) / 2u))
+                            : y_pixel_start;
+                        for (uint8_t row = 0; row < 12; row++) {
+                            uint16_t row_data = spi_bitmap[row];
+                            uint8_t  y = (uint8_t)(chn_top + row);
+                            if (y < 8)
+                                continue;
+                            uint8_t line = (uint8_t)((y - 8) / 8);
+                            uint8_t bit_offset = (uint8_t)((y - 8) % 8);
+                            for (uint8_t col = 0; col < 12; col++) {
+                                const int16_t px = (int16_t)(x + col);
+                                if (px < (int16_t)clip_l || px > (int16_t)clip_r || px >= (int16_t)LCD_WIDTH)
+                                    continue;
+                                if (row_data & (0x8000 >> col))
+                                    gFrameBuffer[line][(uint8_t)px] |= (uint8_t)(1u << bit_offset);
+                            }
+                        }
+                    }
+                }
+                x = (int16_t)(x + chn_char_width + 1);
+                i += 3;
+            } else {
+                if (pString[i] >= '!' && pString[i] < 127) {
+                    const unsigned int index = (unsigned int)(pString[i] - ' ' - 1);
+                    if (index < ARRAY_SIZE(gFontSmall)) {
+                        const uint8_t *font_data = gFontSmall[index];
+                        const uint16_t y_range = (uint16_t)y_pixel_end - (uint16_t)y_pixel_start + 1u;
+                        unsigned y_offset = 0;
+                        if (y_range >= eng_char_height)
+                            y_offset = (unsigned)((y_range - eng_char_height) / 2u);
+                        uint8_t y_pixel = (uint8_t)(y_pixel_start + (uint8_t)y_offset);
+                        if (y_pixel < 8)
+                            y_pixel = 8;
+                        uint8_t line = (uint8_t)((y_pixel - 8) / 8);
+                        uint8_t bit_offset = (uint8_t)((y_pixel - 8) % 8);
+                        for (uint8_t col = 0; col < eng_char_width; col++) {
+                            const int16_t px = (int16_t)(x + col);
+                            if (px < (int16_t)clip_l || px > (int16_t)clip_r || px >= (int16_t)LCD_WIDTH)
+                                continue;
+                            uint8_t pixel_col = font_data[col];
+                            if (inverse) {
+                                for (uint8_t row = 0; row < eng_char_height; row++) {
+                                    if (pixel_col & (1u << row))
+                                        PutPixel((uint8_t)px, (uint8_t)(y_pixel + row), false);
+                                }
+                            } else {
+                                gFrameBuffer[line][(uint8_t)px] |= (uint8_t)(pixel_col << bit_offset);
+                                if (bit_offset + eng_char_height > 8 && line + 1 < FRAME_LINES)
+                                    gFrameBuffer[line + 1][(uint8_t)px] |= (uint8_t)(pixel_col >> (8 - bit_offset));
+                            }
+                        }
+                    }
+                }
+                x = (int16_t)(x + eng_char_width + 1);
+                i++;
+            }
+        }
+    }
+}
+
 #endif /* ENABLE_CHINESE */

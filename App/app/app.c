@@ -1670,6 +1670,7 @@ void APP_TimeSlice500ms(void)
         {
             gEeprom.KEY_LOCK = true;     // lock the keyboard
             gUpdateStatus = true;            // lock symbol needs showing
+            gUpdateDisplay = true;           // 双守底栏锁图标
         }
 
         if (exit_menu) {
