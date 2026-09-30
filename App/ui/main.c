@@ -886,7 +886,6 @@ static bool s_dual_vfo_has_rx_channel_history = false;
 static void DualVfoDrawBottomStatusBar(uint8_t left_limit_x, uint8_t right_limit_x)
 {
     (void)left_limit_x;
-    (void)right_limit_x;
 
     const bool is_receiving_signal = FUNCTION_IsRx();
     if (is_receiving_signal)
@@ -901,21 +900,18 @@ static void DualVfoDrawBottomStatusBar(uint8_t left_limit_x, uint8_t right_limit
     }
 
     /* 最下方一行：LAST A / LAST B；未接收过则不显示 */
-    const unsigned status_anchor_x = 54u;
+    const unsigned status_anchor_x = 57u;
+    uint8_t clear_x1 = (uint8_t)(status_anchor_x + 40u);
+    if (right_limit_x < clear_x1)
+        clear_x1 = right_limit_x;
     DualVfoClearRectPx((uint8_t)status_anchor_x, DV_STATUS_BAR_LINE1_Y,
-                       (uint8_t)(status_anchor_x + 40u), (uint8_t)(DV_STATUS_BAR_LINE2_Y + 6u));
+                       clear_x1, (uint8_t)(DV_STATUS_BAR_LINE2_Y + 6u));
 
     if (!s_dual_vfo_has_rx_channel_history)
         return;
 
-    {
-        char text[12];
-        if (s_dual_vfo_last_speaking_channel == 0u)
-            strcpy(text, "LAST A");
-        else
-            strcpy(text, "LAST B");
-        DualVfoU8g2_DrawSmallText(text, (uint8_t)status_anchor_x, DV_STATUS_BAR_LINE2_Y, true);
-    }
+    DualVfoU8g2_DrawSmallText(s_dual_vfo_last_speaking_channel ? "LAST B" : "LAST A",
+                              (uint8_t)status_anchor_x, DV_STATUS_BAR_LINE2_Y, true);
 }
 
 /* 主画布最底行：S 表 + S 值 + 电池（最后绘制，独占一行） */
