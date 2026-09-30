@@ -24,6 +24,7 @@ void COMMON_KeypadLockToggle()
 
         gRequestSaveSettings = true;
         gUpdateDisplay = true;
+        gUpdateStatus = true;
     }
 }
 

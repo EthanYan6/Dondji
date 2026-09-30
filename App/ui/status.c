@@ -213,6 +213,7 @@ void UI_DisplayMainOnlyStatusBar(void)
      */
     {
         const bool have_side_text = UI_FormatBatteryStatusSideText(str, sizeof(str));
+        unsigned int left_of_bat = (unsigned int)x;
 
         if (have_side_text) {
             const uint8_t     text_w = DualVfoU8g2_GetSmallTextWidth(str);
@@ -222,6 +223,19 @@ void UI_DisplayMainOnlyStatusBar(void)
             {
                 const uint8_t text_x = (uint8_t)(bat_left_u - gap_u - (unsigned int)text_w);
                 DualVfoU8g2_DrawSmallTextStatus(str, text_x, 2u, true);
+                left_of_bat = text_x;
+            }
+        }
+
+        /* 键盘锁图标：电池与电量字左侧 */
+        if (gEeprom.KEY_LOCK)
+        {
+            const unsigned lock_w = (unsigned)sizeof(gFontKeyLock);
+            const unsigned gap_u  = (unsigned)STATUS_BAT_TEXT_TO_ICON_GAP_PX;
+            if (left_of_bat > gap_u + lock_w)
+            {
+                const unsigned lock_x = left_of_bat - gap_u - lock_w;
+                memcpy(line + lock_x, gFontKeyLock, lock_w);
             }
         }
     }
