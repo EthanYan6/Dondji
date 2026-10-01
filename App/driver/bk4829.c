@@ -856,15 +856,15 @@ void BK4819_RX_TurnOn(void)
 
 void BK4819_PickRXFilterPathBasedOnFrequency(uint32_t Frequency)
 {
-    if (Frequency < 28000000)
-    {   // VHF
+    if (Frequency == 0xFFFFFFFF)
+    {   // SCAN: VHF first (hardware freq-scan does not touch REG_33)
         BK4819_ToggleGpioOut(BK4819_GPIO4_PIN32_VHF_LNA, true);
         BK4819_ToggleGpioOut(BK4819_GPIO3_PIN31_UHF_LNA, false);
     }
     else
-    if (Frequency == 0xFFFFFFFF)
-    {   // OFF
-        BK4819_ToggleGpioOut(BK4819_GPIO4_PIN32_VHF_LNA, false);
+    if (Frequency < 28000000)
+    {   // VHF
+        BK4819_ToggleGpioOut(BK4819_GPIO4_PIN32_VHF_LNA, true);
         BK4819_ToggleGpioOut(BK4819_GPIO3_PIN31_UHF_LNA, false);
     }
     else
