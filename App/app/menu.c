@@ -101,7 +101,7 @@ void MENU_Hex4(char *d, uint16_t v)
     d[4] = 0;
 }
 
-/* Shared text-ID editors: Yan ID (A–Z/0–9) and MDC ID (digits only). */
+/* Shared text-ID editors: Yan ID (A–Z/0–9) and MDC ID (hex 0–9/A–F). */
 static int MENU_TextIdEditLimit(uint8_t menu_id)
 {
     if (menu_id == MENU_YAN_ID)
@@ -203,7 +203,6 @@ static bool MENU_KeyDigitsTextIdEdit(KEY_Code_t Key)
 {
     const uint8_t menu_id = (uint8_t)UI_MENU_GetCurrentMenuId();
     const int name_limit = MENU_TextIdEditLimit(menu_id);
-    const bool digit_only = (menu_id == MENU_MDC_ID);
 
     if (name_limit < 0 || edit_index < 0)
         return false;
@@ -214,10 +213,8 @@ static bool MENU_KeyDigitsTextIdEdit(KEY_Code_t Key)
         return true;
     }
 
-    if (gMemNameInputMode == MEM_NAME_INPUT_DIGIT || digit_only)
+    if (gMemNameInputMode == MEM_NAME_INPUT_DIGIT)
     {
-        if (digit_only)
-            gMemNameInputMode = MEM_NAME_INPUT_DIGIT;
         if (Key <= KEY_9)
         {
             edit[edit_index] = (char)('0' + Key - KEY_0);
@@ -251,10 +248,20 @@ static bool MENU_KeyDigitsTextIdEdit(KEY_Code_t Key)
                 gRequestDisplayScreen = DISPLAY_MENU;
                 return true;
             }
+            else if (menu_id == MENU_MDC_ID)
+            {
+                /* MDC 合法字符止于 E：候选不存在（如 D/E 下按键 3 选 F）→ 无效 */
+                gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+                return true;
+            }
         }
-        if (Key >= KEY_2 && Key <= KEY_9)
+        /* MDC ID 字母模式仅允许 A-E：只有键 2(A/B/C)、键 3(D/E) 弹候选 */
+        if (Key >= KEY_2 && Key <= KEY_9 &&
+            (menu_id != MENU_MDC_ID || Key <= KEY_3))
         {
             MENU_BuildMemNameCandidatesFromKey(Key);
+            if (menu_id == MENU_MDC_ID && Key == KEY_3)
+                gMemNameCandidateCount = 2u; /* def → D/E，剔除 F */
             gRequestDisplayScreen = DISPLAY_MENU;
             return true;
         }
@@ -3746,20 +3753,14 @@ void MENU_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
             MENU_Key_STAR(bKeyPressed, bKeyHeld);
             break;
         case KEY_F:
-            /* MDC ID: digits only — no mode switch */
-            if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID && edit_index >= 0)
-            {
-                if (!bKeyHeld && bKeyPressed)
-                    gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
-                break;
-            }
-            if (UI_MENU_GetCurrentMenuId() == MENU_YAN_ID && edit_index >= 0)
+            if ((UI_MENU_GetCurrentMenuId() == MENU_MDC_ID ||
+                 UI_MENU_GetCurrentMenuId() == MENU_YAN_ID) && edit_index >= 0)
             {
                 if (!bKeyHeld && bKeyPressed)
                 {
                     gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
                     gMemNameCandidateCount = 0;
-                    /* Yan ID: A ↔ 1 only */
+                    /* MDC ID / Yan ID: A ↔ 1 only */
                     gMemNameInputMode = (gMemNameInputMode == MEM_NAME_INPUT_DIGIT)
                         ? MEM_NAME_INPUT_UPPER
                         : MEM_NAME_INPUT_DIGIT;
