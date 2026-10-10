@@ -1722,6 +1722,812 @@ $('restoreCfgBtn').addEventListener('click', async () => {
   }
 });
 
+// ========== MODIFY CONFIG ==========
+/* 与 App/settings.c SETTINGS_InitEEPROM() 的布局一致：512B 配置区（SPI 0x00A000）。
+ * 读取 → 表单编辑 → 仅写有变化的 32B 区块（写后回读校验）→ 重启。 */
+let isModifyCfgBusy = false;
+let modifyCfgOriginal = null;   // 最近一次从设备读取的 512B 镜像
+const MC_AREA_CHUNK = 120;      // 与固件 SPI_FLASH_READ/WRITE 上限一致
+const MC_WRITE_CHUNK = 32;      // 差异写入粒度（与恢复配置页一致）
+
+const MC_ON_OFF = [
+  { v: 0, zh: '关', en: 'OFF' },
+  { v: 1, zh: '开', en: 'ON' }
+];
+
+function mcNumOptions(from, to, fmt) {
+  const out = [];
+  for (let v = from; v <= to; v++) {
+    const label = fmt ? fmt(v) : String(v);
+    out.push({ v: v, zh: label, en: label });
+  }
+  return out;
+}
+
+/* 侧键/M键可绑定动作：值 = ACTION_OPT_t 枚举（本固件全功能编译） */
+const MC_ACTIONS = [
+  { v: 0,  zh: '无', en: 'None' },
+  { v: 1,  zh: '手电', en: 'Flashlight' },
+  { v: 2,  zh: '电源', en: 'Power' },
+  { v: 3,  zh: '监听', en: 'Monitor' },
+  { v: 4,  zh: '扫描', en: 'Scan' },
+  { v: 5,  zh: '声控', en: 'VOX' },
+  { v: 6,  zh: '报警', en: 'Alarm' },
+  { v: 7,  zh: '收音机', en: 'FM Radio' },
+  { v: 8,  zh: '1750Hz', en: '1750Hz' },
+  { v: 9,  zh: '键盘锁', en: 'Lock Keypad' },
+  { v: 10, zh: 'VFO A/B', en: 'VFO A/B' },
+  { v: 11, zh: 'VFO/MR', en: 'VFO/MR' },
+  { v: 12, zh: '调制模式', en: 'Mode' },
+  { v: 13, zh: '背光暂关', en: 'BLMIN TMP OFF' },
+  { v: 14, zh: '接收模式', en: 'RX Mode' },
+  { v: 15, zh: '主界面', en: 'Main Only' },
+  { v: 16, zh: 'PTT', en: 'PTT' },
+  { v: 17, zh: '宽窄带', en: 'Wide/Narrow' },
+  { v: 18, zh: '背光开关', en: 'Backlight' },
+  { v: 19, zh: '静音', en: 'Mute' },
+  { v: 20, zh: 'RxA', en: 'RxA' },
+  { v: 21, zh: '大功率', en: 'Power High' },
+  { v: 22, zh: '移除频差', en: 'Remove Offset' },
+  { v: 23, zh: 'REGA报警', en: 'REGA Alarm' },
+  { v: 24, zh: 'REGA测试', en: 'REGA Test' }
+];
+
+/* 扫描恢复：0=STOP；1..80=载波恢复(250ms/步)；81..104=超时恢复(5s/步) */
+function mcScRevOptions() {
+  const out = [{ v: 0, zh: '停止', en: 'STOP', group: '' }];
+  for (let v = 1; v <= 80; v++) {
+    const s = (v * 250) / 1000;
+    const label = (s % 1 === 0 ? s.toFixed(0) : s.toFixed(2)) + 's';
+    out.push({ v: v, zh: '载波 ' + label, en: 'Carrier ' + label, group: 'carrier' });
+  }
+  for (let v = 81; v <= 104; v++) {
+    const label = ((v - 80) * 5) + 's';
+    out.push({ v: v, zh: '超时 ' + label, en: 'Timeout ' + label, group: 'timeout' });
+  }
+  return out;
+}
+
+/* 背光时间：0=关；1..60 显示 MMm:SSs（5s 步进，与固件 %02dm:%02ds 一致）；61=开 */
+function mcAbrOptions() {
+  const out = [{ v: 0, zh: '关', en: 'OFF' }];
+  for (let v = 1; v <= 60; v++) {
+    const s = v * 5;
+    const label = String(Math.floor(s / 60)).padStart(2, '0') + 'm:' + String(s % 60).padStart(2, '0') + 's';
+    out.push({ v: v, zh: label, en: label });
+  }
+  out.push({ v: 61, zh: '开', en: 'ON' });
+  return out;
+}
+
+const MC_FIELDS = {
+  sql: {
+    zh: '静噪等级', en: 'Squelch Level', type: 'select',
+    options: mcNumOptions(0, 9),
+    get: function(b) { return b[0x01] < 10 ? b[0x01] : 1; },
+    set: function(b, v) { b[0x01] = v; }
+  },
+  tot: {
+    zh: '发射限时', en: 'TX Timeout (TOT)', type: 'number',
+    min: 30, max: 900, step: 5,
+    hint: { zh: '秒，30–900 且为 5 的倍数', en: 'seconds, 30-900 in steps of 5' },
+    get: function(b) { const v = b[0x02]; return (v > 4 && v < 180) ? (v + 1) * 5 : 60; },
+    set: function(b, v) { b[0x02] = Math.round(v / 5) - 1; }
+  },
+  mic: {
+    zh: '麦克风增益', en: 'Mic Gain', type: 'select',
+    options: mcNumOptions(0, 8),
+    get: function(b) { return b[0x07] < 9 ? b[0x07] : 4; },
+    set: function(b, v) { b[0x07] = v; }
+  },
+  abrmax: {
+    zh: '背光最亮', en: 'Backlight Max', type: 'select',
+    options: mcNumOptions(0, 10),
+    get: function(b) { const v = b[0x08] & 0x0F; return v <= 10 ? v : 10; },
+    set: function(b, v) { b[0x08] = (b[0x08] & 0xF0) | (v & 0x0F); }
+  },
+  abrmin: {
+    zh: '背光最暗', en: 'Backlight Min', type: 'select',
+    options: mcNumOptions(0, 10),
+    get: function(b) { const max = (b[0x08] & 0x0F) <= 10 ? (b[0x08] & 0x0F) : 10; const v = b[0x08] >> 4; return v < max ? v : 0; },
+    set: function(b, v) { b[0x08] = (b[0x08] & 0x0F) | ((v & 0x0F) << 4); }
+  },
+  abr: {
+    zh: '背光时间', en: 'Backlight Time', type: 'select',
+    options: mcAbrOptions(),
+    get: function(b) { return b[0x0D] < 62 ? b[0x0D] : 12; },
+    set: function(b, v) { b[0x0D] = v; }
+  },
+  ponmsg: {
+    zh: '开机画面', en: 'Power-on Display', type: 'select',
+    options: [
+      { v: 0, zh: '关闭', en: 'OFF' },
+      { v: 1, zh: '默认', en: 'Default' },
+      { v: 2, zh: '自定义', en: 'Custom' }
+    ],
+    get: function(b) { return b[0xAF] < 3 ? b[0xAF] : 1; },
+    set: function(b, v) { b[0xAF] = v; }
+  },
+  lang: {
+    zh: '显示语言', en: 'UI Language', type: 'select',
+    options: [
+      { v: 0, zh: 'English', en: 'English' },
+      { v: 1, zh: '中文', en: '中文' }
+    ],
+    get: function(b) { return b[0x170] < 2 ? b[0x170] : 0; },
+    set: function(b, v) { b[0x170] = v; }
+  },
+  beep: {
+    zh: '按键音', en: 'Key Beep', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return b[0xA8] & 1; },
+    set: function(b, v) { b[0xA8] = (b[0xA8] & 0xFE) | (v ? 1 : 0); }
+  },
+  roger: {
+    zh: '发射尾音', en: 'Roger', type: 'select',
+    options: [
+      { v: 0, zh: '关', en: 'OFF' },
+      { v: 1, zh: 'ROGER', en: 'ROGER' },
+      { v: 2, zh: 'MDC', en: 'MDC' },
+      { v: 3, zh: 'Yan ID', en: 'Yan ID' },
+      { v: 4, zh: 'Custom1', en: 'Custom1' },
+      { v: 5, zh: 'Custom2', en: 'Custom2' },
+      { v: 6, zh: 'Custom3', en: 'Custom3' }
+    ],
+    get: function(b) { return b[0xC1] <= 6 ? b[0xC1] : 0; },
+    set: function(b, v) { b[0xC1] = v; }
+  },
+  mdcid: {
+    zh: 'MDC ID', en: 'MDC ID', type: 'text', maxLength: 4,
+    hint: { zh: '1–4 位十六进制（0000–FFFF）', en: '1-4 hex digits (0000-FFFF)' },
+    get: function(b) {
+      let v = (b[0x172] << 8) | b[0x173];
+      if (v === 0xFFFF) v = 0;
+      return ('000' + v.toString(16)).slice(-4).toUpperCase();
+    },
+    set: function(b, v) {
+      const n = parseInt(v, 16) & 0xFFFF;
+      b[0x172] = (n >> 8) & 0xFF;
+      b[0x173] = n & 0xFF;
+    }
+  },
+  ste: {
+    zh: '尾音消除', en: 'Tail Tone Elim.', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return b[0x0E] & 1; },
+    set: function(b, v) { b[0x0E] = (b[0x0E] & 0xFE) | (v ? 1 : 0); }
+  },
+  rpste: {
+    zh: '过中继尾音', en: 'Repeater STE', type: 'select',
+    options: [{ v: 0, zh: '关', en: 'OFF' }].concat(mcNumOptions(1, 10, function(v) { return (v * 5) + 'ms'; })),
+    get: function(b) { return b[0xC2] < 11 ? b[0xC2] : 0; },
+    set: function(b, v) { b[0xC2] = v; }
+  },
+  bootsnd: {
+    zh: '开机音效', en: 'Boot Sound', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return b[0x174] & 1; },
+    set: function(b, v) { b[0x174] = (b[0x174] & 0xFE) | (v ? 1 : 0); }
+  },
+  breath: {
+    zh: '飞机灯', en: 'Breath LED', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return (b[0x174] >> 1) & 1; },
+    set: function(b, v) { b[0x174] = (b[0x174] & 0xFD) | (v ? 2 : 0); }
+  },
+  bltxrx: {
+    zh: '收发背光', en: 'Backlight TX/RX', type: 'select',
+    options: [
+      { v: 0, zh: '关', en: 'OFF' },
+      { v: 1, zh: '发射', en: 'TX' },
+      { v: 2, zh: '接收', en: 'RX' },
+      { v: 3, zh: '接收/发射', en: 'TX/RX' }
+    ],
+    get: function(b) { return (b[0x157] >> 6) & 3; },
+    set: function(b, v) { b[0x157] = (b[0x157] & 0x3F) | ((v & 3) << 6); }
+  },
+  setctr: {
+    zh: '设置对比度', en: 'Contrast', type: 'select',
+    options: mcNumOptions(1, 15),
+    get: function(b) { const v = b[0x15D] & 0x0F; return v > 0 ? v : 10; },
+    set: function(b, v) { b[0x15D] = (b[0x15D] & 0xF0) | (v & 0x0F); }
+  },
+  battxt: {
+    zh: '电池显示', en: 'Battery Display', type: 'select',
+    options: [
+      { v: 0, zh: '无', en: 'NONE' },
+      { v: 1, zh: '电压', en: 'VOLTAGE' },
+      { v: 2, zh: '百分比', en: 'PERCENT' }
+    ],
+    get: function(b) { const v = (b[0x157] >> 2) & 3; return v <= 2 ? v : 2; },
+    set: function(b, v) { b[0x157] = (b[0x157] & 0xF3) | ((v & 3) << 2); }
+  },
+  micbar: {
+    zh: '发射提示', en: 'TX Indicator', type: 'select',
+    options: [
+      { v: 0, zh: '关闭', en: 'OFF' },
+      { v: 1, zh: '弹窗', en: 'Popup' }
+    ],
+    get: function(b) { return ((b[0x157] >> 4) & 3) === 0 ? 0 : 1; },
+    set: function(b, v) { b[0x157] = (b[0x157] & 0xCF) | (v ? 0x10 : 0); }
+  },
+  spdisp: {
+    zh: '频谱显示', en: 'Spectrum Mode', type: 'select',
+    options: [
+      { v: 0, zh: '简单', en: 'Simple' },
+      { v: 1, zh: '专业', en: 'Expert' }
+    ],
+    get: function(b) { return b[0x14B] & 1; },
+    set: function(b, v) { b[0x14B] = (b[0x14B] & 0xFE) | (v ? 1 : 0); }
+  },
+  boothint: {
+    zh: '开机提示', en: 'Boot Hint', type: 'select',
+    visibleWhen: function(values) { return values.ponmsg === 1; },
+    options: [
+      { v: 0, zh: '叮咚鸡', en: 'Dondji' },
+      { v: 1, zh: '靓力北京', en: 'Beautiful BJ' },
+      { v: 2, zh: '五五节纪念版', en: 'happy 55th' }
+    ],
+    get: function(b) { return b[0x171] < 3 ? b[0x171] : 2; },
+    set: function(b, v) { b[0x171] = v; }
+  },
+  save: {
+    zh: '省电模式', en: 'Battery Save', type: 'select',
+    options: [{ v: 0, zh: '关', en: 'OFF' }].concat(mcNumOptions(1, 5)),
+    get: function(b) { return b[0x0B] < 6 ? b[0x0B] : 4; },
+    set: function(b, v) { b[0x0B] = v; }
+  },
+  rxmode: {
+    zh: '接收模式', en: 'RX Mode', type: 'select',
+    options: [
+      { v: 0, zh: '仅主信道', en: 'MAIN ONLY' },
+      { v: 1, zh: '双频守候', en: 'DUAL RX' },
+      { v: 2, zh: '跨段', en: 'CROSS BAND' },
+      { v: 3, zh: '主发双收', en: 'MAIN+TX' }
+    ],
+    get: function(b) { return (b[0x0C] !== 0 ? 1 : 0) + (b[0x0A] !== 0 ? 2 : 0); },
+    set: function(b, v) {
+      b[0x0C] = (v & 1) ? (b[0x0C] || 1) : 0;
+      b[0x0A] = (v & 2) ? (b[0x0A] || 1) : 0;
+    }
+  },
+  screv: {
+    zh: '扫描恢复', en: 'Scan Resume', type: 'select',
+    options: mcScRevOptions(),
+    get: function(b) { return b[0xAD] < 105 ? b[0xAD] : 14; },
+    set: function(b, v) { b[0xAD] = v; }
+  },
+  keyml: {
+    zh: 'MENU长按', en: 'MENU Long Press', type: 'select', options: MC_ACTIONS,
+    get: function(b) { return b[0xA8] >> 1; },
+    set: function(b, v) { b[0xA8] = (b[0xA8] & 0x01) | ((v & 0x7F) << 1); }
+  },
+  k1s: {
+    zh: '侧键1短按', en: 'Side Key 1 Short', type: 'select', options: MC_ACTIONS,
+    get: function(b) { return b[0xA9] < MC_ACTIONS.length ? b[0xA9] : 3; },
+    set: function(b, v) { b[0xA9] = v; }
+  },
+  k1l: {
+    zh: '侧键1长按', en: 'Side Key 1 Long', type: 'select', options: MC_ACTIONS,
+    get: function(b) { return b[0xAA] < MC_ACTIONS.length ? b[0xAA] : 0; },
+    set: function(b, v) { b[0xAA] = v; }
+  },
+  k2s: {
+    zh: '侧键2短按', en: 'Side Key 2 Short', type: 'select', options: MC_ACTIONS,
+    get: function(b) { return b[0xAB] < MC_ACTIONS.length ? b[0xAB] : 4; },
+    set: function(b, v) { b[0xAB] = v; }
+  },
+  k2l: {
+    zh: '侧键2长按', en: 'Side Key 2 Long', type: 'select', options: MC_ACTIONS,
+    get: function(b) { return b[0xAC] < MC_ACTIONS.length ? b[0xAC] : 0; },
+    set: function(b, v) { b[0xAC] = v; }
+  },
+  autolk: {
+    zh: '自动锁键', en: 'Auto Keypad Lock', type: 'select',
+    options: [{ v: 0, zh: '关', en: 'OFF' }].concat(mcNumOptions(1, 40, function(v) { return v + 'min'; })),
+    get: function(b) { return b[0xAE] < 41 ? b[0xAE] : 0; },
+    set: function(b, v) { b[0xAE] = v; }
+  },
+  yanid: {
+    zh: 'Yan ID', en: 'Yan ID', type: 'text',
+    hint: { zh: '留空禁用；1–6 位 A–Z / 0–9', en: 'empty to disable; 1-6 chars A-Z / 0-9' },
+    get: function(b) {
+      let s = '';
+      for (let i = 0; i < 6; i++) {
+        const c = b[0x88 + i];
+        if (c <= 0x20 || c >= 0x7F) break;
+        s += String.fromCharCode(c);
+      }
+      return s;
+    },
+    set: function(b, v) {
+      for (let i = 0; i < 6; i++) {
+        b[0x88 + i] = i < v.length ? v.charCodeAt(i) : 0x00;
+      }
+    }
+  },
+  yanidrx: {
+    zh: '接收 Yan ID', en: 'RX Yan ID', type: 'select', options: MC_ON_OFF,
+    visibleWhen: function(values) { return values.roger === 3; },
+    get: function(b) { return b[0x8F] === 1 ? 1 : 0; },
+    set: function(b, v) { b[0x8F] = v ? 1 : 0; }
+  },
+  mdcrx: {
+    zh: '接收MDC ID', en: 'RX MDC ID', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return b[0x8E] === 1 ? 1 : 0; },
+    set: function(b, v) { b[0x8E] = v ? 1 : 0; }
+  },
+  sclist: {
+    zh: '扫描列表', en: 'Scan List', type: 'select',
+    options: mcNumOptions(1, 24, function(v) { return String(v).padStart(2, '0'); }).concat([{ v: 25, zh: '全部', en: 'ALL' }]),
+    hint: { zh: '开机默认扫描列表；25=全部', en: 'default scan list; 25=ALL' },
+    get: function(b) { const v = b[0x130] & 0x7F; return (v >= 1 && v <= 25) ? v : 1; },
+    set: function(b, v) { b[0x130] = (b[0x130] & 0x80) | (v & 0x7F); }
+  },
+  scpri: {
+    zh: '优先扫描', en: 'Priority Scan', type: 'select', options: MC_ON_OFF,
+    get: function(b) { return (b[0x130] >> 7) & 1; },
+    set: function(b, v) { b[0x130] = (b[0x130] & 0x7F) | (v ? 0x80 : 0); }
+  },
+  sprich1: {
+    zh: '优先信道1', en: 'Priority CH 1', type: 'number', min: 0, max: 1024, step: 1,
+    hint: { zh: '0=无；1–1024 对应 CH1–CH1024', en: '0=None; 1-1024 = CH1-CH1024' },
+    get: function(b) { const v = b[0x131] | (b[0x132] << 8); return v >= 1024 ? 0 : v + 1; },
+    set: function(b, v) { const f = (v === 0) ? 1024 : (v - 1); b[0x131] = f & 0xFF; b[0x132] = (f >> 8) & 0xFF; }
+  },
+  sprich2: {
+    zh: '优先信道2', en: 'Priority CH 2', type: 'number', min: 0, max: 1024, step: 1,
+    hint: { zh: '0=无；1–1024 对应 CH1–CH1024', en: '0=None; 1-1024 = CH1-CH1024' },
+    get: function(b) { const v = b[0x133] | (b[0x134] << 8); return v >= 1024 ? 0 : v + 1; },
+    set: function(b, v) { const f = (v === 0) ? 1024 : (v - 1); b[0x133] = f & 0xFF; b[0x134] = (f >> 8) & 0xFF; }
+  },
+  setlck: {
+    zh: '锁键范围', en: 'Lock Scope', type: 'select',
+    options: [
+      { v: 0, zh: '仅键盘', en: 'KEYS' },
+      { v: 1, zh: '键盘+PTT', en: 'KEYS+PTT' }
+    ],
+    get: function(b) { return (b[0x15D] >> 5) & 1; },
+    set: function(b, v) { b[0x15D] = (b[0x15D] & 0xDF) | (v ? 0x20 : 0); }
+  },
+  onecall: {
+    zh: '按键即呼', en: 'One-Key Call', type: 'number', min: 0, max: 1024, step: 1,
+    hint: { zh: '0=无；1–1024 对应 CH1–CH1024', en: '0=None; 1-1024 = CH1-CH1024' },
+    get: function(b) { const v = b[0x135] | (b[0x136] << 8); return v >= 1024 ? 0 : v + 1; },
+    set: function(b, v) { const f = (v === 0) ? 1024 : (v - 1); b[0x135] = f & 0xFF; b[0x136] = (f >> 8) & 0xFF; }
+  },
+  setpwr: {
+    zh: '设置功率', en: 'Set Power', type: 'select',
+    options: [
+      { v: 0, zh: '< 20m', en: '< 20m' },
+      { v: 1, zh: '125m', en: '125m' },
+      { v: 2, zh: '250m', en: '250m' },
+      { v: 3, zh: '500m', en: '500m' },
+      { v: 4, zh: '1', en: '1' },
+      { v: 5, zh: '2', en: '2' },
+      { v: 6, zh: '5', en: '5' }
+    ],
+    get: function(b) { const v = (b[0x15F] >> 4) & 0x0F; return v < 7 ? v : 0; },
+    set: function(b, v) { b[0x15F] = (b[0x15F] & 0x0F) | ((v & 0x0F) << 4); }
+  },
+  setaudfm: {
+    zh: '音频FM预设', en: 'Audio FM Preset', type: 'select',
+    options: [
+      { v: 0, zh: 'FLAT', en: 'FLAT' },
+      { v: 1, zh: 'CLEAN', en: 'CLEAN' },
+      { v: 2, zh: 'MID', en: 'MID' },
+      { v: 3, zh: 'BOOST', en: 'BOOST' },
+      { v: 4, zh: 'MAX', en: 'MAX' }
+    ],
+    get: function(b) { const v = b[0x00] & 0x0F; return v < 5 ? v : 0; },
+    set: function(b, v) { b[0x00] = (b[0x00] & 0xF0) | (v & 0x0F); }
+  },
+  setoff: {
+    zh: '进入休眠', en: 'Sleep Timeout', type: 'select',
+    options: [{ v: 0, zh: '关', en: 'OFF' }].concat(mcNumOptions(1, 120, function(v) { return Math.floor(v / 60) + 'h:' + String(v % 60).padStart(2, '0') + 'm'; })),
+    get: function(b) { const v = b[0x15C] >> 1; return v > 120 ? 60 : v; },
+    set: function(b, v) { b[0x15C] = (b[0x15C] & 0x01) | ((v & 0x7F) << 1); }
+  },
+  setnfm: {
+    zh: '设置窄带', en: 'Set NFM', type: 'select',
+    options: [
+      { v: 0, zh: '窄带', en: 'NARROW' },
+      { v: 1, zh: '更窄', en: 'NARROWER' }
+    ],
+    get: function(b) { return (b[0x0E] >> 1) & 1; },
+    set: function(b, v) { b[0x0E] = (b[0x0E] & 0xFD) | (v ? 0x02 : 0); }
+  }
+};
+
+/* 分组与组内顺序对应固件图标主菜单（信道/设置/显示/其它/关于）：
+   「设置」「显示」「其它」三个图标分组；「信道」为信道级设置由写频页管理、「关于」为只读信息，均不在此展示。
+   不显示：固件隐藏/排除项（信道显示、声控、电池类型、导航键、设置定时、设置音量(存于配置区外)等），
+   以及按需求移除的语音、报警、音频AM预设、设置按键、设NWR。选项文案与固件 ui/menu_sub_values_cn.c 一致。 */
+const MC_FIELD_GROUPS = [
+  { zh: '设置', en: 'Settings', fields: ['sql', 'roger', 'mdcid', 'yanid', 'yanidrx', 'mdcrx', 'ste', 'rpste', 'beep', 'mic', 'k1s', 'k1l', 'k2s', 'k2l', 'keyml', 'bootsnd'] },
+  { zh: '显示', en: 'Display', fields: ['lang', 'rxmode', 'ponmsg', 'boothint', 'abr', 'abrmin', 'abrmax', 'bltxrx', 'setctr', 'battxt', 'micbar', 'spdisp', 'breath'] },
+  { zh: '其它', en: 'Other', fields: ['sclist', 'scpri', 'sprich1', 'sprich2', 'screv', 'autolk', 'setlck', 'tot', 'save', 'onecall', 'setpwr', 'setaudfm', 'setoff', 'setnfm'] }
+];
+
+function mcLang() {
+  return (window.getCurrentLang && window.getCurrentLang() === 'en') ? 'en' : 'zh';
+}
+
+function mcL(pairs) {
+  if (pairs === undefined || pairs === null) return '';
+  if (typeof pairs === 'string') return pairs;
+  return pairs[mcLang()] || pairs.zh || pairs.en || '';
+}
+
+function mcStatus(text, isError) {
+  const el = $('modifycfgStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#f85149' : '';
+}
+
+/** 解码全部字段（值 = 固件加载后的等效值） */
+function mcDecodeAll(buf) {
+  const values = {};
+  Object.keys(MC_FIELDS).forEach(function(id) {
+    values[id] = MC_FIELDS[id].get(buf);
+  });
+  return values;
+}
+
+/** 生成表单 DOM；values 为各字段当前值 */
+function mcBuildForm(values) {
+  const root = $('modifycfgForm');
+  if (!root) return;
+  const lang = mcLang();
+  root.replaceChildren();
+  MC_FIELD_GROUPS.forEach(function(group) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'cfgedit-group';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'cfgedit-group-title';
+    titleEl.textContent = group[lang] || group.zh;
+    groupEl.appendChild(titleEl);
+    const gridEl = document.createElement('div');
+    gridEl.className = 'cfgedit-grid';
+    group.fields.forEach(function(id) {
+      const def = MC_FIELDS[id];
+      const fieldEl = document.createElement('label');
+      fieldEl.className = 'cfgedit-field';
+      const labelEl = document.createElement('span');
+      labelEl.className = 'cfgedit-label';
+      labelEl.textContent = def[lang] || def.zh;
+      fieldEl.appendChild(labelEl);
+      let control;
+      if (def.type === 'select') {
+        control = document.createElement('select');
+        control.className = 'cfgedit-control';
+        const groups = {};
+        const plain = [];
+        def.options.forEach(function(opt) {
+          const optEl = document.createElement('option');
+          optEl.value = String(opt.v);
+          optEl.textContent = opt[lang] || opt.zh;
+          if (opt.group) {
+            if (!groups[opt.group]) {
+              groups[opt.group] = document.createElement('optgroup');
+              groups[opt.group].label = opt.group === 'carrier'
+                ? (lang === 'en' ? 'Carrier resume' : '载波恢复')
+                : (lang === 'en' ? 'Timeout resume' : '超时恢复');
+            }
+            groups[opt.group].appendChild(optEl);
+          } else {
+            plain.push(optEl);
+          }
+        });
+        plain.forEach(function(o) { control.appendChild(o); });
+        Object.keys(groups).forEach(function(k) { control.appendChild(groups[k]); });
+        mcSetSelectValue(control, values[id]);
+      } else if (def.type === 'number') {
+        control = document.createElement('input');
+        control.type = 'number';
+        control.className = 'cfgedit-control';
+        control.min = String(def.min);
+        control.max = String(def.max);
+        control.step = String(def.step || 1);
+        control.value = String(values[id]);
+      } else {
+        control = document.createElement('input');
+        control.type = 'text';
+        control.className = 'cfgedit-control';
+        control.maxLength = def.maxLength || 6;
+        control.spellcheck = false;
+        control.value = String(values[id]);
+      }
+      control.dataset.mcField = id;
+      control.addEventListener('change', mcSyncDirtyState);
+      control.addEventListener('input', mcSyncDirtyState);
+      fieldEl.appendChild(control);
+      if (def.hint) {
+        const hintEl = document.createElement('span');
+        hintEl.className = 'cfgedit-hint';
+        hintEl.textContent = mcL(def.hint);
+        fieldEl.appendChild(hintEl);
+      }
+      gridEl.appendChild(fieldEl);
+    });
+    groupEl.appendChild(gridEl);
+    root.appendChild(groupEl);
+  });
+  mcSyncConditionalFields(values);
+}
+
+/* 固件菜单条件显隐（与 MENU_IsMenuIdExcludedFromBrowse 一致）：
+   发射尾音=Yan ID 时才显示「接收 Yan ID」；开机画面=默认时才显示「开机提示」 */
+function mcSyncConditionalFields(values) {
+  const root = $('modifycfgForm');
+  if (!root) return;
+  root.querySelectorAll('[data-mc-field]').forEach(function(control) {
+    const def = MC_FIELDS[control.dataset.mcField];
+    if (!def || !def.visibleWhen) return;
+    const fieldEl = control.closest('.cfgedit-field');
+    if (fieldEl) fieldEl.hidden = !def.visibleWhen(values);
+  });
+}
+
+/** select 赋值：无匹配选项时（如 Flash 残留超范围值）动态补一项「当前值」 */
+function mcSetSelectValue(sel, v) {
+  const s = String(v);
+  let has = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === s) { has = true; break; }
+  }
+  if (!has) {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = (mcLang() === 'en' ? 'Current: ' : '当前值 ') + s;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+  sel.value = s;
+}
+
+/** 从 DOM 收集表单值 */
+function mcCollectForm() {
+  const values = {};
+  const root = $('modifycfgForm');
+  if (!root) return values;
+  root.querySelectorAll('[data-mc-field]').forEach(function(control) {
+    const id = control.dataset.mcField;
+    const def = MC_FIELDS[id];
+    if (!def) return;
+    if (def.type === 'select') {
+      values[id] = parseInt(control.value, 10);
+    } else if (def.type === 'number') {
+      values[id] = control.value.trim() === '' ? NaN : parseFloat(control.value);
+    } else {
+      values[id] = control.value.trim().toUpperCase();
+    }
+  });
+  return values;
+}
+
+/** 与读取时的原值比对，高亮变化项并更新状态行 */
+function mcSyncDirtyState() {
+  const values = mcCollectForm();
+  mcSyncConditionalFields(values);
+  if (!modifyCfgOriginal) return;
+  const origValues = mcDecodeAll(modifyCfgOriginal);
+  let dirtyCount = 0;
+  const root = $('modifycfgForm');
+  if (root) {
+    root.querySelectorAll('[data-mc-field]').forEach(function(control) {
+      const id = control.dataset.mcField;
+      const changed = String(values[id]) !== String(origValues[id]);
+      control.classList.toggle('cfgedit-dirty', changed);
+      if (changed) dirtyCount++;
+    });
+  }
+  if (dirtyCount > 0) {
+    mcStatus(mcLang() === 'en' ? (dirtyCount + ' setting(s) modified') : ('已修改 ' + dirtyCount + ' 项设置'), false);
+  } else {
+    mcStatus(mcLang() === 'en' ? 'No changes yet' : '暂无修改', false);
+  }
+}
+
+/** 写入前校验，返回错误信息数组 */
+function mcValidate(values) {
+  const errs = [];
+  const lang = mcLang();
+  const max = values.abrmax, min = values.abrmin;
+  if (max === 0) {
+    if (min !== 0) values.abrmin = 0;   // max=0 时固件强制 min=0，静默归一
+  } else if (min >= max) {
+    errs.push(lang === 'en'
+      ? 'Backlight min must be less than backlight max'
+      : '背光最暗必须小于背光最亮');
+  }
+  const tot = values.tot;
+  if (!Number.isFinite(tot) || tot < 30 || tot > 900 || Math.round(tot) !== tot || tot % 5 !== 0) {
+    errs.push(lang === 'en'
+      ? 'TX timeout must be 30-900 seconds in steps of 5'
+      : '发射限时须为 30–900 秒且为 5 的倍数');
+  }
+  const yanid = values.yanid;
+  if (!/^[A-Z0-9]{0,6}$/.test(yanid)) {
+    errs.push(lang === 'en'
+      ? 'Yan ID: 1-6 chars A-Z / 0-9 (empty to disable)'
+      : 'Yan ID 须为 1–6 位 A–Z / 0–9（留空禁用）');
+  }
+  const mdcid = values.mdcid;
+  if (!/^[0-9A-F]{1,4}$/.test(mdcid)) {
+    errs.push(lang === 'en'
+      ? 'MDC ID: 1-4 hex digits (0-9, A-F)'
+      : 'MDC ID 须为 1–4 位十六进制（0–9、A–F）');
+  }
+  const mcChanNames = {
+    sprich1: lang === 'en' ? 'Priority CH 1' : '优先信道1',
+    sprich2: lang === 'en' ? 'Priority CH 2' : '优先信道2',
+    onecall: lang === 'en' ? 'One-Key Call' : '按键即呼'
+  };
+  Object.keys(mcChanNames).forEach(function(id) {
+    const v = values[id];
+    if (!Number.isFinite(v) || Math.round(v) !== v || v < 0 || v > 1024) {
+      errs.push(lang === 'en'
+        ? mcChanNames[id] + ': enter 0-1024 (0 = none)'
+        : mcChanNames[id] + '：请输入 0–1024（0 = 无）');
+    }
+  });
+  return errs;
+}
+
+/** 把表单值应用到目标镜像 */
+function mcApplyAll(buf, values) {
+  Object.keys(MC_FIELDS).forEach(function(id) {
+    if (values[id] === undefined) return;
+    MC_FIELDS[id].set(buf, values[id]);
+  });
+}
+
+async function modifycfgReadFromDevice() {
+  if (isModifyCfgBusy) return;
+  isModifyCfgBusy = true;
+  const readBtn = $('modifycfgReadBtn');
+  const writeBtn = $('modifycfgWriteBtn');
+  if (readBtn) readBtn.disabled = true;
+  if (writeBtn) writeBtn.disabled = true;
+  $('progressContainer').style.display = 'block';
+  updateProgress(0);
+  try {
+    if (!port) await connect();
+    readBuffer = [];
+    await sleep(1000);
+    const session = await requestDeviceInfoForCalib(window.t ? window.t('mcPurpose') : '配置');
+    const sessionTs = session.timestamp;
+    log(window.t ? window.t('logModifyCfgReading') : '正在读取设备配置...', 'info');
+    const data = new Uint8Array(CONFIG_FLASH_SIZE);
+    for (let i = 0; i < CONFIG_FLASH_SIZE; i += MC_AREA_CHUNK) {
+      const len = Math.min(MC_AREA_CHUNK, CONFIG_FLASH_SIZE - i);
+      const chunk = await spiFlashReadChunk(sessionTs, CONFIG_FLASH_BASE + i, len);
+      if (!chunk || chunk.length !== len) {
+        throw new Error('读取失败 @ 0x' + (CONFIG_FLASH_BASE + i).toString(16));
+      }
+      data.set(chunk, i);
+      updateProgress((i / CONFIG_FLASH_SIZE) * 100);
+    }
+    updateProgress(100);
+    modifyCfgOriginal = data;
+    mcBuildForm(mcDecodeAll(data));
+    mcStatus(mcLang() === 'en' ? 'Config loaded below' : '配置已读取并填充到下方表单', false);
+    log(window.t ? window.t('logModifyCfgReadOk') : '配置读取完成，已填充到表单', 'success');
+    if (writeBtn) writeBtn.disabled = false;
+  } catch (e) {
+    log(window.t ? window.t('logModifyCfgReadFailed', {msg: e.message}) : '配置读取失败: ' + e.message, 'error');
+  } finally {
+    isModifyCfgBusy = false;
+    if (readBtn) readBtn.disabled = false;
+    if (port) await disconnect();
+    setTimeout(() => { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+  }
+}
+
+async function modifycfgWriteToDevice() {
+  if (isModifyCfgBusy) return;
+  if (!modifyCfgOriginal) {
+    mcStatus(mcLang() === 'en' ? 'Read config from device first' : '请先从设备读取配置', true);
+    return;
+  }
+  const values = mcCollectForm();
+  const errs = mcValidate(values);
+  if (errs.length > 0) {
+    mcStatus((mcLang() === 'en' ? 'Validation failed: ' : '校验未通过：') + errs.join('；'), true);
+    log(window.t ? window.t('logModifyCfgValidateFailed') : '配置校验未通过，未写入设备', 'error');
+    return;
+  }
+  if (values.roger === 3 && values.yanid === '') {
+    log(window.t ? window.t('logModifyCfgRogerYanWarn') : '提示：发射尾音选择 Yan ID 但 Yan ID 为空，发射时将无尾音', 'warning');
+  }
+  isModifyCfgBusy = true;
+  const readBtn = $('modifycfgReadBtn');
+  const writeBtn = $('modifycfgWriteBtn');
+  if (readBtn) readBtn.disabled = true;
+  if (writeBtn) writeBtn.disabled = true;
+  $('progressContainer').style.display = 'block';
+  updateProgress(0);
+  let writePhaseStarted = false;
+  try {
+    if (!port) await connect();
+    readBuffer = [];
+    await sleep(1000);
+    const session = await requestDeviceInfoForCalib(window.t ? window.t('mcPurpose') : '配置');
+    const sessionTs = session.timestamp;
+    // 重新读取当前镜像作为写入基线（防止表单读取后设备状态发生变化）
+    const current = new Uint8Array(CONFIG_FLASH_SIZE);
+    for (let i = 0; i < CONFIG_FLASH_SIZE; i += MC_AREA_CHUNK) {
+      const len = Math.min(MC_AREA_CHUNK, CONFIG_FLASH_SIZE - i);
+      const chunk = await spiFlashReadChunk(sessionTs, CONFIG_FLASH_BASE + i, len);
+      if (!chunk || chunk.length !== len) {
+        throw new Error('读取失败 @ 0x' + (CONFIG_FLASH_BASE + i).toString(16));
+      }
+      current.set(chunk, i);
+      updateProgress((i / CONFIG_FLASH_SIZE) * 30);
+    }
+    const target = new Uint8Array(current);
+    mcApplyAll(target, values);
+    // 差异区块写入 + 回读校验
+    writePhaseStarted = true;
+    let writtenChunks = 0;
+    for (let off = 0; off < CONFIG_FLASH_SIZE; off += MC_WRITE_CHUNK) {
+      const tgt = target.subarray(off, off + MC_WRITE_CHUNK);
+      if (wfBytesEqual(current.subarray(off, off + MC_WRITE_CHUNK), tgt)) continue;
+      const ok = await spiFlashWriteChunk(sessionTs, CONFIG_FLASH_BASE + off, tgt);
+      let verify = ok ? await spiFlashReadChunk(sessionTs, CONFIG_FLASH_BASE + off, MC_WRITE_CHUNK) : null;
+      if (!ok || !verify || !wfBytesEqual(verify, tgt)) {
+        const retryOk = await spiFlashWriteChunk(sessionTs, CONFIG_FLASH_BASE + off, tgt);
+        verify = await spiFlashReadChunk(sessionTs, CONFIG_FLASH_BASE + off, MC_WRITE_CHUNK);
+        if (!retryOk || !verify || !wfBytesEqual(verify, tgt)) {
+          throw new Error('回读校验失败 @ 0x' + (CONFIG_FLASH_BASE + off).toString(16) + '（其后区块未写入）');
+        }
+      }
+      writtenChunks++;
+      updateProgress(30 + 70 * ((off + MC_WRITE_CHUNK) / CONFIG_FLASH_SIZE));
+    }
+    updateProgress(100);
+    if (writtenChunks === 0) {
+      log(window.t ? window.t('logModifyCfgNoChange') : '配置无变化，未写入任何数据', 'info');
+    } else {
+      log(window.t
+        ? window.t('logModifyCfgWriteOk', {chunks: writtenChunks})
+        : '配置写入完成：共写入 ' + writtenChunks + ' 个差异区块，已全部回读校验一致，设备正在重启...',
+        'success');
+      modifyCfgOriginal = target.slice();
+      mcBuildForm(mcDecodeAll(modifyCfgOriginal));
+      mcStatus(mcLang() === 'en' ? 'Config written and verified' : '配置已写入并校验一致', false);
+      await sendMessage(createMessage(MSG_REBOOT, 0));
+      await sleep(500);
+      log(window.t ? window.t('logRebootSent') : '已发送重启指令（设备将自动复位）', 'success');
+    }
+  } catch (e) {
+    log(window.t ? window.t('logModifyCfgWriteFailed', {msg: e.message}) : '配置写入失败: ' + e.message, 'error');
+    if (writePhaseStarted) {
+      log(window.t ? window.t('logModifyCfgPartialHint') : '设备可能处于部分写入状态：错误位置之后的区块保留原数据，重新执行写入即可完整覆盖', 'warning');
+    }
+  } finally {
+    isModifyCfgBusy = false;
+    if (readBtn) readBtn.disabled = false;
+    if (writeBtn) writeBtn.disabled = !modifyCfgOriginal;
+    if (port) await disconnect();
+    setTimeout(() => { $('progressContainer').style.display = 'none'; updateProgress(0); }, 800);
+  }
+}
+
+(function initModifyCfgTab() {
+  const readBtn = $('modifycfgReadBtn');
+  const writeBtn = $('modifycfgWriteBtn');
+  if (!readBtn || !writeBtn) return;
+  readBtn.addEventListener('click', function() { modifycfgReadFromDevice(); });
+  writeBtn.addEventListener('click', function() { modifycfgWriteToDevice(); });
+  mcBuildForm(mcDecodeAll(new Uint8Array(CONFIG_FLASH_SIZE)));
+  window.addEventListener('langchange', function() {
+    if (!modifyCfgOriginal) {
+      mcBuildForm(mcDecodeAll(new Uint8Array(CONFIG_FLASH_SIZE)));
+      return;
+    }
+    mcBuildForm(mcCollectForm());
+    mcSyncDirtyState();
+  });
+})();
+
 // ========== CAPABILITY CHECK ==========
 if (!('serial' in navigator)) {
   log(window.t ? window.t('logWebSerialUnsupported') : '浏览器不支持 Web Serial API，请使用 Chrome/Edge/Opera', 'error');
@@ -1731,6 +2537,10 @@ if (!('serial' in navigator)) {
   $('restoreBtn').disabled = true;
   $('backupCfgBtn').disabled = true;
   $('restoreCfgBtn').disabled = true;
+  const mcRead = $('modifycfgReadBtn');
+  const mcWrite = $('modifycfgWriteBtn');
+  if (mcRead) mcRead.disabled = true;
+  if (mcWrite) mcWrite.disabled = true;
   const wfRead = $('writefreqReadBtn');
   const wfWrite = $('writefreqWriteBtn');
   if (wfRead) wfRead.disabled = true;

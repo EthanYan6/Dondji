@@ -444,10 +444,8 @@ a.subtitle-chip:focus-visible {
 /* Tabs */
 .tabs {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 2px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border-default);
@@ -457,6 +455,14 @@ a.subtitle-chip:focus-visible {
   margin-right: auto;
   background: linear-gradient(180deg, transparent 0%, rgba(88, 166, 255, 0.03) 100%);
   padding-top: 8px;
+}
+.tabs-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
 }
 .tab {
   background: linear-gradient(180deg, rgba(88, 166, 255, 0.08) 0%, rgba(88, 166, 255, 0.02) 100%);
@@ -889,6 +895,27 @@ button.btn-with-icon {
 .mdcbook-table .mdcbook-row-delete-btn svg { width: 16px; height: 16px; display: block; }
 .mdcbook-row-invalid input.mdcbook-id-input,
 .mdcbook-row-invalid input.mdcbook-name-input { border-color: #f85149; }
+
+/* 修改配置 */
+#modifycfg-content { width: 100%; max-width: 920px; }
+.cfgedit-form { display: flex; flex-direction: column; gap: 14px; }
+.cfgedit-group { border: 1px solid var(--border-default); border-radius: 6px; padding: 12px 14px 8px; background: var(--bg-elevated); }
+.cfgedit-group-title { font-size: 0.9em; font-weight: 600; color: var(--accent); margin-bottom: 10px; letter-spacing: 0.02em; }
+.cfgedit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 18px; }
+.cfgedit-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cfgedit-field[hidden] { display: none; }
+.cfgedit-label { font-size: 0.82em; color: var(--text-muted); }
+.cfgedit-control {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  background: var(--bg-input); border: 1px solid var(--border-strong); color: var(--text-primary);
+  border-radius: 4px; padding: 6px 8px; font-size: 0.95em;
+}
+.cfgedit-control:focus { outline: none; border-color: var(--accent); }
+.cfgedit-hint { font-size: 0.78em; color: var(--text-subtle); line-height: 1.4; }
+.cfgedit-dirty { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.25); }
+@media (max-width: 560px) {
+  .cfgedit-grid { grid-template-columns: 1fr 1fr; }
+}
 
 .writefreq-table { width: 100%; border-collapse: collapse; font-size: 0.82em; min-width: 1200px; }
 .writefreq-table th, .writefreq-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; }
@@ -1622,7 +1649,7 @@ html.theme-light .calib-check-modal__backdrop {
   .container { max-width: 100%; padding: 16px 12px; }
   .timeline-sidebar { order: 2; flex: none; width: 100%; height: auto; position: static; border-right: none; border-top: 1px solid var(--border-default); border-bottom: none; padding: 20px; max-height: none; }
   .h1 { font-size: 1.3em; }
-  .tabs { flex-wrap: wrap; }
+  .tabs-row { flex-wrap: wrap; justify-content: center; }
   .tab { padding: 8px 12px; font-size: 0.8em; }
   .flash-steps-bar { padding: 10px 12px; font-size: 0.8em; }
   .flash-step-tooltip {

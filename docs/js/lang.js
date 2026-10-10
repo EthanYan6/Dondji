@@ -115,6 +115,12 @@
       'tabBackupcfg': '备份配置',
       'tabRestorecfg': '恢复配置',
       'tabToolbox': '应急工具箱',
+      'tabModifycfg': '修改配置',
+
+      // Modify config tab
+      'modifyCfgDesc1': '从设备读取当前配置（菜单设置项），在网页中直接修改后写回，无需在机器上逐项调整。仅写入有变化的字节，写回后自动回读校验并重启设备。',
+      'modifyCfgWarning': '⚠️ 请先正常开机进入使用界面后再连接 USB 操作；修改前建议先在「备份配置」页导出一份备份。',
+      'mcPurpose': '配置',
 
       // MDC address book tab
       'mdcbookLead': 'MDC1200 通讯录：将 MDC ID 与呼号（英文/数字，最长 6 字符，如 BD1AHN）写入电台。固件收到匹配 ID 时，弹窗直接显示呼号；未匹配则仍显示 4 位十六进制 ID。',
@@ -303,6 +309,15 @@
     'logConfigFileLoaded': '配置文件已加载: {name}',
     'logRestoreConfig': '恢复配置数据...',
     'logConfigRestoreComplete': '配置数据恢复完成！正在重启...',
+    'logModifyCfgReading': '正在读取设备配置...',
+    'logModifyCfgReadOk': '配置读取完成，已填充到表单',
+    'logModifyCfgReadFailed': '配置读取失败: {msg}',
+    'logModifyCfgValidateFailed': '配置校验未通过，未写入设备',
+    'logModifyCfgRogerYanWarn': '提示：发射尾音选择 Yan ID 但 Yan ID 为空，发射时将无尾音',
+    'logModifyCfgNoChange': '配置无变化，未写入任何数据',
+    'logModifyCfgWriteOk': '配置写入完成：共写入 {chunks} 个差异区块，已全部回读校验一致，设备正在重启...',
+    'logModifyCfgWriteFailed': '配置写入失败: {msg}',
+    'logModifyCfgPartialHint': '设备可能处于部分写入状态：错误位置之后的区块保留原数据，重新执行写入即可完整覆盖',
     'logWebSerialUnsupported': '浏览器不支持 Web Serial API，请使用 Chrome/Edge/Opera',
     'logWritefreqReadFailed': '写频读取失败: {msg}',
     'logWritefreqReadSuccess': '表格已清空后，已从设备填入 {count} 条（已跳过未使用槽，以及不符合完整校验的槽：RX 范围、有效功率、属性 band 与频率一致、亚音可解析）；已扫描 {scanned} 槽',
@@ -576,6 +591,12 @@
       'tabBackupcfg': 'Backup Config',
       'tabRestorecfg': 'Restore Config',
       'tabToolbox': 'Toolbox',
+      'tabModifycfg': 'Modify Config',
+
+      // Modify config tab
+      'modifyCfgDesc1': 'Read the current config (menu settings) from the radio, edit it in the browser and write it back — no need to tweak items one by one on the device. Only changed bytes are written, verified by read-back, then the radio reboots.',
+      'modifyCfgWarning': '⚠️ Boot the radio into the normal UI before connecting USB; export a backup on the Backup Config tab before modifying.',
+      'mcPurpose': 'config',
 
       // MDC address book tab
       'mdcbookLead': 'MDC1200 address book: map MDC IDs to call signs (A–Z / 0–9, max 6 chars, e.g. BD1AHN). On a matching ID the radio popup shows the call sign; unmatched IDs still show as 4-digit hex.',
@@ -767,6 +788,15 @@
     'logConfigFileLoaded': 'Config file loaded: {name}',
     'logRestoreConfig': 'Restoring config data...',
     'logConfigRestoreComplete': 'Config restore complete! Rebooting...',
+    'logModifyCfgReading': 'Reading device config...',
+    'logModifyCfgReadOk': 'Config read complete, form filled',
+    'logModifyCfgReadFailed': 'Config read failed: {msg}',
+    'logModifyCfgValidateFailed': 'Config validation failed, nothing written',
+    'logModifyCfgRogerYanWarn': 'Note: roger beep is set to Yan ID but Yan ID is empty — transmissions will have no roger tone',
+    'logModifyCfgNoChange': 'No changes in config, nothing written',
+    'logModifyCfgWriteOk': 'Config write complete: {chunks} changed blocks written, all verified by read-back, radio is rebooting...',
+    'logModifyCfgWriteFailed': 'Config write failed: {msg}',
+    'logModifyCfgPartialHint': 'Device may be partially written: blocks after the error keep original data; re-run the write to fully overwrite',
     'logWebSerialUnsupported': 'Browser does not support Web Serial API, please use Chrome/Edge/Opera',
     'logWritefreqReadFailed': 'Writefreq read failed: {msg}',
     'logWritefreqReadSuccess': 'Table cleared and filled {count} channels from device (skipped unused slots and invalid slots: RX range, valid power, band matches frequency, parseable tones); scanned {scanned} slots',

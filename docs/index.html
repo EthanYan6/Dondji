@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>UV-K1 / UV-K5(K6) V3</title>
-  <link rel="stylesheet" href="css/style.min.css?v=20260823a">
+  <link rel="stylesheet" href="css/style.min.css?v=20261011d">
   <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script>
   <script>
     (function () {
@@ -331,16 +331,21 @@
     <div class="container">
     <!-- TABS -->
     <div class="tabs" role="tablist">
-      <button class="tab" type="button" data-tab="dump" id="tabDump" data-i18n="tabDump">备份校准</button>
-      <button class="tab active" type="button" data-tab="flash" id="tabFlash" data-i18n="tabFlash">刷固件</button>
-      <button class="tab" type="button" data-tab="font" id="tabFont" data-i18n="tabFont">刷字库</button>
-      <button class="tab" type="button" data-tab="restore" id="tabRestore" data-i18n="tabRestore">恢复校准</button>
-      <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq" data-i18n="tabWritefreq">写频</button>
-      <button class="tab" type="button" data-tab="mdcbook" id="tabMdcbook" data-i18n="tabMdcbook">MDC通讯录</button>
-      <button class="tab" type="button" data-tab="logo" id="tabLogo" data-i18n="tabLogo">开机图片</button>
-      <button class="tab" type="button" data-tab="backupcfg" id="tabBackupcfg" data-i18n="tabBackupcfg">备份配置</button>
-      <button class="tab" type="button" data-tab="restorecfg" id="tabRestorecfg" data-i18n="tabRestorecfg">恢复配置</button>
-      <button class="tab" type="button" data-tab="toolbox" id="tabToolbox" data-i18n="tabToolbox">应急工具箱</button>
+      <div class="tabs-row">
+        <button class="tab" type="button" data-tab="dump" id="tabDump" data-i18n="tabDump">备份校准</button>
+        <button class="tab active" type="button" data-tab="flash" id="tabFlash" data-i18n="tabFlash">刷固件</button>
+        <button class="tab" type="button" data-tab="font" id="tabFont" data-i18n="tabFont">刷字库</button>
+        <button class="tab" type="button" data-tab="restore" id="tabRestore" data-i18n="tabRestore">恢复校准</button>
+        <button class="tab" type="button" data-tab="writefreq" id="tabWritefreq" data-i18n="tabWritefreq">写频</button>
+        <button class="tab" type="button" data-tab="mdcbook" id="tabMdcbook" data-i18n="tabMdcbook">MDC通讯录</button>
+        <button class="tab" type="button" data-tab="logo" id="tabLogo" data-i18n="tabLogo">开机图片</button>
+      </div>
+      <div class="tabs-row">
+        <button class="tab" type="button" data-tab="modifycfg" id="tabModifycfg" data-i18n="tabModifycfg">修改配置</button>
+        <button class="tab" type="button" data-tab="backupcfg" id="tabBackupcfg" data-i18n="tabBackupcfg">备份配置</button>
+        <button class="tab" type="button" data-tab="restorecfg" id="tabRestorecfg" data-i18n="tabRestorecfg">恢复配置</button>
+        <button class="tab" type="button" data-tab="toolbox" id="tabToolbox" data-i18n="tabToolbox">应急工具箱</button>
+      </div>
     </div>
 
     <!-- FLASH FIRMWARE TAB -->
@@ -680,6 +685,38 @@
       </div>
     </div>
 
+    <!-- MODIFY CONFIG TAB -->
+    <div class="tab-content" id="modifycfg-content">
+      <section class="section">
+        <p style="font-size:0.85em;color:#8b949e;margin-bottom:12px;" data-i18n="modifyCfgDesc1">
+          从设备读取当前配置（菜单设置项），在网页中直接修改后写回，无需在机器上逐项调整。仅写入有变化的字节，写回后自动回读校验并重启设备。
+        </p>
+        <p style="font-size:0.85em;color:#f0883e;margin-bottom:12px;" data-i18n="modifyCfgWarning">
+          ⚠️ 请先<strong>正常开机进入使用界面</strong>后再连接 USB 操作；修改前建议先在「备份配置」页导出一份备份。
+        </p>
+      </section>
+
+      <section class="section mdcbook-toolbar">
+        <div class="writefreq-actions-split">
+          <div class="writefreq-actions-left">
+            <button type="button" class="btn-inline btn-with-icon" id="modifycfgReadBtn" title="从设备读取" data-i18n-title="readFromDevice">
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+              <span data-i18n="readFromDevice">从设备读取</span>
+            </button>
+            <button type="button" class="btn-inline btn-with-icon" id="modifycfgWriteBtn" title="写入设备" data-i18n-title="writeToDevice" disabled>
+              <span class="btn-ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+              <span data-i18n="writeToDevice">写入设备</span>
+            </button>
+          </div>
+        </div>
+        <p id="modifycfgStatus" class="mdcbook-count" aria-live="polite"></p>
+      </section>
+
+      <section class="section">
+        <div id="modifycfgForm" class="cfgedit-form"></div>
+      </section>
+    </div>
+
     <!-- BACKUP CONFIG TAB -->
     <div class="tab-content" id="backupcfg-content">
       <section class="section">
@@ -986,8 +1023,8 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
-  <script src="js/lang.js?v=20261010a"></script>
-  <script src="js/flash.min.js?v=20261010a"></script>
+  <script src="js/lang.js?v=20261011d"></script>
+  <script src="js/flash.min.js?v=20261011d"></script>
   <script src="js/k1-init-freq-download.js?v=20260816a"></script>
   <script>
   (function() {
