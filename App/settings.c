@@ -28,6 +28,7 @@
 #include "driver/py25q16.h"
 #include "driver/st7565.h"
 #include "driver/system.h"
+#include "frequencies.h"
 #include "misc.h"
 #include "settings.h"
 #include "ui/helper.h"
@@ -481,25 +482,49 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     // Init list name
     PY25Q16_ReadBuffer(0x00880E, gListName, sizeof(gListName));
 
-    // Init attr cache
-    MR_InitChannelAttributesCache();
+    // Load and check channel（整区批量处理，替代原 1031 次逐槽属性 Flash 写回）
+    //
+    // 1) 0xFFFF → 0x0007（band=7 无效标记，与旧版归一化一致）
+    // 2) 清除 exclude 位（扫描排除是会话级标志，每次开机复位）
+    // 3) 非 0xFFFF 的 MR 槽校验 MR 块 RX 频率：超出 BK4819 硬件范围
+    //    （1.8–1300MHz，含 630–840MHz 盲区）的 Flash 残留标记为未用，
+    //    避免乱码信道显示
+    //
+    // 写驱动对相同数据自动跳过擦写（memcmp 保护），稳态开机零磨损；
+    // 有变化时仅一次整区擦写（原版为每个变动槽各一次 4KB 扇区擦写）。
+    //
+    // 注意：必须先于 MR_InitChannelAttributesCache() 执行——缓存会预载
+    // 信道 0/1/2，若清理在其后进行，缓存中是清理前的旧值。
+    {
+        uint16_t attrBuf[MR_CHANNELS_MAX + 7];
+        uint16_t *p = attrBuf;
 
-    // Load and check channel
-    for (uint16_t i = 0; i < MR_CHANNELS_MAX + 7; i++) {
-        ChannelAttributes_t *att = MR_GetChannelAttributes(i);
-        
-        if (att != NULL) {
-            if (att->__val == 0xFFFF) {
-                att->__val = 0;
-                att->band = 0x7;
-                MR_SetChannelAttributes(i, att);  // ⭐ IMPORTANT: Sauvegarder!
+        PY25Q16_ReadBuffer(0x008000, attrBuf, sizeof(attrBuf));
+
+        // addr 同时充当 MR 块地址与索引：addr < 0x4000 即 MR 槽，
+        // addr ≥ 0x4000 的 7 项为 VFO 属性（不读 MR 块）
+        for (uint32_t addr = 0; addr < (MR_CHANNELS_MAX + 7) * 16u; addr += 16, p++)
+        {
+            int16_t v = *(const int16_t *)p;   // 有符号读取：v == -1 即 0xFFFF 擦除态
+
+            if (v == -1)
+                v = 0x0007;
+            else if ((addr >> 14) == 0)   // addr < 0x4000：MR 槽（位测试省指令）
+            {
+                uint32_t Frequency;
+                PY25Q16_ReadBuffer(addr, &Frequency, sizeof(Frequency));
+                if (RX_freq_check(Frequency) != 0)
+                    v = 0x0007;
             }
-            else {
-                att->exclude = 0;
-                MR_SetChannelAttributes(i, att);  // ⭐ IMPORTANT: Sauvegarder!
-            }
+
+            *p = (uint16_t)v & ~0x0080;        // 清除 exclude 位
         }
+
+        PY25Q16_WriteBuffer(0x008000, attrBuf, sizeof(attrBuf));
     }
+
+    // Init attr cache（在信道清理之后预载，确保缓存为清理后的干净数据）
+    MR_InitChannelAttributesCache();
 
     // 0F30..0F3F
     PY25Q16_ReadBuffer(0x00A138, gCustomAesKey, sizeof(gCustomAesKey));

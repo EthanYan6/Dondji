@@ -3811,6 +3811,82 @@ async function writefreqReadFromDevice() {
   }
 }
 
+/**
+ * 写频批量传输：与固件 SPI_FLASH_READ/WRITE_SIZE 上限一致的区块大小。
+ * 整体流程为「整区读镜像 → 内存构建目标镜像 → 仅写差异区块 → 回读校验」，
+ * 将逐信道 3 次往返压缩为整区约 300 次往返，并把擦除/写入次数降到最低。
+ */
+const WRITE_FREQ_AREA_CHUNK = 120;
+
+function wfBytesEqual(a, b) {
+  if (!a || !b || a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** 把区块字节偏移换算为信道号范围（用于失败提示精确定位） */
+function wfAreaChRangeLabel(areaBase, offset, length) {
+  const slotSize = areaBase === WRITE_FREQ_ATTR_BASE ? 2 : 16;
+  const first = Math.floor(offset / slotSize) + 1;
+  const last = Math.floor((offset + length - 1) / slotSize) + 1;
+  return first === last ? ('CH ' + first) : ('CH ' + first + '–' + last);
+}
+
+/** 整区读取为内存镜像（MR 区/命名区各 16KB，属性区 2KB） */
+async function wfReadAreaToImage(sessionTs, areaBase, totalLen, areaLabel, progressFrom, progressTo) {
+  const image = new Uint8Array(totalLen);
+  for (let off = 0; off < totalLen; off += WRITE_FREQ_AREA_CHUNK) {
+    const len = Math.min(WRITE_FREQ_AREA_CHUNK, totalLen - off);
+    const chunk = await spiFlashReadChunk(sessionTs, areaBase + off, len);
+    if (!chunk || chunk.length !== len) {
+      throw new Error('读取' + areaLabel + '区失败 @ ' + wfAreaChRangeLabel(areaBase, off, len));
+    }
+    image.set(chunk, off);
+    updateProgress(progressFrom + ((off + len) / totalLen) * (progressTo - progressFrom));
+    await sleep(5);
+  }
+  return image;
+}
+
+/**
+ * 差异区块写入 + 回读校验：仅写与当前镜像不同的 120B 区块，每块写后立即回读比对，
+ * 校验失败自动重写一次，仍失败则抛错并注明未完成范围（中止点之后保留机器原数据）。
+ */
+async function wfWriteDiffingArea(sessionTs, areaBase, currentImage, targetImage, areaLabel, progressFrom, progressTo) {
+  let writtenChunkCount = 0;
+  const totalLen = targetImage.length;
+  for (let off = 0; off < totalLen; off += WRITE_FREQ_AREA_CHUNK) {
+    const len = Math.min(WRITE_FREQ_AREA_CHUNK, totalLen - off);
+    const tgt = targetImage.subarray(off, off + len);
+    if (wfBytesEqual(currentImage.subarray(off, off + len), tgt)) {
+      continue;
+    }
+    const chLabel = wfAreaChRangeLabel(areaBase, off, len);
+    const writeOk = await spiFlashWriteChunk(sessionTs, areaBase + off, tgt);
+    if (!writeOk) {
+      throw new Error('写入' + areaLabel + '区失败 @ ' + chLabel + '（其后区块未写入）');
+    }
+    let verify = await spiFlashReadChunk(sessionTs, areaBase + off, len);
+    if (!verify || verify.length !== len || !wfBytesEqual(verify, tgt)) {
+      const retryOk = await spiFlashWriteChunk(sessionTs, areaBase + off, tgt);
+      verify = await spiFlashReadChunk(sessionTs, areaBase + off, len);
+      if (!retryOk || !verify || verify.length !== len || !wfBytesEqual(verify, tgt)) {
+        throw new Error(areaLabel + '区回读校验失败 @ ' + chLabel + '（其后区块未写入）');
+      }
+    }
+    writtenChunkCount++;
+    updateProgress(progressFrom + ((off + len) / totalLen) * (progressTo - progressFrom));
+    await sleep(5);
+  }
+  return writtenChunkCount;
+}
+
 async function writefreqWriteToDevice() {
   if (isWritefreqBusy) {
     return;
@@ -3884,6 +3960,7 @@ async function writefreqWriteToDevice() {
   writefreqShowValidation('', false);
 
   isWritefreqBusy = true;
+  let wfWritePhaseStarted = false;
   const readBtn = $('writefreqReadBtn');
   const writeBtn = $('writefreqWriteBtn');
   if (readBtn) readBtn.disabled = true;
@@ -3898,36 +3975,27 @@ async function writefreqWriteToDevice() {
     await sleep(800);
     const session = await requestDeviceInfoForCalib();
     const sessionTs = session.timestamp;
-    let rowIdx = 0;
+    // ---- 阶段一：整区读取当前镜像（MR 块区 / 命名区 / 属性区） ----
+    const mrImage = await wfReadAreaToImage(sessionTs, 0x0000, WRITE_FREQ_MR_MAX * 16, '信道数据', 0, 13);
+    const nameImage = await wfReadAreaToImage(sessionTs, WRITE_FREQ_ADDR_EN_BASE, WRITE_FREQ_MR_MAX * 16, '信道命名', 13, 26);
+    const attrImage = await wfReadAreaToImage(sessionTs, WRITE_FREQ_ATTR_BASE, WRITE_FREQ_MR_MAX * 2, '信道属性', 26, 30);
+
+    // ---- 阶段二：构建目标镜像（语义与逐槽写入完全一致：已填行合并写入；空行整槽擦除） ----
+    const mrTarget = new Uint8Array(WRITE_FREQ_MR_MAX * 16);
+    const nameTarget = new Uint8Array(WRITE_FREQ_MR_MAX * 16);
+    const attrTarget = new Uint8Array(WRITE_FREQ_MR_MAX * 2);
     let programmedCount = 0;
-    for (; rowIdx < WRITE_FREQ_MR_MAX; rowIdx++) {
-      /** 表格第 i 行对应 Flash MR 槽 i（CH i+1）：已填写接收频率则写入；否则将该槽擦除为未使用 */
+    for (let rowIdx = 0; rowIdx < WRITE_FREQ_MR_MAX; rowIdx++) {
       const chIndex0 = rowIdx;
       const fields = writefreqRowsData[rowIdx];
       const rxTrimmedWrite = writefreqSafeRxTrim(fields);
-      const baseAddr = chIndex0 * 16;
-      const enAddr = WRITE_FREQ_ADDR_EN_BASE + chIndex0 * 16;
-      const attrAddr = WRITE_FREQ_ATTR_BASE + chIndex0 * 2;
+      const baseOff = chIndex0 * 16;
+      const attrOff = chIndex0 * 2;
       if (rxTrimmedWrite === '') {
-        const erasedMain = writefreqErasedMrBlock16();
-        const writeEraseOk = await spiFlashWriteChunk(sessionTs, baseAddr, erasedMain);
-        if (!writeEraseOk) {
-          throw new Error('覆盖写入擦除信道失败 @ CH ' + (chIndex0 + 1));
-        }
-        const enBufClear = writefreqBuildChannelName16('');
-        const enClearOk = await spiFlashWriteChunk(sessionTs, enAddr, enBufClear);
-        if (!enClearOk) {
-          throw new Error('覆盖写入清空命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
-        }
-        /* 旧中文名区 0x020000 与字库位图重叠，禁止再擦写该区 */
-        const attrEraseBuf = new Uint8Array([0xff, 0xff]);
-        const attrEraseOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrEraseBuf);
-        if (!attrEraseOk) {
-          throw new Error('覆盖写入信道属性（标记未使用）失败 @ CH ' + (chIndex0 + 1));
-        }
-        const pctEraseStep = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
-        updateProgress(pctEraseStep);
-        await sleep(40);
+        mrTarget.set(writefreqErasedMrBlock16(), baseOff);
+        nameTarget.set(writefreqBuildChannelName16(''), baseOff);
+        attrTarget[attrOff] = 0xff;
+        attrTarget[attrOff + 1] = 0xff;
         continue;
       }
       programmedCount++;
@@ -3959,38 +4027,38 @@ async function writefreqWriteToDevice() {
         stepSetting = WF_STEP_DEFAULT;
       }
       const scanlistVal = fields.scanlistVal !== undefined ? fields.scanlistVal : 0;
-      const original = await spiFlashReadChunk(sessionTs, baseAddr, 16);
-      if (!original || original.length !== 16) {
-        throw new Error('读取原信道块失败 @ CH ' + (chIndex0 + 1));
-      }
+      const original = mrImage.subarray(baseOff, baseOff + 16);
       const merged = wfMergeUserIntoBlock(original, rxStored, offsetStored, offsetDir, modNum, pow7, stepSetting, rxTone, txTone);
-      const writeMainOk = await spiFlashWriteChunk(sessionTs, baseAddr, merged);
-      if (!writeMainOk) {
-        throw new Error('写入信道数据失败 @ CH ' + (chIndex0 + 1));
-      }
-      const enBuf = writefreqBuildChannelName16(fields.channelNameText);
-      const enOk = await spiFlashWriteChunk(sessionTs, enAddr, enBuf);
-      if (!enOk) {
-        throw new Error('写入命名信道（统一区）失败 @ CH ' + (chIndex0 + 1));
-      }
-      /* 旧中文名区 0x020000 与字库位图重叠，禁止写入/清除，否则会破坏字形 */
-      const attrExisting = await spiFlashReadChunk(sessionTs, attrAddr, 2);
+      mrTarget.set(merged, baseOff);
+      nameTarget.set(writefreqBuildChannelName16(fields.channelNameText), baseOff);
+      const attrExisting = attrImage.subarray(attrOff, attrOff + 2);
       const attrValMerged = writefreqBuildAttrUint16ForProgram(attrExisting, rxStored, scanlistVal);
       const attrPayload = writefreqUint16ToLeBytes(attrValMerged);
-      const attrOk = await spiFlashWriteChunk(sessionTs, attrAddr, attrPayload);
-      if (!attrOk) {
-        throw new Error('写入信道属性失败 @ CH ' + (chIndex0 + 1));
-      }
-      const pctProgramStep = ((rowIdx + 1) / WRITE_FREQ_MR_MAX) * 100;
-      updateProgress(pctProgramStep);
-      await sleep(40);
+      attrTarget[attrOff] = attrPayload[0];
+      attrTarget[attrOff + 1] = attrPayload[1];
     }
+
+    // ---- 阶段三：差异区块写入 + 回读校验（MR → 命名 → 属性；属性最后写，作为生效提交点） ----
+    wfWritePhaseStarted = true;
+    const mrWritten = await wfWriteDiffingArea(sessionTs, 0x0000, mrImage, mrTarget, '信道数据', 30, 62);
+    const nameWritten = await wfWriteDiffingArea(sessionTs, WRITE_FREQ_ADDR_EN_BASE, nameImage, nameTarget, '信道命名', 62, 90);
+    const attrWritten = await wfWriteDiffingArea(sessionTs, WRITE_FREQ_ATTR_BASE, attrImage, attrTarget, '信道属性', 90, 95);
+
     updateProgress(100);
     const clearedSlotCount = WRITE_FREQ_MR_MAX - programmedCount;
     log(
-      window.t 
+      window.t
         ? window.t('writeSuccess', { count: programmedCount, empty: clearedSlotCount })
-        : '已按表格写入 ' + programmedCount + ' 个已填写信道；其余 ' + clearedSlotCount + ' 个槽已在 Flash 中清空为未使用（MR/命名/属性）。请先确认固件与备份。',
+        : '已按表格写入 ' + programmedCount + ' 个已填写信道；其余 ' + clearedSlotCount + ' 个槽已在 Flash 中清空为未使用（MR/命名/属性）。',
+      'success'
+    );
+    const writtenChunkTotal = mrWritten + nameWritten + attrWritten;
+    log(
+      window.t
+        ? window.t('writeSuccessVerified', { chunks: writtenChunkTotal })
+        : (writtenChunkTotal > 0
+          ? '本次共写入 ' + writtenChunkTotal + ' 个差异区块，已全部回读校验一致'
+          : 'Flash 内容与表格一致，无需写入任何区块'),
       'success'
     );
     log(window.t ? window.t('logRebootingDevice') : '正在重启设备以加载新信道数据…', 'info');
@@ -3999,6 +4067,9 @@ async function writefreqWriteToDevice() {
     log(window.t ? window.t('logRebootSent') : '已发送重启指令（设备将自动复位）', 'success');
   } catch (e) {
     log(window.t ? window.t('logWritefreqWriteFailed', {msg: e.message}) : '写频写入失败: ' + e.message, 'error');
+    if (wfWritePhaseStarted) {
+      log(window.t ? window.t('logWritefreqPartialHint') : '设备可能处于部分写入状态：错误位置之后的区块保留机器原数据，请重新执行写入即可完整覆盖', 'warning');
+    }
   } finally {
     isWritefreqBusy = false;
     if (readBtn) readBtn.disabled = false;
