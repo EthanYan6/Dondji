@@ -44,10 +44,21 @@ uint8_t           scanHitCount;
 /* 进扫前 ScreenChannel；Stop 写回后再全量重载，避免频率 VFO 被冲成副信道 */
 static uint16_t s_scr0, s_scr1;
 
-/* F+4 一键测频：先 VHF 前端，超时无信号再切 UHF，避免 150→450 三次谐波误锁 */
-static bool     scanBandIsUhf;
-static uint16_t scanNoResultCount;
-#define SCAN_BAND_SWITCH_10MS  500u  /* 5s */
+/* F+4 一键测频：扫频页面按 3 手动切换 VHF/UHF 前端（固定所选段扫频，不再轮扫） */
+bool gScanBandIsUhf;
+
+/*
+ * F+4 谐波验证：BK4819 频率计数器对强信号（中继/近台，通常带亚音）会因限幅
+ * 失真锁到 2/3 次谐波（读数偏高，如 147→295/441），也可能把 UHF 信号欠采样
+ * 为 f/3（读数偏低）。锁定后对 f/2、f/3、3f 候选逐个实测 RSSI，仅当某
+ * 候选 RSSI 明显强于读数时才改判，否则保留原读数。RSSI 刻度 2 单位/dB。
+ */
+#define SCAN_VERIFY_RSSI_MARGIN     12u  /* 约 6dB */
+
+static uint8_t  scanVerifyTotal;    /* 候选总数，0 = 未在验证 */
+static uint8_t  scanVerifyIdx;
+static uint32_t scanVerifyFreq[3];  /* [0] 为原锁频基准；候选至多 3 个 */
+static uint16_t scanVerifyRssi[3];
 
 static void SCANNER_StartCssScanAtFrequency(const uint32_t frequency)
 {
@@ -68,10 +79,91 @@ static void SCANNER_StartCssScanAtFrequency(const uint32_t frequency)
     gUpdateStatus = true;
 }
 
+/* 为频率验证调谐到指定频率（含前端选择），并留 20ms 稳定 */
+static void SCANNER_TuneForVerification(const uint32_t frequency)
+{
+    BK4819_SetFrequency(frequency);
+    BK4819_PickRXFilterPathBasedOnFrequency(frequency);
+    BK4819_RX_TurnOn();
+    gScanDelay_10ms = 2;
+}
+
+/* 锁定后开始谐波验证；无可验证候选时返回 false */
+static bool SCANNER_StartFrequencyVerification(const uint32_t frequency)
+{
+    static const uint8_t mult[3][2] = {{1, 2}, {1, 3}, {3, 1}};  /* f/2 f/3 3f */
+
+    scanVerifyFreq[0] = frequency;
+    scanVerifyTotal   = 1;
+    for (uint8_t i = 0; i < 3; i++) {
+        const uint32_t f = frequency * mult[i][0] / mult[i][1];
+        if (RX_freq_check(f) == 0)
+            scanVerifyFreq[scanVerifyTotal++] = f;
+    }
+
+    if (scanVerifyTotal < 2)
+        return false;
+
+    scanVerifyIdx = 0;
+    SCANNER_TuneForVerification(frequency);
+    return true;
+}
+
+/* 谐波验证状态机：每个 10ms tick 采一个候选，测完判定。返回 true 表示仍在验证 */
+static bool SCANNER_HandleFrequencyVerification(void)
+{
+    if (!scanVerifyTotal)
+        return false;
+
+    scanVerifyRssi[scanVerifyIdx] = BK4819_GetRSSI();
+
+    if (++scanVerifyIdx < scanVerifyTotal) {
+        SCANNER_TuneForVerification(scanVerifyFreq[scanVerifyIdx]);
+        return true;
+    }
+
+    /* 全部测完：仅当最强候选明显强于原读数时才改判，打平优先取低频基波 */
+    uint8_t best = 0;
+    for (uint8_t i = 1; i < scanVerifyTotal; i++)
+        if (scanVerifyRssi[i] > scanVerifyRssi[best])
+            best = i;
+
+    const uint32_t verified =
+        (best && scanVerifyRssi[best] >= scanVerifyRssi[0] + SCAN_VERIFY_RSSI_MARGIN)
+        ? scanVerifyFreq[best] : scanVerifyFreq[0];
+
+    scanVerifyTotal = 0;
+    SCANNER_StartCssScanAtFrequency(verified);
+    return true;
+}
+
 static void SCANNER_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
     if (!bKeyHeld && bKeyPressed)
     {
+        /* F+4 扫频页面按 3：切换 VHF/UHF 前端并立即重新扫频 */
+        if (Key == KEY_3 && !gScanSingleFrequency && gScannerSaveState == SCAN_SAVE_NO_PROMPT) {
+            gBeepToPlay            = BEEP_1KHZ_60MS_OPTIONAL;
+            gScanBandIsUhf         = !gScanBandIsUhf;
+            scanVerifyTotal        = 0;
+            scanHitCount           = 0;
+            gScanFrequency         = 0xFFFFFFFF;
+            gScanCssState          = SCAN_CSS_STATE_OFF;
+            gScanCssResultCode     = 0xFF;
+            gScanCssResultType     = 0xFF;
+            gScanUseCssResult      = false;
+            gScanProgressIndicator = 0;
+
+            BK4819_StopScan();
+            BK4819_PickRXFilterPathBasedOnFrequency(gScanBandIsUhf ? 43500000u : 14500000u);
+            BK4819_EnableFrequencyScan();
+
+            gScanDelay_10ms       = scan_delay_10ms;
+            gUpdateStatus         = true;
+            gRequestDisplayScreen = DISPLAY_SCANNER;
+            return;
+        }
+
         if (gScannerSaveState == SCAN_SAVE_CHAN_SEL) {
             gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 
@@ -384,11 +476,10 @@ void SCANNER_Start(bool singleFreq)
     else {
         gScanCssState      = SCAN_CSS_STATE_OFF;
         gScanFrequency     = 0xFFFFFFFF;
-        scanBandIsUhf      = false;
-        scanNoResultCount  = 0;
 
-        /* 0xFFFFFFFF → 选 VHF 前端起扫；超时无信号再切 UHF */
-        BK4819_PickRXFilterPathBasedOnFrequency(gScanFrequency);
+        /* 默认跟随当前接收频率所在段（280MHz 分界）；扫频页面按 3 切换 */
+        gScanBandIsUhf     = (gRxVfo->pRX->Frequency >= 28000000u);
+        BK4819_PickRXFilterPathBasedOnFrequency(gScanBandIsUhf ? 43500000u : 14500000u);
         BK4819_EnableFrequencyScan();
 
         gUpdateStatus = true;
@@ -402,6 +493,7 @@ void SCANNER_Start(bool singleFreq)
     gScanCssResultCode     = 0xFF;
     gScanCssResultType     = 0xFF;
     scanHitCount           = 0;
+    scanVerifyTotal        = 0;
     gScanUseCssResult      = false;
     g_CxCSS_TAIL_Found     = false;
     g_CDCSS_Lost           = false;
@@ -428,6 +520,7 @@ void SCANNER_Stop(void)
         }
         gUpdateStatus            = true;
         gCssBackgroundScan       = false;
+        scanVerifyTotal          = 0;
         gScanUseCssResult        = false;
 #ifdef ENABLE_VOICE
         gAnotherVoiceID          = VOICE_ID_CANCEL;
@@ -450,26 +543,16 @@ void SCANNER_TimeSlice10ms(void)
         return;
     }
 
+    /* 锁定后的谐波验证状态机优先于扫描状态 */
+    if (SCANNER_HandleFrequencyVerification())
+        return;
+
     switch (gScanCssState) {
         case SCAN_CSS_STATE_OFF: {
             // must be RF frequency scanning if we're here ?
             uint32_t result;
-            if (!BK4819_GetFrequencyScanResult(&result)) {
-                /* 芯片仍在扫：当前端无信号。VHF 轮超时后切 UHF 再扫一轮 */
-                if (!scanBandIsUhf && ++scanNoResultCount >= SCAN_BAND_SWITCH_10MS) {
-                    BK4819_DisableFrequencyScan();
-                    BK4819_ToggleGpioOut(BK4819_GPIO4_PIN32_VHF_LNA, false);
-                    BK4819_ToggleGpioOut(BK4819_GPIO3_PIN31_UHF_LNA, true);
-                    BK4819_EnableFrequencyScan();
-                    scanBandIsUhf     = true;
-                    scanNoResultCount = 0;
-                    scanHitCount      = 0;
-                    gScanFrequency    = 0xFFFFFFFF;
-                }
-                break;
-            }
-
-            scanNoResultCount = 0;
+            if (!BK4819_GetFrequencyScanResult(&result))
+                break; /* 芯片仍在扫：固定当前所选前端等结果 */
 
             int32_t delta = result - gScanFrequency;
             gScanFrequency = result;
@@ -485,12 +568,15 @@ void SCANNER_TimeSlice10ms(void)
 
             if (scanHitCount < 3) {
                 BK4819_EnableFrequencyScan();
+                gScanDelay_10ms = scan_delay_10ms;
+            }
+            else if (SCANNER_StartFrequencyVerification(gScanFrequency)) {
+                /* 验证状态机接管，延迟已在其中设置 */
             }
             else {
                 SCANNER_StartCssScanAtFrequency(gScanFrequency);
+                gScanDelay_10ms = scan_delay_10ms;
             }
-
-            gScanDelay_10ms = scan_delay_10ms;
             //gScanDelay_10ms = 1;   // 10ms
             break;
         }

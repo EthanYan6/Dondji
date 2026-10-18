@@ -102,6 +102,33 @@ void UI_PrintString(const char *pString, uint8_t Start, uint8_t End, uint8_t Lin
     }
 }
 
+#ifdef ENABLE_FEAT_F4HWN
+/* 大字(8px 宽)垂直下移 vOffset(0~7)px：跨 Line..Line+2；|= 写，不擦 fb y0 分隔线等已有内容 */
+void UI_PrintStringVOffset(const char *pString, uint8_t Start, uint8_t Line, uint8_t vOffset)
+{
+    while (*pString)
+    {
+        if (*pString > ' ')
+        {
+            const uint8_t *g = gFontBig[*pString - ' ' - 1];
+            uint8_t *d0 = &gFrameBuffer[Line][Start];
+            uint8_t *d1 = d0 + LCD_WIDTH;
+            uint8_t  c  = 7;
+            do {
+                const uint32_t w = ((uint32_t)g[7] << 8 | g[0]) << vOffset;
+                g++;
+                *d0++ |= (uint8_t)w;
+                *d1   |= (uint8_t)(w >> 8);
+                d1[LCD_WIDTH] |= (uint8_t)(w >> 16);
+                d1++;
+            } while (--c);
+        }
+        pString++;
+        Start += 8;
+    }
+}
+#endif
+
 void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t char_width, const uint8_t *font)
 {
     const size_t Length = strlen(pString);
@@ -313,63 +340,9 @@ void UI_PrintStringSmallBold(const char *pString, uint8_t Start, uint8_t End, ui
     UI_PrintStringSmall(pString, Start, End, Line, char_width, font);
 }
 
-/* 黑底白字，Bold 小字：仅在笔画处清空 */
-void UI_PrintStringSmallBoldNegative(const char *pString, uint8_t Start, uint8_t End, uint8_t Line)
-{
-#ifdef ENABLE_SMALL_BOLD
-    const uint8_t *font = (uint8_t *)gFontSmallBold;
-    const uint8_t char_width = ARRAY_SIZE(gFontSmallBold[0]);
-#else
-    const uint8_t *font = (uint8_t *)gFontSmall;
-    const uint8_t char_width = ARRAY_SIZE(gFontSmall[0]);
-#endif
-    const size_t Length = strlen(pString);
-    const unsigned int char_spacing = char_width + 1;
-    uint8_t x_start = Start;
-    if (End > Start && Length > 0)
-        x_start += (((End - Start) - (unsigned int)Length * char_spacing) + 1) / 2;
-    UI_PrintStringBufferNegative(pString, gFrameBuffer[Line] + x_start, char_width, font);
-}
-
-void UI_PrintStringSmallBoldInverse(const char *pString, uint8_t Start, uint8_t End, uint8_t Line)
-{
-    // First draw the string normally
-    UI_PrintStringSmallBold(pString, Start, End, Line);
-
-    // Now invert the framebuffer bits for the rendered area
-    uint8_t len = strlen(pString);
-    uint8_t char_width = 7; // small font is typically 6px wide
-
-    uint8_t x_start = Start;
-    uint8_t x_end   = Start + (len * char_width);
-
-    if (End != 0 && x_end > End)
-        x_end = End;
-
-    gFrameBuffer[Line][x_start] ^= 0x7F;
-    for (uint8_t x = x_start + 1; x < x_end; x++)
-    {
-        gFrameBuffer[Line][x] ^= 0x41;
-    }
-    gFrameBuffer[Line][x_end + 1] ^= 0x7F;
-}
-
-
 void UI_PrintStringSmallBufferNormal(const char *pString, uint8_t * buffer)
 {
     UI_PrintStringBuffer(pString, buffer, ARRAY_SIZE(gFontSmall[0]), (uint8_t *)gFontSmall);
-}
-
-void UI_PrintStringSmallBufferBold(const char *pString, uint8_t * buffer)
-{
-#ifdef ENABLE_SMALL_BOLD
-    const uint8_t *font = (uint8_t *)gFontSmallBold;
-    const uint8_t char_width = ARRAY_SIZE(gFontSmallBold[0]);
-#else
-    const uint8_t *font = (uint8_t *)gFontSmall;
-    const uint8_t char_width = ARRAY_SIZE(gFontSmall[0]);
-#endif
-    UI_PrintStringBuffer(pString, buffer, char_width, font);
 }
 
 void UI_DisplayFrequency(const char *string, uint8_t X, uint8_t Y, bool center)
@@ -570,32 +543,6 @@ static void sort(int16_t *a, int16_t *b)
           }
         }
         x += 4;
-      }
-    }
-
-    /* 最小字反色：黑底白字，先涂黑再在笔画处清空，画到 gFrameBuffer */
-    void GUI_DisplaySmallestNegative(const char *pString, uint8_t x, uint8_t y) {
-      const size_t len = strlen(pString);
-      if (len == 0) return;
-      const uint8_t w = (uint8_t)(len * 4);
-      const uint8_t h = 6;
-      for (uint8_t py = 0; py < h && (y + py) < 64; py++)
-        for (uint8_t px = 0; px < w && (x + px) < 128; px++)
-          UI_DrawPixelBuffer(gFrameBuffer, x + px, y + py, true);
-      const uint8_t *p = (const uint8_t *)pString;
-      uint8_t cx = x;
-      uint8_t c;
-      while ((c = *p++) && c != '\0') {
-        c -= 0x20;
-        for (int i = 0; i < 3; ++i) {
-          uint8_t pixels = gFont3x5[c][i];
-          for (int j = 0; j < 6; ++j) {
-            if (pixels & 1)
-              UI_DrawPixelBuffer(gFrameBuffer, cx + i, y + j, false);
-            pixels >>= 1;
-          }
-        }
-        cx += 4;
       }
     }
 

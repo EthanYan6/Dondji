@@ -90,6 +90,7 @@ target_link_libraries(${EXE_NAME} ${TOOLCHAIN_LINK_LIBRARIES})
 
 if(ENABLE_LTO)
     target_compile_options(${EXE_NAME} PRIVATE -flto=auto)
+    target_link_options(${EXE_NAME} PRIVATE -flto=auto)
 endif()
 
 # Generate map file

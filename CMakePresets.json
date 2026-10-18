@@ -193,6 +193,7 @@
                 "ENABLE_FEAT_F4HWN_VOL": false,
                 "ENABLE_FEAT_F4HWN_AUDIO": true,
                 "ENABLE_FEAT_F4HWN_AUDIO_SCOPE": false,
+                "ENABLE_SMALL_BOLD": false,
                 "EDITION_STRING": "Fusion",
                 "TARGET": "Dondji.fusion"
             }

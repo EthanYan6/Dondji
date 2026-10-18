@@ -26,6 +26,7 @@ void UI_GenerateChannelStringEx(char *pString, const bool bShowPrefix, const uin
 void UI_PrintString(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t Width);
 void UI_PrintStringSmallNormal(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
 #ifdef ENABLE_FEAT_F4HWN
+void UI_PrintStringVOffset(const char *pString, uint8_t Start, uint8_t Line, uint8_t vOffset);
 void UI_PrintStringSmallNormalVOffset(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t vOffset);
 void UI_PrintStringSmallNormalVOffsetUp(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t upOffset);
 void UI_PrintStringSmallNormalBottomInRow(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
@@ -39,10 +40,7 @@ void UI_PrintStringSmallNormalNegative(const char *pString, uint8_t Start, uint8
 void UI_PrintStringSmallNormalNegativeTopMargin1(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
 #endif
 void UI_PrintStringSmallBold(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
-void UI_PrintStringSmallBoldInverse(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
-void UI_PrintStringSmallBoldNegative(const char *pString, uint8_t Start, uint8_t End, uint8_t Line);
 void UI_PrintStringSmallBufferNormal(const char *pString, uint8_t *buffer);
-void UI_PrintStringSmallBufferBold(const char *pString, uint8_t * buffer);
 void UI_DisplayFrequency(const char *string, uint8_t X, uint8_t Y, bool center);
 
 void UI_DisplayPopup(const char *string);
@@ -53,7 +51,6 @@ void UI_DrawPixelBuffer(uint8_t (*buffer)[128], uint8_t x, uint8_t y, bool black
     void PutPixel(uint8_t x, uint8_t y, bool fill);
     void PutPixelStatus(uint8_t x, uint8_t y, bool fill);
     void GUI_DisplaySmallest(const char *pString, uint8_t x, uint8_t y, bool statusbar, bool fill);
-    void GUI_DisplaySmallestNegative(const char *pString, uint8_t x, uint8_t y);
     void UI_DisplayUnlockKeyboard(int16_t yOffset);
     bool IsEmptyName(const char *name, uint8_t len);
 #endif

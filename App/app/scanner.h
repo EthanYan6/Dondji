@@ -45,6 +45,7 @@ extern uint32_t          gScanFrequency;
 extern SCAN_CssState_t   gScanCssState;
 extern uint8_t           gScanProgressIndicator;
 extern bool              gScanUseCssResult;
+extern bool              gScanBandIsUhf;   /* F+4 扫频页面按 3 切换的 VHF/UHF 前端选择 */
 
 void SCANNER_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 void SCANNER_Start(bool singleFreq);
