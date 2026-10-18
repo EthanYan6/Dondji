@@ -1665,7 +1665,7 @@ void APP_TimeSlice500ms(void)
         && gScreenToDisplay != DISPLAY_AIRCOPY
 #endif
     ) {
-        if (gEeprom.AUTO_KEYPAD_LOCK && gKeyLockCountdown > 0 && !gDTMF_InputMode
+        if (gKeyLockCountdown > 0 && !gDTMF_InputMode
             && gScreenToDisplay != DISPLAY_MENU && --gKeyLockCountdown == 0)
         {
             gEeprom.KEY_LOCK = true;     // lock the keyboard
@@ -1832,8 +1832,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
     gBatterySaveCountdown_10ms = battery_save_count_10ms;
 
-    if (gEeprom.AUTO_KEYPAD_LOCK)
-        gKeyLockCountdown = gEeprom.AUTO_KEYPAD_LOCK * 30;     // 15 seconds step
+    gKeyLockCountdown = gEeprom.AUTO_KEYPAD_LOCK * 30;     // 15 seconds step
 
     if (!bKeyPressed) { // key released
         if (flagSaveVfo) {

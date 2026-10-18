@@ -268,6 +268,7 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     ACTION_SyncDualPttKeyActions();
 #endif
     gEeprom.AUTO_KEYPAD_LOCK             = (Data[6] < 41)             ? Data[6] : 0;
+    gKeyLockCountdown                    = gEeprom.AUTO_KEYPAD_LOCK * 30; // 开机即启动锁键倒计时
     gEeprom.POWER_ON_DISPLAY_MODE        = (Data[7] < 3)              ? Data[7] : POWER_ON_DISPLAY_MODE_DEFAULT;
 
     // 0E98..0E9F

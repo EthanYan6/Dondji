@@ -317,7 +317,7 @@ void Main(void)
                 break;
         }
     #endif
-        
+
     while (true) {
         APP_Update();
 
