@@ -64,6 +64,7 @@
 #include "menu.h"
 #include "status.h"
 #include "ui.h"
+#include "dualvfo_u8g2_freq.h"
 
 #ifdef ENABLE_CHINESE
 #include "menu_sub_values_cn.h"
@@ -76,8 +77,8 @@
 #include "../driver/py25q16.h"
 #endif
 
-/* Level-2 browse: +1 — right pane is x≥50, clears left title; +4 stacked everything at bottom. L3 edit: +2. */
-#define MENU_VALUE_ROW_EXTRA() ((uint8_t)(gIsInSubMenu ? 2u : 1u))
+/* Unified view: always full-width Level-3 style layout */
+#define MENU_VALUE_ROW_EXTRA() ((uint8_t)(2u))
 #define MENU_VALUE_ROW(BASE) ((uint8_t)((uint8_t)(BASE) + MENU_VALUE_ROW_EXTRA()))
 
 #ifdef ENABLE_CHINESE
@@ -99,30 +100,15 @@ static void UI_MENU_PrintMemChPaneMaybeCjk(const char *text,
 }
 /* F1/F2/M 侧键两项两行值：行间额外 2px（与 CH_GAP 区分） */
 static uint8_t SF_after_2px(uint8_t y, unsigned h) { return (uint8_t)((unsigned)y + h + 2u); }
-/* L2: center block in right pane (~y8..55); L3: start below title (y11..18), avoid overlap with menu title */
+/* Unified view: block always centered below title band (y20..63) */
 static uint8_t CH_mem_blk_y0(void)
 {
     const unsigned block_h = CH_MEM_BLOCK_H;
-    uint8_t block_y_start = 0u;
-    if (gIsInSubMenu)
-    {
-        const unsigned top = 20u;
-        const unsigned bot = 63u;
-        const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
-        const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
-        block_y_start = (uint8_t)(top + pad);
-    }
-    else
-    {
-        const unsigned top = 8u;
-        const unsigned bot = 55u;
-        const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
-        const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
-        block_y_start = (uint8_t)(top + pad);
-        block_y_start = (uint8_t)(block_y_start + 7u);
-    }
-
-    return block_y_start;
+    const unsigned top = 20u;
+    const unsigned bot = 63u;
+    const unsigned avail = (bot >= top) ? (bot - top + 1u) : 0u;
+    const unsigned pad = (avail > block_h) ? ((avail - block_h) / 2u) : 0u;
+    return (uint8_t)(top + pad);
 }
 /* SysInf (MENU_VOL): line height for stacking — Han uses 12px band, ASCII small 7px */
 static uint8_t VOL_line_band_height(const char *line)
@@ -199,6 +185,68 @@ static uint8_t UI_MENU_GetRowPixelStart(const uint8_t row)
     pixel_start = (uint8_t)row_pixel_start;
     return pixel_start;
 }
+
+#ifdef ENABLE_FEAT_F4HWN
+/* SysInf pages share this body layout: 3×8px slots from MENU_VALUE_ROW(1).
+ * CN first-line print Y is shifted up 3px (12px Han drawn into an 8px slot). */
+static void UI_MENU_SysInfBodyLineYs(
+    uint8_t level2_down, uint8_t level3_down,
+    uint8_t *line1_print_y0, uint8_t *line1_print_y1,
+    uint8_t *line2_y0, uint8_t *line2_y1,
+    uint8_t *line3_y0, uint8_t *line3_y1)
+{
+    const uint8_t up_offset = 5u;
+    const uint8_t gap = 3u;
+    const uint8_t height = 8u;
+    const uint8_t safe_top = 20u;
+    const uint8_t cn_extra_up = 3u;
+    uint8_t y0;
+    uint8_t y1;
+
+    y0 = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
+    if (y0 >= up_offset)
+    {
+        y0 = (uint8_t)(y0 - up_offset);
+    }
+    else
+    {
+        y0 = 0u;
+    }
+    y1 = (uint8_t)(y0 + height - 1u);
+    y0 = (uint8_t)(y0 + level2_down + level3_down);
+    y1 = (uint8_t)(y1 + level2_down + level3_down);
+    if (gIsInSubMenu && y0 < safe_top)
+    {
+        y0 = safe_top;
+        y1 = (uint8_t)(y0 + height - 1u);
+    }
+
+    *line2_y0 = (uint8_t)(y1 + 1u + gap);
+    *line2_y1 = (uint8_t)(*line2_y0 + height - 1u);
+    if (line3_y0 != NULL && line3_y1 != NULL)
+    {
+        *line3_y0 = (uint8_t)(*line2_y1 + 1u + gap);
+        *line3_y1 = (uint8_t)(*line3_y0 + height - 1u);
+    }
+
+    *line1_print_y0 = y0;
+    *line1_print_y1 = y1;
+#ifdef ENABLE_CHINESE
+    if (gUiLanguage == UI_LANGUAGE_CN)
+    {
+        if (*line1_print_y0 >= cn_extra_up)
+        {
+            *line1_print_y0 = (uint8_t)(*line1_print_y0 - cn_extra_up);
+        }
+        else
+        {
+            *line1_print_y0 = 0u;
+        }
+        *line1_print_y1 = (uint8_t)(*line1_print_y0 + height - 1u);
+    }
+#endif
+}
+#endif
 
 static void UI_MENU_FormatBuildDateSlash(char *date_output, const size_t output_size)
 {
@@ -931,7 +979,7 @@ static void UI_MENU_DrawMemNameSymbolSixPack(unsigned int x1, unsigned int x2)
 
 #ifdef ENABLE_CHINESE
 /* 命名信道 / Yan ID 编辑页（中/英共用；拼音/汉字条仅中文语言） */
-static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_val_x2, size_t max_b)
+static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int candidate_x1, unsigned int sub_val_x2, size_t max_b)
 {
     const uint8_t y_mode = 20u;
     const uint8_t y_name = 28u;
@@ -1066,7 +1114,7 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
         // Display pinyin candidates with 6-pixel gap between each
         if (gMemNameInputMode == MEM_NAME_INPUT_PINYIN && gPinyinCandidateCount > 0)
         {
-            uint8_t x = (uint8_t)sub_val_x1;
+            uint8_t x = (uint8_t)candidate_x1;
             uint8_t i;
 
             MENU_EnsurePinyinPageVisible();
@@ -1086,7 +1134,7 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
         }
         else if (gCNCandidateCount > 0)
         {
-            const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+            const unsigned strip_w = (unsigned)(sub_val_x2 - candidate_x1);
             const unsigned slot_w = strip_w / 6u;
             uint8_t i;
 
@@ -1095,7 +1143,7 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
                 char num[2];
                 char utf8[4];
                 uint16_t unicode = gCNCandidates[i];
-                const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * slot_w);
+                const uint8_t cx = (uint8_t)(candidate_x1 + (unsigned)i * slot_w);
 
                 num[0] = (char)('1' + i);
                 num[1] = 0;
@@ -1110,11 +1158,11 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
         }
         else if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
         {
-            UI_MENU_DrawMemNameSymbolSixPack(sub_val_x1, sub_val_x2);
+            UI_MENU_DrawMemNameSymbolSixPack(candidate_x1, sub_val_x2);
         }
         else if (gMemNameCandidateCount > 0)
         {
-            const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+            const unsigned strip_w = (unsigned)(sub_val_x2 - candidate_x1);
             const unsigned slot_w = strip_w / 4u;
             uint8_t i;
 
@@ -1122,7 +1170,7 @@ static void UI_MENU_DrawMemNameEdit(unsigned int sub_val_x1, unsigned int sub_va
             {
                 char num[2];
                 char ch[2];
-                const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * slot_w);
+                const uint8_t cx = (uint8_t)(candidate_x1 + (unsigned)i * slot_w);
 
                 num[0] = (char)('1' + i);
                 num[1] = 0;
@@ -1249,158 +1297,26 @@ static void UI_MENU_DrawChevron(bool left, uint8_t center_x, uint8_t center_y, u
     }
 }
 
-/* 二级菜单左栏中文两行标题（与接收/发射亚音等同一套坐标） */
-static void UI_MENU_DrawLevel2CnTwoLines(const char *line1, const char *line2)
+/* [Removed] Level 2 split layout — replaced by unified full-width view with arrow indicator */
+
+/* Arrow indicator ▶ for unified menu view: browse mode (arrow on title) vs edit mode (arrow on value) */
+static void UI_MENU_DrawArrowIndicator(uint8_t x, uint8_t y_top)
 {
-    const uint8_t left_end = (uint8_t)(8u * 6u - 1u);
-    const uint8_t l2_y1_lo = 10u;
-    const uint8_t l2_y1_hi = 21u;
-    const uint8_t l2_y2_lo = 24u;
-    const uint8_t l2_y2_hi = 35u;
-
-    UI_PrintStringSmallAtPixel(line1, 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-    UI_PrintStringSmallAtPixel(line2, 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-}
-
-/* Level 2 (browse): [ left: menu name centered in pane, index n/m below ] | vertical line only | [ right: values ] */
-static void UI_MENU_DrawLevel2SplitLayout(uint8_t menu_count, char *String)
-{
-    const uint8_t left_end = (uint8_t)(8u * 6u - 1u);
-    /* 两行标题：左栏水平居中由 PrintStringSmallAtPixel 完成；汉字高 12px，行间空 2px */
-    const uint8_t l2_y1_lo = 10u;
-    const uint8_t l2_y1_hi = 21u;
-    const uint8_t l2_y2_lo = 24u;
-    const uint8_t l2_y2_hi = 35u;
-    const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)gMenuCursor);
-    const char *t = UI_MENU_GetMenuTitle(&MenuList[actual_idx]);
-
-#ifdef ENABLE_CHINESE
-    if (gUiLanguage == UI_LANGUAGE_CN)
-    {
-        #if defined(ENABLE_DTMF_CALLING)
-        if (UI_MENU_GetCurrentMenuId() == MENU_D_DCD)
-        {
-            /* 左栏约 48px 宽，单行「DTMF解码」会裁字 */
-            UI_PrintStringSmallAtPixel("DTMF", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe8\xa7\xa3\xe7\xa0\x81", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else
-        #endif
-#ifdef ENABLE_FEAT_F4HWN
-#ifdef ENABLE_FEAT_F4HWN_CTR
-        if (UI_MENU_GetCurrentMenuId() == MENU_SET_CTR)
-        {
-            /* 设置对比度：设置 / 对比度 */
-            UI_PrintStringSmallAtPixel("\xe8\xae\xbe\xe7\xbd\xae", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("\xe5\xaf\xb9\xe6\xaf\x94\xe5\xba\xa6", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else
-#endif
-        if (UI_MENU_GetCurrentMenuId() == MENU_TX_LOCK)
-        {
-            UI_PrintStringSmallAtPixel("\xe6\xae\xb5\xe5\xa4\x96", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("\xe5\x8f\x91\xe5\xb0\x84\xe9\x94\x81", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else
-#endif
-        if (UI_MENU_GetCurrentMenuId() == MENU_R_DCS)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("接收", "数字亚音");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_R_CTCS)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("接收", "模拟亚音");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_T_DCS)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("发射", "数字亚音");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_T_CTCS)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("发射", "模拟亚音");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_YAN_ID_RX)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("接收", "Yan ID");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID_RX)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("接收", "MDC ID");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_1)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbc\x98\xe5\x85\x88\xe4\xbf\xa1\xe9\x81\x93", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("1", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_S_PRI_CH_2)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbc\x98\xe5\x85\x88\xe4\xbf\xa1\xe9\x81\x93", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("2", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_MIC)
-        {   /* 设置列表左栏：两行「麦克风」「增益」（中文显示用 SPI 字库 cn_font.bin） */
-            UI_PrintStringSmallAtPixel("\xe9\xba\xa6\xe5\x85\x8b\xe9\xa3\x8e", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("\xe5\xa2\x9e\xe7\x9b\x8a", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_F1SHRT)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_F1LONG)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""1", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_F2SHRT)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe7\x9f\xad\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_F2LONG)
-        {
-            UI_PrintStringSmallAtPixel("\xe4\xbe\xa7\xe9\x94\xae""2", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_MLONG)
-        {
-            UI_PrintStringSmallAtPixel("MENU", 0, left_end, l2_y1_lo, l2_y1_hi, 0u);
-            UI_PrintStringSmallAtPixel("\xe9\x95\xbf\xe6\x8c\x89", 0, left_end, l2_y2_lo, l2_y2_hi, 3u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_RP_STE)
-        {
-            UI_MENU_DrawLevel2CnTwoLines("过中继", "尾音消除");
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_TDR)
-        {
-            UI_PrintStringSmallAtPixel("\xe6\x8e\xa5\xe6\x94\xb6\xe6\xa8\xa1\xe5\xbc\x8f", 0, left_end, l2_y1_lo, l2_y1_hi, 3u);
-            UI_PrintStringSmallAtPixel("<\xe8\xae\xbe\xe4\xb8\xbb\xe9\xa1\xb5>", 0, left_end, l2_y2_lo, l2_y2_hi, 0u);
-        }
-        else if (UI_MENU_GetCurrentMenuId() == MENU_VOL)
-        {
-            UI_PrintStringSmallAtPixel("\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf", 0, left_end, 10u, 36u, 3u);
-        }
-        else
-        {
-            /* Upper-middle of left pane; keep y_end < ~40 so rows 5+ stay for values on the right */
-            UI_PrintStringSmallAtPixel(t, 0, left_end, 10, 36, 0u);
-        }
-    }
-    else
-    {
-        /* English: one line only; never use CN two-line splits */
-        UI_PrintStringSmallAtPixel(t, 0, left_end, 10, 36, 0u);
-    }
-#else
-    /* Big font two rows high — roughly centered above bottom index */
-    UI_PrintString(t, 0, left_end, 2, 8);
-#endif
-
-    sprintf(String, "%u/%u", (unsigned)(1u + (unsigned)gMenuCursor), (unsigned)menu_count);
-    UI_PrintStringSmallNormal(String, 0, left_end, 6);
-
-    for (unsigned int i = 0; i < 7u; i++)
-        gFrameBuffer[i][(8u * 6u) + 4u] = 0xAAu;
+    /* Solid filled right-pointing triangle arrow (▶), 5x9 pixels
+     * Row 0: X X . . . .
+     * Row 1: X X X . . .
+     * Row 2: X X X X . .
+     * Row 3: X X X X X .
+     * Row 4: X X X X X X
+     * Row 5: X X X X X .
+     * Row 6: X X X X . .
+     * Row 7: X X X . . .
+     * Row 8: X X . . . .
+     */
+    static const uint8_t cols[] = {2, 3, 4, 5, 6, 5, 4, 3, 2};
+    for (uint8_t row = 0; row < 9; row++)
+        for (uint8_t col = 0; col < cols[row]; col++)
+            PutPixel((uint8_t)(x + col), (uint8_t)(y_top + row), true);
 }
 
 /* Level 3 (edit): menu title top-left; main body uses full width from menu_value_x1 (values below title). */
@@ -1413,14 +1329,14 @@ static void UI_MENU_DrawCccMenuChrome(const t_menu_item *item)
     {
         title = "\xe7\xb3\xbb\xe7\xbb\x9f\xe4\xbf\xa1\xe6\x81\xaf<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>";
     }
-    /* Title band +3px down vs previous 8..15 */
-    UI_PrintStringSmallAtPixel(title, 2, 2, 11, 18, 0u);
+    /* Title band; x=10 leaves room for arrow indicator + 3px gap */
+    UI_PrintStringSmallAtPixel(title, 10, 10, 11, 18, 0u);
 #else
-    /* Left align (End==Start); +3px down when F4HWN VOffset available */
+    /* Left align (End==Start); +3px down when F4HWN VOffset available; x=10 for arrow + 3px gap */
     #ifdef ENABLE_FEAT_F4HWN
-        UI_PrintStringSmallNormalVOffset(title, 2, 2, 1, 3);
+        UI_PrintStringSmallNormalVOffset(title, 10, 10, 1, 3);
     #else
-        UI_PrintStringSmallNormal(title, 2, 2, 1);
+        UI_PrintStringSmallNormal(title, 10, 10, 1);
     #endif
 #endif
 }
@@ -1709,19 +1625,8 @@ void UI_DisplayMenu(void)
 {
     const uint8_t menu_count = MENU_GetActiveMenuCount();
     const bool         icon_layout     = (gMenuUseMainOnlyStatus && !gMenuMainPageActive);
-    const uint8_t      menu_list_width = 6u;
-    unsigned int       menu_item_x1;
-    unsigned int       menu_value_x1;
-    if (gIsInSubMenu)
-    {   /* Level 3: title top-left; values use full width from menu_value_x1 */
-        menu_item_x1  = 0u;
-        menu_value_x1 = 2u;
-    }
-    else
-    {   /* Level 2: always left pane | vertical separator | right pane (also when icon_layout — was full-width + y=17 line) */
-        menu_item_x1  = (8u * menu_list_width) + 2u;
-        menu_value_x1 = menu_item_x1;
-    }
+    /* Unified view: always full-width Level-3 style layout */
+    unsigned int       menu_value_x1 = 2u;
     const unsigned int menu_item_x2    = LCD_WIDTH - 1;
     unsigned int       i;
     char               String[64];  // bigger cuz we can now do multi-line in one string (use '\n' char)
@@ -1744,11 +1649,28 @@ void UI_DisplayMenu(void)
     UI_DrawLineBuffer(gFrameBuffer, 0, 0, LCD_WIDTH - 1, 0, true);
 
     if (!gIsInSubMenu && menu_count >= 1u)
-        UI_MENU_DrawLevel2SplitLayout(menu_count, String);
-    else if (gIsInSubMenu && menu_count >= 1u)
     {
+        /* Unified view: browse mode — title + arrow on title + index */
         const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)gMenuCursor);
         UI_MENU_DrawCccMenuChrome(&MenuList[actual_idx]);
+        UI_MENU_DrawArrowIndicator(1, 4);    /* arrow before title, down 2px from y=2 */
+        if (UI_MENU_GetCurrentMenuId() != MENU_VOL)
+        {
+            sprintf(String, "%u/%u", (unsigned)(1u + (unsigned)gMenuCursor), (unsigned)menu_count);
+            DualVfoU8g2_DrawSmallText(String, 109, 4, true);
+        }
+    }
+    else if (gIsInSubMenu && menu_count >= 1u)
+    {
+        /* Unified view: edit mode — title + arrow on value + index */
+        const uint8_t actual_idx = UI_MENU_GetActualIndexFromCursor((uint8_t)gMenuCursor);
+        UI_MENU_DrawCccMenuChrome(&MenuList[actual_idx]);
+        UI_MENU_DrawArrowIndicator(1, 20);   /* arrow before value area */
+        if (UI_MENU_GetCurrentMenuId() != MENU_VOL)
+        {
+            sprintf(String, "%u/%u", (unsigned)(1u + (unsigned)gMenuCursor), (unsigned)menu_count);
+            DualVfoU8g2_DrawSmallText(String, 109, 4, true);
+        }
     }
 
     // **************
@@ -1823,24 +1745,15 @@ void UI_DisplayMenu(void)
                     {
                         unsigned int sub_val_x1 = menu_value_x1;
                         unsigned int sub_val_x2 = menu_item_x2;
-                        if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu &&
-                            menu_item_x1 == 0u)
+                        /* Unified view: CN edit mode needs extra left offset for arrow space */
+                        if (gUiLanguage == UI_LANGUAGE_CN && gIsInSubMenu)
                             sub_val_x1 = menu_value_x1 + 8u;
-                        if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
-                            sub_val_x1 = sub_val_x1 + 2u;
-                        if (gUiLanguage == UI_LANGUAGE_CN && !gIsInSubMenu && sub_val_x1 >= 50u)
-                            sub_val_x1 = sub_val_x1 + 2u;
 
                         unsigned int y_line = 2u - 1u;
-                        if (!gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
-                            y_line += 1u;
-                        else if (gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
+                        /* Unified view: always full-width layout offset */
+                        if (UI_MENU_GetCurrentMenuId() != MENU_VOL)
                             y_line += 2u;
                         uint8_t yp_tier = (uint8_t)(y_line * 8u);
-                        if (!gIsInSubMenu)
-                        {
-                            yp_tier = (uint8_t)(yp_tier + 7u);
-                        }
                         const uint8_t h_tier = VOL_line_band_height(tier);
                         const uint8_t yp_pwr = SF_after_2px(yp_tier, h_tier);
                         const uint8_t h_pwr  = VOL_line_band_height(pwrbuf);
@@ -2174,18 +2087,18 @@ void UI_DisplayMenu(void)
 #ifdef ENABLE_CHINESE
             if (gIsInSubMenu && edit_index >= 0)
             {
-                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x1 = menu_value_x1 + 6u;   /* +6px right to clear arrow */
                 unsigned int sub_val_x2 = menu_item_x2;
                 if (!icon_layout && gIsInSubMenu)
                     sub_val_x1 += 2u;
-                UI_MENU_DrawMemNameEdit(sub_val_x1, sub_val_x2, (size_t)CHANNEL_NAME_MAX_BYTES);
+                UI_MENU_DrawMemNameEdit(sub_val_x1, menu_value_x1, sub_val_x2, (size_t)CHANNEL_NAME_MAX_BYTES);
                 already_printed = true;
                 break;
             }
 #else
             if (gIsInSubMenu && edit_index >= 0)
             {
-                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x1 = menu_value_x1 + 6u;   /* +6px right to clear arrow */
                 unsigned int sub_val_x2 = menu_item_x2;
                 const char *mode =
                     (gMemNameInputMode == MEM_NAME_INPUT_UPPER) ? "A" :
@@ -2214,17 +2127,17 @@ void UI_DisplayMenu(void)
                 if (gAskForConfirmation == 0)
                 {
                     if (gMemNameInputMode == MEM_NAME_INPUT_SYMBOL)
-                        UI_MENU_DrawMemNameSymbolSixPack((uint8_t)sub_val_x1, (uint8_t)sub_val_x2);
+                        UI_MENU_DrawMemNameSymbolSixPack((uint8_t)menu_value_x1, (uint8_t)menu_item_x2);
                     else if (gMemNameCandidateCount > 0u)
                     {
                         uint8_t i;
-                        const unsigned strip_w = (unsigned)(sub_val_x2 - sub_val_x1);
+                        const unsigned strip_w = (unsigned)(menu_item_x2 - menu_value_x1);
                         const unsigned slot_w = strip_w / 4u;
                         for (i = 0; i < gMemNameCandidateCount; i++)
                         {
                             char num[2];
                             char ch[2];
-                            const uint8_t cx = (uint8_t)(sub_val_x1 + (unsigned)i * slot_w);
+                            const uint8_t cx = (uint8_t)(menu_value_x1 + (unsigned)i * slot_w);
                             num[0] = (char)('1' + i);
                             num[1] = 0;
                             ch[0] = gMemNameCandidates[i];
@@ -2535,61 +2448,29 @@ void UI_DisplayMenu(void)
         case MENU_VOL:
 #ifdef ENABLE_FEAT_F4HWN
         {
-            uint8_t page = 0u;
-            uint8_t level2_value_down_offset_pixels = 0u;
-            uint8_t level3_value_down_offset_pixels = 0u;
-            if (gIsInSubMenu)
-            {
-                page = (uint8_t)gSubMenuSelection;
-                level3_value_down_offset_pixels = 9u;
-            }
-            else
-            {
-                level2_value_down_offset_pixels = 12u;
-            }
+            uint8_t page = (uint8_t)gSubMenuSelection;
+            /* Unified view: always use Level-3 style offset, same for browse and edit */
+            uint8_t level3_value_down_offset_pixels = 9u;
+            const uint8_t level2_value_down_offset_pixels = 0u; /* unused in unified view, kept for compatibility */
 
             if (page == 0u)
             {
-                const uint8_t info_line_up_offset_pixels = 5u;
-                const uint8_t info_line_gap_pixels = 3u;
-                const uint8_t info_line_height_pixels = 8u;
-                uint8_t info_line1_y_start = 0u;
-                uint8_t info_line1_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_line3_y_start = 0u;
                 uint8_t info_line3_y_end = 0u;
+                uint8_t info_line1_print_y_start = 0u;
+                uint8_t info_line1_print_y_end = 0u;
 
-                if (gIsInSubMenu)
-                {
-                    edit[0] = '\0';
-                }
-                else
-                {
-                    strcpy(edit, "<\xe5\x8f\xae\xe5\x92\x9a\xe9\xb8\xa1>");
-                }
-                info_line1_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
-                if (info_line1_y_start >= info_line_up_offset_pixels)
-                {
-                    info_line1_y_start = (uint8_t)(info_line1_y_start - info_line_up_offset_pixels);
-                }
-                else
-                {
-                    info_line1_y_start = 0u;
-                }
-                info_line1_y_end = (uint8_t)(info_line1_y_start + info_line_height_pixels - 1u);
-                info_line1_y_start = (uint8_t)(info_line1_y_start + level2_value_down_offset_pixels);
-                info_line1_y_end = (uint8_t)(info_line1_y_end + level2_value_down_offset_pixels);
-                info_line1_y_start = (uint8_t)(info_line1_y_start + level3_value_down_offset_pixels);
-                info_line1_y_end = (uint8_t)(info_line1_y_end + level3_value_down_offset_pixels);
+                /* Unified view: always clear edit tag, content is shown in the value area */
+                edit[0] = '\0';
+                UI_MENU_SysInfBodyLineYs(
+                    level2_value_down_offset_pixels, level3_value_down_offset_pixels,
+                    &info_line1_print_y_start, &info_line1_print_y_end,
+                    &info_line2_y_start, &info_line2_y_end,
+                    &info_line3_y_start, &info_line3_y_end);
 
-                info_line2_y_start = (uint8_t)(info_line1_y_end + 1u + info_line_gap_pixels);
-                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
-
-                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
-                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
-
-                UI_PrintStringSmallAtPixel("Dondji", menu_value_x1, menu_item_x2, info_line1_y_start, info_line1_y_end, 0u);
+                UI_PrintStringSmallAtPixel(SUBV("Dondji", "叮咚鸡"), menu_value_x1, menu_item_x2, info_line1_print_y_start, info_line1_print_y_end, 0u);
                 UI_PrintStringSmallAtPixel(VERSION_STRING_2, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
                 UI_PrintStringSmallAtPixel("BD1AHN", menu_value_x1, menu_item_x2, info_line3_y_start, info_line3_y_end, 0u);
                 String[0] = '\0';
@@ -2599,13 +2480,6 @@ void UI_DisplayMenu(void)
 
             if (page == 1u)
             {
-                const uint8_t info_label_up_offset_pixels = 5u;
-                const uint8_t info_label_safe_top_pixels_in_submenu = 20u;
-                const uint8_t info_line_gap_pixels = 3u;
-                const uint8_t info_line_height_pixels = 8u;
-                const uint8_t info_label_cn_extra_up_offset_pixels = 3u;
-                uint8_t info_label_y_start = 0u;
-                uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_label_print_y_start = 0u;
@@ -2614,42 +2488,11 @@ void UI_DisplayMenu(void)
 
                 UI_MENU_FormatBuildDateSlash(build_date_slash, sizeof(build_date_slash));
 
-                info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
-                if (info_label_y_start >= info_label_up_offset_pixels)
-                {
-                    info_label_y_start = (uint8_t)(info_label_y_start - info_label_up_offset_pixels);
-                }
-                else
-                {
-                    info_label_y_start = 0u;
-                }
-                info_label_y_end = (uint8_t)(info_label_y_start + 7u);
-                info_label_y_start = (uint8_t)(info_label_y_start + level2_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
-                info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
-                if (gIsInSubMenu && info_label_y_start < info_label_safe_top_pixels_in_submenu)
-                {
-                    info_label_y_start = info_label_safe_top_pixels_in_submenu;
-                    info_label_y_end = (uint8_t)(info_label_y_start + info_line_height_pixels - 1u);
-                }
-                info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
-                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
-                info_label_print_y_start = info_label_y_start;
-                info_label_print_y_end = info_label_y_end;
-
-                if (gUiLanguage == UI_LANGUAGE_CN)
-                {
-                    if (info_label_print_y_start >= info_label_cn_extra_up_offset_pixels)
-                    {
-                        info_label_print_y_start = (uint8_t)(info_label_print_y_start - info_label_cn_extra_up_offset_pixels);
-                    }
-                    else
-                    {
-                        info_label_print_y_start = 0u;
-                    }
-                    info_label_print_y_end = (uint8_t)(info_label_print_y_start + info_line_height_pixels - 1u);
-                }
+                UI_MENU_SysInfBodyLineYs(
+                    level2_value_down_offset_pixels, level3_value_down_offset_pixels,
+                    &info_label_print_y_start, &info_label_print_y_end,
+                    &info_line2_y_start, &info_line2_y_end,
+                    NULL, NULL);
 
                 UI_PrintStringSmallAtPixel(SUBV("BUILD", "打包时间"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
                 UI_PrintStringSmallAtPixel(build_date_slash, menu_value_x1, menu_item_x2, info_line2_y_start, info_line2_y_end, 0u);
@@ -2679,13 +2522,6 @@ void UI_DisplayMenu(void)
 
             if (page == 2u)
             {
-                const uint8_t info_label_up_offset_pixels = 5u;
-                const uint8_t info_label_safe_top_pixels_in_submenu = 20u;
-                const uint8_t info_line_gap_pixels = 3u;
-                const uint8_t info_line_height_pixels = 8u;
-                const uint8_t info_label_cn_extra_up_offset_pixels = 3u;
-                uint8_t info_label_y_start = 0u;
-                uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_line3_y_start = 0u;
@@ -2697,44 +2533,11 @@ void UI_DisplayMenu(void)
 
                 UI_MENU_GetMemPercents(&flash_percent_x10, &sram_percent_x10);
 
-                info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
-                if (info_label_y_start >= info_label_up_offset_pixels)
-                {
-                    info_label_y_start = (uint8_t)(info_label_y_start - info_label_up_offset_pixels);
-                }
-                else
-                {
-                    info_label_y_start = 0u;
-                }
-                info_label_y_end = (uint8_t)(info_label_y_start + 7u);
-                info_label_y_start = (uint8_t)(info_label_y_start + level2_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
-                info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
-                if (gIsInSubMenu && info_label_y_start < info_label_safe_top_pixels_in_submenu)
-                {
-                    info_label_y_start = info_label_safe_top_pixels_in_submenu;
-                    info_label_y_end = (uint8_t)(info_label_y_start + info_line_height_pixels - 1u);
-                }
-                info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
-                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
-                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
-                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
-                info_label_print_y_start = info_label_y_start;
-                info_label_print_y_end = info_label_y_end;
-
-                if (gUiLanguage == UI_LANGUAGE_CN)
-                {
-                    if (info_label_print_y_start >= info_label_cn_extra_up_offset_pixels)
-                    {
-                        info_label_print_y_start = (uint8_t)(info_label_print_y_start - info_label_cn_extra_up_offset_pixels);
-                    }
-                    else
-                    {
-                        info_label_print_y_start = 0u;
-                    }
-                    info_label_print_y_end = (uint8_t)(info_label_print_y_start + info_line_height_pixels - 1u);
-                }
+                UI_MENU_SysInfBodyLineYs(
+                    level2_value_down_offset_pixels, level3_value_down_offset_pixels,
+                    &info_label_print_y_start, &info_label_print_y_end,
+                    &info_line2_y_start, &info_line2_y_end,
+                    &info_line3_y_start, &info_line3_y_end);
 
                 UI_PrintStringSmallAtPixel(SUBV("MEMORY", "存储占比"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
                 sprintf(String, "FLASH %u.%u%%", flash_percent_x10 / 10u, flash_percent_x10 % 10u);
@@ -2791,17 +2594,11 @@ void UI_DisplayMenu(void)
                     unsigned int page4_rem_h = 0u;
                     unsigned int page4_y_cursor = 0u;
 
-                    if (gIsInSubMenu)
+                    /* Unified view: always use full-width layout positioning */
                     {
                         /* UI_MENU_DrawCccMenuChrome：标题 PrintStringSmallAtPixel(..., 11, 18, ...) */
                         page4_menu_title_bottom_y = 18u;
                         page4_band_y_bot = 63u;
-                    }
-                    else
-                    {
-                        /* UI_MENU_DrawLevel2SplitLayout MENU_VOL：左栏「系统信息」..., 10u, 36u */
-                        page4_menu_title_bottom_y = 36u;
-                        page4_band_y_bot = 55u;
                     }
                     page4_band_y_top = (uint8_t)((unsigned int)page4_menu_title_bottom_y + 1u
                                                 + page4_gap_below_menu_title_px);
@@ -3027,7 +2824,7 @@ void UI_DisplayMenu(void)
                 info_line2_y_start = (uint8_t)(info_line1_y_end + 1u + info_line_gap_pixels);
                 info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
 
-                UI_PrintStringSmallAtPixel("https://ethanyan6", menu_value_x1, menu_item_x2,
+                UI_PrintStringSmallAtPixel("https://ethanyan6", menu_value_x1 + 5u, menu_item_x2,
                                            info_line1_y_start, info_line1_y_end, 0u);
                 UI_PrintStringSmallAtPixel(".github.io/BD1AHN/", menu_value_x1, menu_item_x2,
                                            info_line2_y_start, info_line2_y_end, 0u);
@@ -3038,13 +2835,6 @@ void UI_DisplayMenu(void)
 #ifdef ENABLE_FEAT_F4HWN
             if (page == 5u)
             {
-                const uint8_t info_label_up_offset_pixels = 5u;
-                const uint8_t info_label_safe_top_pixels_in_submenu = 20u;
-                const uint8_t info_line_gap_pixels = 3u;
-                const uint8_t info_line_height_pixels = 8u;
-                const uint8_t info_label_cn_extra_up_offset_pixels = 3u;
-                uint8_t info_label_y_start = 0u;
-                uint8_t info_label_y_end = 0u;
                 uint8_t info_line2_y_start = 0u;
                 uint8_t info_line2_y_end = 0u;
                 uint8_t info_line3_y_start = 0u;
@@ -3053,44 +2843,11 @@ void UI_DisplayMenu(void)
                 uint8_t info_label_print_y_end = 0u;
                 char val[16];
 
-                info_label_y_start = UI_MENU_GetRowPixelStart(MENU_VALUE_ROW(1));
-                if (info_label_y_start >= info_label_up_offset_pixels)
-                {
-                    info_label_y_start = (uint8_t)(info_label_y_start - info_label_up_offset_pixels);
-                }
-                else
-                {
-                    info_label_y_start = 0u;
-                }
-                info_label_y_end = (uint8_t)(info_label_y_start + 7u);
-                info_label_y_start = (uint8_t)(info_label_y_start + level2_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level2_value_down_offset_pixels);
-                info_label_y_start = (uint8_t)(info_label_y_start + level3_value_down_offset_pixels);
-                info_label_y_end = (uint8_t)(info_label_y_end + level3_value_down_offset_pixels);
-                if (gIsInSubMenu && info_label_y_start < info_label_safe_top_pixels_in_submenu)
-                {
-                    info_label_y_start = info_label_safe_top_pixels_in_submenu;
-                    info_label_y_end = (uint8_t)(info_label_y_start + info_line_height_pixels - 1u);
-                }
-                info_line2_y_start = (uint8_t)(info_label_y_end + 1u + info_line_gap_pixels);
-                info_line2_y_end = (uint8_t)(info_line2_y_start + info_line_height_pixels - 1u);
-                info_line3_y_start = (uint8_t)(info_line2_y_end + 1u + info_line_gap_pixels);
-                info_line3_y_end = (uint8_t)(info_line3_y_start + info_line_height_pixels - 1u);
-                info_label_print_y_start = info_label_y_start;
-                info_label_print_y_end = info_label_y_end;
-
-                if (gUiLanguage == UI_LANGUAGE_CN)
-                {
-                    if (info_label_print_y_start >= info_label_cn_extra_up_offset_pixels)
-                    {
-                        info_label_print_y_start = (uint8_t)(info_label_print_y_start - info_label_cn_extra_up_offset_pixels);
-                    }
-                    else
-                    {
-                        info_label_print_y_start = 0u;
-                    }
-                    info_label_print_y_end = (uint8_t)(info_label_print_y_start + info_line_height_pixels - 1u);
-                }
+                UI_MENU_SysInfBodyLineYs(
+                    level2_value_down_offset_pixels, level3_value_down_offset_pixels,
+                    &info_label_print_y_start, &info_label_print_y_end,
+                    &info_line2_y_start, &info_line2_y_end,
+                    &info_line3_y_start, &info_line3_y_end);
 
                 UI_PrintStringSmallAtPixel(SUBV("Battery", "\xe7\x94\xb5\xe6\xb1\xa0"), menu_value_x1, menu_item_x2, info_label_print_y_start, info_label_print_y_end, 0u);
                 sprintf(val, "%u.%02uV %u%%",
@@ -3157,15 +2914,13 @@ void UI_DisplayMenu(void)
         case MENU_YAN_ID:
             if (gIsInSubMenu && edit_index >= 0)
             {
-                unsigned int sub_val_x1 = menu_value_x1;
+                unsigned int sub_val_x1 = menu_value_x1 + 6u; /* clear arrow, same as MEM_NAME */
                 unsigned int sub_val_x2 = menu_item_x2;
                 const size_t edit_len = (UI_MENU_GetCurrentMenuId() == MENU_MDC_ID)
                     ? 4u
                     : (size_t)YAN_ID_LEN;
 #ifdef ENABLE_CHINESE
-                if (!icon_layout && gIsInSubMenu)
-                    sub_val_x1 += 2u;
-                UI_MENU_DrawMemNameEdit(sub_val_x1, sub_val_x2, edit_len);
+                UI_MENU_DrawMemNameEdit(sub_val_x1, menu_value_x1, sub_val_x2, edit_len);
 #else
                 UI_PrintStringSmallAtPixel(edit, (uint8_t)sub_val_x1, (uint8_t)sub_val_x2, 28u, 35u, 0u);
 #endif
@@ -3375,9 +3130,8 @@ void UI_DisplayMenu(void)
             }
 #endif
 
-            if (!gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
-                y += 1u;
-            else if (gIsInSubMenu && UI_MENU_GetCurrentMenuId() != MENU_VOL)
+            /* Unified view: always use Level-3 style offset, same for browse and edit */
+            if (UI_MENU_GetCurrentMenuId() != MENU_VOL)
                 y += 2u;
 
             if (UI_MENU_IsToneMenu(UI_MENU_GetCurrentMenuId()))
@@ -3400,21 +3154,11 @@ void UI_DisplayMenu(void)
                 {
                     submenu_value_y_offset_px = UI_MENU_GetToneValueYOffsetPx(gIsInSubMenu);
                 }
-                if (UI_MENU_GetCurrentMenuId() == MENU_TXP ||
-                    UI_MENU_GetCurrentMenuId() == MENU_SET_PWR)
-                {
-                    if (!gIsInSubMenu)
-                    {
-                        submenu_value_y_offset_px = (uint8_t)(submenu_value_y_offset_px + 7u);
-                    }
-                }
+                /* Unified view: no extra y-offset needed for TXP/SET_PWR in browse mode,
+                   same Level-3 style positioning as edit mode */
 #ifdef ENABLE_CHINESE
-                if (gUiLanguage == UI_LANGUAGE_CN && icon_layout && gIsInSubMenu && menu_item_x1 == 0u)
+                if (gUiLanguage == UI_LANGUAGE_CN && gIsInSubMenu)
                     sub_val_x1 = menu_value_x1 + 8u;
-                if (gUiLanguage == UI_LANGUAGE_CN && !icon_layout && gIsInSubMenu)
-                    sub_val_x1 = sub_val_x1 + 2u;
-                if (gUiLanguage == UI_LANGUAGE_CN && !gIsInSubMenu && sub_val_x1 >= 50u)
-                    sub_val_x1 = sub_val_x1 + 2u;
                 if (is_tone_menu_current && gIsInSubMenu)
                 {
                     sub_val_x1 = menu_value_x1;
