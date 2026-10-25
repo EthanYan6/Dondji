@@ -3568,7 +3568,12 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
         }
 
         const uint8_t menu_count = MENU_GetActiveMenuCount();
-        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, -Direction, 0, menu_count > 0 ? (menu_count - 1) : 0);
+        // 二级列表：遵循导航键设置——K5 模式 ▲ = 下一项，与一级图标页、
+        // 三级值编辑的"前进"方向一致；K1 模式（SET_NAV=0）反向，行为不变
+        if (!gEeprom.SET_NAV) {
+            Direction = -Direction;
+        }
+        gMenuCursor = NUMBER_AddWithWraparound(gMenuCursor, Direction, 0, menu_count > 0 ? (menu_count - 1) : 0);
 
         gFlagRefreshSetting = true;
 
